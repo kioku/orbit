@@ -10,10 +10,10 @@
 	}
   </style>
 </head>
-<body colour='rgba(0,0,0,1)'>
+<body style="colour='rgba(0,0,0,1)';">
   <div id="game">
     <canvas id="world"></canvas>
   </div>
-  <script language="javascript" src="js/orbit.js" type="text/javascript"></script>
+  <script language="javascript" src="orbit.js" type="text/javascript"></script>
 </body>
 </html>
