@@ -4,6 +4,7 @@ var app = express.createServer(express.logger());
 
 app.use(express.static(__dirname + "/js"));
 app.use(express.static(__dirname + "/css"));
+app.use(express.static(__dirname + "/images"));
 
 app.get('/', function(request, response) {
   response.sendfile('game.html');
