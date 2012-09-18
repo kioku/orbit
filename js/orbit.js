@@ -261,10 +261,12 @@ var Orbit = (function() {
       }
 
       function onCanvasTouchMoveHandler(event) {
+        event.preventDefault();
+        player.radius += 0.2;
       }
 
       function onCanvasTouchEndHandler(event) {
-        mouse.down = false;
+        event.preventDefault();
       }
 
       function updateMeta() {
