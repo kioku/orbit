@@ -234,7 +234,6 @@ var Orbit = (function() {
 
       function clear() {
         context.clearRect(0, 0, world.width, world.height);
-        console.log(world.width + ' ' + world.height);
       }
 
       function onStartButtonClick(event) {
@@ -407,7 +406,7 @@ var Orbit = (function() {
           context.globalAlpha = enemy.alpha;
 
           context.translate(Math.round(enemy.x), Math.round(enemy.y));
-          context.scale(enemy.scale, enemy.scale);
+          //context.scale(enemy.scale, enemy.scale);
           context.drawImage(sprite, Math.round(sprite.width/2), Math.round(sprite.height/2));
           context.restore();
         }
