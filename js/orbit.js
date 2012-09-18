@@ -256,6 +256,8 @@ var Orbit = (function() {
       }
 
       function onCanvasTouchStartHandler(event) {
+        event.preventDefault();
+        player.radius += 0.2;
       }
 
       function onCanvasTouchMoveHandler(event) {
@@ -304,6 +306,9 @@ var Orbit = (function() {
         player.x = world.width/2 + player.radius * Math.cos(theta);
         player.y = world.height/2 + player.radius * Math.sin(theta);
 
+        //if ( keydown.space ) {
+        //  player.radius += 0.1;
+        //}
         if ( player.radius > 0) {
           player.radius -= 0.1;
         }
@@ -346,8 +351,8 @@ var Orbit = (function() {
           }
           else {
             enemy.type = ENEMY_TYPE_SUN;
-            enemy.x = world.width / 2;
-            enemy.y = world.height / 2;
+            enemy.x = world.width / 2 - sprites.enemySun.width/2;
+            enemy.y = world.height / 2 - sprites.enemySun.height;
           }
 
           enemies.push(enemy);
@@ -440,10 +445,10 @@ var Orbit = (function() {
 
       function collides(a, b) {
 
-        return a.x < b.x + b.width &&
-               a.x + a.width > b.x &&
-               a.y < b.y + b.height &&
-               a.y + a.height > b.y;
+        return a.x < b.x + Math.round(b.width/2) &&
+               a.x + Math.round(a.width/2) > b.x &&
+               a.y < b.y + Math.round(b.height/2) &&
+               a.y + Math.round(a.height/2) > b.y;
         /*
         var left1, left2, right1, right2;
         var top1, top2, bottom1, bottom2;
