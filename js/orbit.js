@@ -270,7 +270,7 @@ var Orbit = (function() {
         var timeThisFrame = Date.now();
 
         // Increase the frame count
-        framesThisSecond ++;
+        framesThisSecond++;
 
         // Check if a second has passed since the last time we updated the FPS
         if (timeThisFrame > timeLastSecond + 1000) {
@@ -336,7 +336,7 @@ var Orbit = (function() {
         i = 0.0002 * Math.floor(ENEMY_COUNT + difficulty) - enemies.length;
         //console.log(i);
 
-        while (i-- && Math.random() > 0.49) {
+        while (i-- && Math.random() > 0.99) {
           enemy = new Enemy();
 
           if (haveSun) {
@@ -439,7 +439,7 @@ var Orbit = (function() {
       }
 
       function collides(a, b) {
-        
+
         return a.x < b.x + b.width &&
                a.x + a.width > b.x &&
                a.y < b.y + b.height &&
