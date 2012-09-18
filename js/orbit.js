@@ -233,7 +233,8 @@ var Orbit = (function() {
       }
 
       function clear() {
-        context.clearRect(0, 0, DEFAULT_WIDTH, DEFAULT_HEIGHT);
+        context.clearRect(0, 0, world.width, world.height);
+        console.log(world.width + ' ' + world.height);
       }
 
       function onStartButtonClick(event) {
