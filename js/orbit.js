@@ -257,12 +257,12 @@ var Orbit = (function() {
 
       function onCanvasTouchStartHandler(event) {
         event.preventDefault();
-        player.radius += 0.2;
+        //player.radius += 0.2;
       }
 
       function onCanvasTouchMoveHandler(event) {
         event.preventDefault();
-        player.radius += 0.2;
+        //player.radius += 0.2;
       }
 
       function onCanvasTouchEndHandler(event) {
@@ -311,6 +311,14 @@ var Orbit = (function() {
         //if ( keydown.space ) {
         //  player.radius += 0.1;
         //}
+
+        $("#world").hammer({prevent_default:true}).bind("hold", function(ev) {
+          if ( player.radius < (world.width / 2) ) {
+            player.radius += 0.001;
+          }
+          console.log("holding");
+        });
+
         if ( player.radius > 0) {
           player.radius -= 0.1;
         }
