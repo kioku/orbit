@@ -40,6 +40,14 @@ var Orbit = (function() {
     down: false
   }
 
+  // Hammer.js variable
+  //var hammer = new Hammer(document.getElementById("game"));
+
+  // Variables for hold touch event
+  var hStartTime = 0,
+      hMove = false,
+      hold = false;
+
   var canvas,
       context,
 
@@ -255,18 +263,29 @@ var Orbit = (function() {
         mouse.down = false;
       }
 
+      function checkTapHold(nID) {
+        if ( !hMove && hStartTime == nID ) {
+          hStartTime = 0;
+          hMove = 0;
+        }
+        else { 
+          hold = true; 
+        }
+      }
       function onCanvasTouchStartHandler(event) {
         event.preventDefault();
-        //player.radius += 0.2;
+        hStartTime = Number(new Date());
+        setTimeout('checkTapHold(' + hStartTime + ');clearTimeout();', 2000);
       }
 
       function onCanvasTouchMoveHandler(event) {
         event.preventDefault();
-        //player.radius += 0.2;
+        hMove = true;
       }
 
       function onCanvasTouchEndHandler(event) {
         event.preventDefault();
+        hold = false;
       }
 
       function updateMeta() {
@@ -308,17 +327,27 @@ var Orbit = (function() {
         player.x = world.width/2 + player.radius * Math.cos(theta);
         player.y = world.height/2 + player.radius * Math.sin(theta);
 
-        //if ( keydown.space ) {
-        //  player.radius += 0.1;
-        //}
-
-        $("#world").hammer({prevent_default:true}).bind("hold", function(ev) {
+        /*
+        $("#game").hammer({prevent_default:true, hold_timeout:1500}).bind("hold", function(ev) {
           if ( player.radius < (world.width / 2) ) {
-            player.radius += 0.001;
+            player.radius += 0.1;
           }
           console.log("holding");
         });
+        */
 
+        /*
+        hammer.onhold = function(ev) {
+          if ( player.radiu < (world.width / 2) ) {
+            player.radius += 0.01;
+            console.log("holding");
+          }
+        }
+        */
+
+        if ( hold && (player.radius < (world.width / 2))) {
+          player.radius += 0.2;
+        }
         if ( player.radius > 0) {
           player.radius -= 0.1;
         }
