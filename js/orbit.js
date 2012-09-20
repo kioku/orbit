@@ -268,23 +268,28 @@ var Orbit = (function() {
           hStartTime = 0;
           hMove = 0;
         }
-        else { 
-          hold = true; 
-        }
       }
+
       function onCanvasTouchStartHandler(event) {
-        event.preventDefault();
+        //event.preventDefault();
         hStartTime = Number(new Date());
-        setTimeout('checkTapHold(' + hStartTime + ');clearTimeout();', 2000);
+        hold = true;
+        //alert(hold);
+        /*
+        setTimeout(function() { 
+          checkTapHold(hStartTime);
+          clearTimeout();
+        }, 2000);
+        */
       }
 
       function onCanvasTouchMoveHandler(event) {
-        event.preventDefault();
+        //event.preventDefault();
         hMove = true;
       }
 
       function onCanvasTouchEndHandler(event) {
-        event.preventDefault();
+        //event.preventDefault();
         hold = false;
       }
 
@@ -326,24 +331,6 @@ var Orbit = (function() {
 
         player.x = world.width/2 + player.radius * Math.cos(theta);
         player.y = world.height/2 + player.radius * Math.sin(theta);
-
-        /*
-        $("#game").hammer({prevent_default:true, hold_timeout:1500}).bind("hold", function(ev) {
-          if ( player.radius < (world.width / 2) ) {
-            player.radius += 0.1;
-          }
-          console.log("holding");
-        });
-        */
-
-        /*
-        hammer.onhold = function(ev) {
-          if ( player.radiu < (world.width / 2) ) {
-            player.radius += 0.01;
-            console.log("holding");
-          }
-        }
-        */
 
         if ( hold && (player.radius < (world.width / 2))) {
           player.radius += 0.2;
