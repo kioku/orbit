@@ -96,6 +96,7 @@ var Orbit = (function() {
       framesThisSecond = 0,
 
       // Game elements
+      notifications = [],
       enemies = [],
       player;
 
@@ -108,7 +109,7 @@ var Orbit = (function() {
         // canvas3d = document.querySelector( '#effects' );
         startButton = document.querySelector( '#start-button' );
 
-        if ( canvas && canvas.getContext ) {
+        if( canvas && canvas.getContext ) {
               context = canvas.getContext('2d');
 
               // Bind event listeners
@@ -118,7 +119,7 @@ var Orbit = (function() {
               document.addEventListener('mouseup', onMouseUpHandler, false);
               canvas.addEventListener('touchstart', onCanvasTouchStartHandler, false);
               canvas.addEventListener('touchmove', onCanvasTouchMoveHandler, false);
-              canvas.addEventListener('touchenc', onCanvasTouchEndHandler, false);
+              canvas.addEventListener('touchend', onCanvasTouchEndHandler, false);
               window.addEventListener('resize', onWindowResizeHandler, false);
 
               // Force an initial layout
@@ -171,12 +172,16 @@ var Orbit = (function() {
         ctx = cvs.getContext('2d');
         ctx.beginPath();
         ctx.fillStyle = 'rgba(220, 50, 50, 0.9)';
-        ctx.fillRect(0, 0, 30, 30);
+        //ctx.fillRect(0, 0, 30, 30);
+        ctx.moveTo(0, 20);
+        ctx.lineTo(50, 35);
+        ctx.lineTo(0, 50);
+        ctx.lineTo(20, 35);
         ctx.shadowColor = 'rgba(255,100,100,0.9)';
-        ctx.shadowOffsetX = 20;
+        ctx.shadowOffsetX = 0;
         ctx.shadowOffsetY = 0;
-        ctx.shadowBlur = 20;
-        //ctx.fill();
+        ctx.shadowBlur = 10;
+        ctx.fill();
 
         sprites.playerSprite = cvs;
 
@@ -216,9 +221,22 @@ var Orbit = (function() {
       function reset() {
         player = new Player();
 
+        notifications = [];
         enemies = [];
       }
 
+      function notify(text, x, y, scale, rgb) {
+        notifications.push( new Notification(text, x, y, scale, rgb) );
+      }
+
+      function invalidate(x, y, width, height) {
+        dirtyRegions.push( {
+          x: x,
+          y: y,
+          width: width,
+          height: height
+        } );
+      }
       function update() {
         clear();
 
@@ -235,12 +253,24 @@ var Orbit = (function() {
               renderEnemies();
 
               context.restore();
+
+              renderNotifications();
         }
 
         requestAnimFrame(update);
       }
 
       function clear() {
+        /*
+        var i = dirtyRegions.length;
+
+        while( i-- ) {
+          var r = dirtyRegions[i];
+          context.clearRect( Math.floor( r.x ), Math.floor( r.y ), Math.ceil( r.width ), Math.ceil( r.height ) );
+        }
+
+        dirtyRegions = [];
+        */
         context.clearRect(0, 0, world.width, world.height);
       }
 
@@ -327,16 +357,16 @@ var Orbit = (function() {
         timeLastFrame = timeThisFrame;
       }
 
+      
       function updatePlayer() {
 
-        player.x = world.width/2 + player.radius * Math.cos(theta);
+        player.x = world.width/2 + player.radius  * Math.cos(theta);
         player.y = world.height/2 + player.radius * Math.sin(theta);
 
         if ( hold && (player.radius < (world.width / 2))) {
-          player.radius += 0.2;
-        }
-        if ( player.radius > 0) {
-          player.radius -= 0.1;
+          player.radius += 0.5;
+        } else if ( player.radius > 0) {
+          player.radius -= 0.5;
         }
         //console.log(player.radius);
 
@@ -347,6 +377,22 @@ var Orbit = (function() {
           theta = 0;
         }
       }
+      /*
+      function updatePlayer() {
+        var angle = player.rotation;
+        player.x = Math.cos(angle * Math.PI ) * player.velocity + player.radius;
+        player.y = Math.sin(angle * Math.PI) * -player.velocity + player.radius;
+        //console.log('x: ' + player.x + ' y: ' + player.y);
+
+        if ( hold ) {
+          player.rotation += 1;
+          player.radius += 0.01;
+        } else {
+          player.rotation -= 1;
+          player.radius -= 0.01;
+        }
+      }
+      */
 
       function updateEnemies() {
         var enemy;
@@ -363,23 +409,23 @@ var Orbit = (function() {
             haveSun = false;
           }
         }
+        if( !haveSun ) {
+          enemy = new Enemy();
+          enemy.type = ENEMY_TYPE_SUN;
+          enemy.x = world.width / 2 - sprites.enemySun.width;
+          enemy.y = world.height / 2 - sprites.enemySun.height;
+          enemies.push(enemy);
+        }
 
-        i = 0.0002 * Math.floor(ENEMY_COUNT + difficulty) - enemies.length;
+        //i = 0.0002 * Math.floor(ENEMY_COUNT + difficulty) - enemies.length;
         //console.log(i);
 
-        while (i-- && Math.random() > 0.99) {
+        while ( Math.random() > 0.99 ) {
           enemy = new Enemy();
 
-          if (haveSun) {
-            enemy.type = ENEMY_TYPE_NORMAL;
-            enemy.x = Math.round(Math.random() * (world.width - padding - padding));
-            enemy.y = Math.round(Math.random() * (world.height - padding - padding));
-          }
-          else {
-            enemy.type = ENEMY_TYPE_SUN;
-            enemy.x = world.width / 2 - sprites.enemySun.width/2;
-            enemy.y = world.height / 2 - sprites.enemySun.height;
-          }
+          enemy.type = ENEMY_TYPE_NORMAL;
+          enemy.x = Math.round(Math.random() * (world.width - padding - padding));
+          enemy.y = Math.round(Math.random() * (world.height - padding - padding));
 
           enemies.push(enemy);
         }
@@ -394,27 +440,46 @@ var Orbit = (function() {
           enemy.scale += ((enemy.scaleTarget - enemy.scale) + 0.01) * 0.3;
           enemy.alpha += (enemy.alphaTarget - enemy.alpha) * 0.01;
 
-          if (enemy.alive && 
+          var collision = collides(player, enemy);
+          if( enemy.alive && 
               enemy.time === 100 && 
               enemy.type === ENEMY_TYPE_NORMAL ||
-              collides(player, enemy)) {
+              collision &&
+              enemy.type === ENEMY_TYPE_NORMAL ) {
             //handleEnemyDeath(enemy);
             //console.log(i);
             enemies.splice(i,1);
             enemy.alive = false;
+
+            if( collision ) {
+              player.score++;
+
+              notify(player.score, player.x, player.y - 10, 1, [250, 250, 100]);
+            }
           }
         }
       }
 
       function renderPlayer() {
+        var bounds = new Region();
+
         var sprite = sprites.playerSprite;
         player.width = sprite.width /4;
         player.height = sprite.height /4;
         //console.log(player.x)
         context.save();
         context.translate(Math.round(player.x), Math.round(player.y));
+        context.scale(0.5, 0.5);
+        context.rotate(player.rotation * Math.PI / 180);
         context.drawImage(sprite, Math.round(sprite.width/2), Math.round(sprite.height/2));
         context.restore();
+
+        bounds.inflate( player.x, player.y );
+        bounds.expand( 4, 4);
+
+        var boundsRect = bounds.toRectangle();
+
+        invalidate( boundsRect.x, boundsRect.y, boundsRect.width, boundsRect.height );
       }
 
       function renderEnemies() {
@@ -440,6 +505,51 @@ var Orbit = (function() {
           //context.scale(enemy.scale, enemy.scale);
           context.drawImage(sprite, Math.round(sprite.width/2), Math.round(sprite.height/2));
           context.restore();
+
+          var sw = ( sprite.width * enemy.scale ) + 4;
+          var sh = ( sprite.height * enemy.scale ) + 4;
+
+          invalidate( enemy.x - (sw / 2), enemy.y - (sw / 2), sw, sh);
+        }
+      }
+
+      function renderNotifications() {
+        var i = notifications.length;
+
+        // Go through and draw all notification texts
+        while( i-- ) {
+          var p = notifications[i];
+
+          // Make the text float upwards 
+          p.y -= 0.4;
+
+          var r = 14 * p.scale;
+
+          // Draw the notification
+          context.save();
+          context.font = 'bold ' + Math.round(12 * p.scale) + "px Arial";
+
+          context.beginPath();
+          context.fillStyle = 'rgba(0,0,0,'+(0.7 * p.alpha)+')';
+          context.arc( p.x, p.y, r, 0, Math.PI*2, true );
+          context.fill();
+
+          context.fillStyle = "rgba( " + p.rgb[0] + ", " + p.rgb[1] + ", " + p.rgb[2] + ", " + p.alpha + " )";
+          context.fillText( p.text, p.x - (context.measureText( p.text ).width * 0.5), p.y + (4 + p.scale) );
+          context.restore();
+
+          // Fade out 
+          p.alpha *= 1 - (0.08 * (1 - ((p.alpha-0.08)/1)) );
+
+          // If the notification is faded out, remove it
+          if( p.alpha < 0.05 ) {
+            notifications.splice(i, 1);
+          }
+
+          r += 2;
+
+          invalidate( p.x - r, p.y - r, r * 2, r * 2);
+
         }
       }
 
@@ -470,21 +580,10 @@ var Orbit = (function() {
       }
 
       function collides(a, b) {
-
         return a.x < b.x + Math.round(b.width/2) &&
                a.x + Math.round(a.width/2) > b.x &&
                a.y < b.y + Math.round(b.height/2) &&
                a.y + Math.round(a.height/2) > b.y;
-        /*
-        var left1, left2, right1, right2;
-        var top1, top2, bottom1, bottom2;
-
-        left1 = a.x;
-        left2 = b.x
-        right1 = a.x + a.width;
-        right2 = b.x + b.width;
-        */
-
       }
 
       initialize();
@@ -501,10 +600,13 @@ function Entity(x, y) {
 
 // Player entity
 function Player() {
-  this.radius = 100;//Math.random();
-  var angle = this.radius * Math.PI * 2;
-  this.x = 220;//Math.cos(angle) * this.radius;
-  this.y = 270;//Math.sin(angle) * this.radius;
+  this.radius = 200;//Math.random();
+  //var angle = this.radius * Math.PI * 2;
+  this.x = 200;//Math.cos(angle) * this.radius;
+  this.y = 200;//Math.sin(angle) * this.radius;
+  this.rotation = 45;
+  this.velocity = 1;
+  this.score = 0;
 }
 Player.prototype = new Entity();
 
@@ -523,5 +625,14 @@ function Enemy() {
 }
 Enemy.prototype = new Entity();
 
+function Notification(text, x, y, scale, rgb) {
+  this.text = text || '';
+  this.x = x || 0;
+  this.y = y || 0;
+  this.scale = scale || 1;
+  this.rgb = rgb || [255,255,255];
+  this.alpha = 1;
+}
+Notification.prototype = new Entity();
 
 
