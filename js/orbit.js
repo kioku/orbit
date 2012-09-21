@@ -165,7 +165,7 @@ var Orbit = (function() {
         sprites.enemy = cvs;
 
 
-        // Player -- needs to be redone
+        // Player
         cvs = document.createElement('canvas');
         cvs.setAttribute('width', canvasWidth);
         cvs.setAttribute('height', canvasHeight);
@@ -314,7 +314,7 @@ var Orbit = (function() {
       }
 
       function onCanvasTouchMoveHandler(event) {
-        //event.preventDefault();
+        event.preventDefault();
         hMove = true;
       }
 
@@ -357,26 +357,28 @@ var Orbit = (function() {
         timeLastFrame = timeThisFrame;
       }
 
-      
       function updatePlayer() {
 
-        player.x = world.width/2 + player.radius  * Math.cos(theta);
-        player.y = world.height/2 + player.radius * Math.sin(theta);
+        player.x = world.width/2 + player.radius  * Math.cos(player.radius / 10);
+        player.y = world.height/2 + player.radius * Math.sin(player.radius / 10);
 
-        if ( hold && (player.radius < (world.width / 2))) {
+        if ( (mouse.down || hold) && (player.radius < (world.width / 2))) {
           player.radius += 0.5;
         } else if ( player.radius > 0) {
           player.radius -= 0.5;
         }
         //console.log(player.radius);
 
+        /*
         if (theta < 360) {
           theta += 0.04;
         }
         else {
           theta = 0;
         }
+        */
       }
+     
       /*
       function updatePlayer() {
         var angle = player.rotation;
@@ -386,10 +388,10 @@ var Orbit = (function() {
 
         if ( hold ) {
           player.rotation += 1;
-          player.radius += 0.01;
+          player.radius += 1;
         } else {
           player.rotation -= 1;
-          player.radius -= 0.01;
+          player.radius -= 1;
         }
       }
       */
@@ -400,8 +402,8 @@ var Orbit = (function() {
 
         var i = enemies.length;
 
-        while (i--) {
-          if (enemies[i].type === ENEMY_TYPE_SUN) {
+        while( i-- ) {
+          if( enemies[i].type === ENEMY_TYPE_SUN ) {
             haveSun = true;
             break;
           }
@@ -471,7 +473,8 @@ var Orbit = (function() {
         context.translate(Math.round(player.x), Math.round(player.y));
         context.scale(0.5, 0.5);
         //context.rotate(player.rotation * Math.PI / 180);
-        context.rotate(theta);
+        context.rotate(player.radius / 10);
+        context.translate( -32, -32 );
         context.drawImage(sprite, Math.round(sprite.width/2), Math.round(sprite.height/2));
         context.restore();
 
