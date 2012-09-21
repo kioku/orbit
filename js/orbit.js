@@ -470,7 +470,8 @@ var Orbit = (function() {
         context.save();
         context.translate(Math.round(player.x), Math.round(player.y));
         context.scale(0.5, 0.5);
-        context.rotate(player.rotation * Math.PI / 180);
+        //context.rotate(player.rotation * Math.PI / 180);
+        context.rotate(theta);
         context.drawImage(sprite, Math.round(sprite.width/2), Math.round(sprite.height/2));
         context.restore();
 
