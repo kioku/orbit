@@ -401,27 +401,32 @@ var Orbit = (function() {
       */
 
       function updatePlayer() {
-        var rotation_vel = 0.01;
+        var rotation_vel = 0.01;//Math.PI / 180;
         var thrust = 0.01;
+        var toDeg = 180 / Math.PI;
 
         player.velocity.x += Math.cos(player.angle) * thrust;
         player.velocity.y += Math.sin(player.angle) * thrust;
 
         if( hold || mouse.down ) {
-          if( player.angle > 0 ) {
+          //if( player.angle > 0 ) {
             player.angle -= rotation_vel;
-          }
+          //}
         }
         else {
-          if( player.angle < 360 ) {
+          //if( player.angle < 103 ) {
             player.angle += rotation_vel;
-          }
+          //}
         }
 
         var offs = 64;
-        if( player.x + offs < world.width && player.y + offs < world.height){
+        //if( player.x + offs < world.width && player.y + offs < world.height){
+        if( player.angle > 0 ) {
           player.x += player.velocity.x;
-          player.y += player.velocity.y;
+          player.y -= player.velocity.y;
+        } else {
+          player.x += player.velocity.x;// * Math.cos(player.angle);
+          player.y += player.velocity.y;// * Math.sin(player.angle);
         }
       }
 
@@ -431,7 +436,7 @@ var Orbit = (function() {
 
         var i = enemies.length;
 
-        while( i-- ) {
+        while( i-- && !haveSun) {
           if( enemies[i].type === ENEMY_TYPE_SUN ) {
             haveSun = true;
             break;
@@ -641,14 +646,14 @@ function Player() {
   //var angle = this.radius * Math.PI * 2;
   this.x = 200;//Math.cos(angle) * this.radius;
   this.y = 200;//Math.sin(angle) * this.radius;
-  this.rotation = 45;
+  //this.rotation = 45;
   //this.velocity.x = 0;
   //this.velocity.y = 0;
   this.velocity = {
     x: 0,
     y: 0
   }
-  this.angle = 100;
+  this.angle = -Math.PI/4  ;
   this.score = 0;
 }
 Player.prototype = new Entity();
