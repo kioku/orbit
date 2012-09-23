@@ -147,6 +147,7 @@ var Orbit = (function() {
 
         // Enemy Sprite
         cvs = document.createElement('canvas');
+        canvasWidth = canvasHeight = 38;
         cvs.setAttribute('width', canvasWidth);
         cvs.setAttribute('height', canvasHeight);
         ctx = cvs.getContext('2d');
@@ -167,6 +168,8 @@ var Orbit = (function() {
 
         // Player
         cvs = document.createElement('canvas');
+        canvasWidth = canvasHeight = 64;
+        cvs.setAttribute('width', canvasWidth);
         cvs.setAttribute('width', canvasWidth);
         cvs.setAttribute('height', canvasHeight);
         ctx = cvs.getContext('2d');
@@ -187,6 +190,7 @@ var Orbit = (function() {
 
         // Sun enemy
         cvs = document.createElement('canvas');
+        canvasWidth = canvasHeight = 64;
         cvs.setAttribute('width', canvasWidth);
         cvs.setAttribute('height', canvasHeight);
         ctx = cvs.getContext('2d');
@@ -357,6 +361,7 @@ var Orbit = (function() {
         timeLastFrame = timeThisFrame;
       }
 
+      /*
       function updatePlayer() {
 
         player.x = world.width/2 + player.radius  * Math.cos(player.radius / 10);
@@ -369,16 +374,15 @@ var Orbit = (function() {
         }
         //console.log(player.radius);
 
-        /*
         if (theta < 360) {
           theta += 0.04;
         }
         else {
           theta = 0;
         }
-        */
       }
-     
+
+      */
       /*
       function updatePlayer() {
         var angle = player.rotation;
@@ -390,11 +394,36 @@ var Orbit = (function() {
           player.rotation += 1;
           player.radius += 1;
         } else {
-          player.rotation -= 1;
-          player.radius -= 1;
+          player.rotation -= 0.1;
+          player.radius -= 0.1;
         }
       }
       */
+
+      function updatePlayer() {
+        var rotation_vel = 0.01;
+        var thrust = 0.01;
+
+        player.velocity.x += Math.cos(player.angle) * thrust;
+        player.velocity.y += Math.sin(player.angle) * thrust;
+
+        if( hold || mouse.down ) {
+          if( player.angle > 0 ) {
+            player.angle -= rotation_vel;
+          }
+        }
+        else {
+          if( player.angle < 360 ) {
+            player.angle += rotation_vel;
+          }
+        }
+
+        var offs = 64;
+        if( player.x + offs < world.width && player.y + offs < world.height){
+          player.x += player.velocity.x;
+          player.y += player.velocity.y;
+        }
+      }
 
       function updateEnemies() {
         var enemy;
@@ -471,9 +500,13 @@ var Orbit = (function() {
         //console.log(player.x)
         context.save();
         context.translate(Math.round(player.x), Math.round(player.y));
+        //context.translate( -Math.round(player.y), Math.round(player.x));
         context.scale(0.5, 0.5);
         //context.rotate(player.rotation * Math.PI / 180);
-        context.rotate(player.radius / 10);
+        context.rotate(player.angle);
+        //context.rotate(player.radius / 20);
+        //context.rotate(theta);
+        //context.rotate(Math.atan2(player.y, player.x));
         context.translate( -32, -32 );
         context.drawImage(sprite, Math.round(sprite.width/2), Math.round(sprite.height/2));
         context.restore();
@@ -584,10 +617,10 @@ var Orbit = (function() {
       }
 
       function collides(a, b) {
-        return a.x < b.x + Math.round(b.width/2) &&
-               a.x + Math.round(a.width/2) > b.x &&
-               a.y < b.y + Math.round(b.height/2) &&
-               a.y + Math.round(a.height/2) > b.y;
+        return a.x < b.x +  Math.round(b.width) &&
+               a.x + Math.round(a.width) - 14 > b.x &&
+               a.y < b.y + Math.round(b.height) &&
+               a.y + Math.round(a.height) - 14 > b.y;
       }
 
       initialize();
@@ -609,7 +642,13 @@ function Player() {
   this.x = 200;//Math.cos(angle) * this.radius;
   this.y = 200;//Math.sin(angle) * this.radius;
   this.rotation = 45;
-  this.velocity = 1;
+  //this.velocity.x = 0;
+  //this.velocity.y = 0;
+  this.velocity = {
+    x: 0,
+    y: 0
+  }
+  this.angle = 100;
   this.score = 0;
 }
 Player.prototype = new Entity();
