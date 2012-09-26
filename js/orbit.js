@@ -361,7 +361,7 @@ var Orbit = (function() {
         timeLastFrame = timeThisFrame;
       }
 
-      
+      /*
       function updatePlayer() {
 
         player.x = world.width/2 + player.radius  * Math.cos(player.radius / 10);
@@ -381,8 +381,8 @@ var Orbit = (function() {
           theta = 0;
         }
       }
+     */
 
-     
       /*
       function updatePlayer() {
         var angle = player.rotation;
@@ -400,7 +400,6 @@ var Orbit = (function() {
       }
       */
 
-     /*
       function updatePlayer() {
         var rotation_vel = Math.PI / (180 * 1);
         var thrust = 0.01;
@@ -423,7 +422,6 @@ var Orbit = (function() {
 
         var offs = 64;
         //if( player.x + offs < world.width && player.y + offs < world.height){
-        /*
         if( player.angle > Math.PI / 2 &&
             player.angle < Math.PI / 2 ) {
           player.x -= player.velocity.x;
@@ -432,9 +430,8 @@ var Orbit = (function() {
        //needs a /
           player.x += player.velocity.x;// * Math.cos(player.angle);
           player.y += player.velocity.y;// * Math.sin(player.angle);
-        //}
+        }
       }
-      */
 
       function updateEnemies() {
         var enemy;
@@ -514,9 +511,9 @@ var Orbit = (function() {
         //context.translate( -Math.round(player.y), Math.round(player.x));
         context.scale(0.5, 0.5);
         //context.rotate(player.rotation * Math.PI / 180);
-        //context.rotate(player.angle);
+        context.rotate(player.angle);
         //context.rotate(player.radius / 20);
-        context.rotate(theta);
+        //context.rotate(theta);
         //context.rotate(Math.atan2(player.y, player.x));
         context.translate( -32, -32 );
         context.drawImage(sprite, Math.round(sprite.width/2), Math.round(sprite.height/2));
