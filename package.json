@@ -2,11 +2,11 @@
   "name": "orbit-fork",
   "version": "0.0.1",
   "dependencies": {
-    "express": "3.0.0rc5",
-    "socket.io": "0.9.10"
+    "express": "latest",
+    "socket.io": "latest"
   },
   "engines": {
-    "node": "0.8.x",
-    "npm": "1.1.x"
+    "node": "latest",
+    "npm": "latest"
   }
 }
