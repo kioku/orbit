@@ -22,7 +22,7 @@ app.get('/', function(request, response) {
   console.log('file served');
 });
 
-io.configure('development', function() {
+io.configure(function() {
   // Configuration for heroku
   io.set("transports", ["xhr-polling"]);
   io.set("polling duration", 10);
