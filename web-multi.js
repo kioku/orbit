@@ -7,9 +7,10 @@ var io = require('socket.io').listen(server);
 
 //var port = 5000;
 var port = 9333; // heroku port
-server.listen(port, function() {
-  console.log("Listening on " + port);
-});
+//server.listen(port, function() {
+  //console.log("Listening on " + port);
+//});
+server.listen();
 
 app.use("/js", express.static(__dirname + "/js"));
 app.use("/css", express.static(__dirname + "/css"));
