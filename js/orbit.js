@@ -423,7 +423,7 @@ var Orbit = (function() {
         var offs = 64;
         //if( player.x + offs < world.width && player.y + offs < world.height){
         if( player.angle > Math.PI / 2 &&
-            player.angle < Math.PI / 2 ) {
+            player.angle < -Math.PI / 2 ) {
           player.x -= player.velocity.x;
           player.y += player.velocity.y;
         } else {
