@@ -23,6 +23,10 @@ app.get('/', function(request, response) {
 });
 
 io.configure('development', function() {
+  // Configuration for heroku
+  io.set("transports", ["xhr-polling"]);
+  io.set("polling duration", 10);
+
   io.set('log level', 1); // 1 for production, 3 for dev
 });
 
