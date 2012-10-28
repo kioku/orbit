@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', function() {
 
-  socket = io.connect('http://orbit-fork.herokuapp.com');
-  //socket = io.connect('http://localhost:5000')
+  //socket = io.connect('http://orbit-fork.herokuapp.com');
+  socket = io.connect('http://localhost:5000')
   game = new Game();
   playerId = null;
   totalSkew = 0;

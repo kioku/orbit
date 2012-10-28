@@ -127,7 +127,7 @@ io.sockets.on('connection', function(socket) {
       updateCount: game.updateCount,
       observerCount: observerCount
     });
-  }, 2000);
+  }, 50);
 });
 
 // When someone dies, let the clients know

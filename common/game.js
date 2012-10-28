@@ -3,7 +3,10 @@
  * The game instance that's shared across all clients and the server
  */
 var Game = function() {
-  this.state = {};
+  this.state = {
+    objects: {},
+    timeStamp: (new Date()).valueOf()
+  };
   this.oldState = {};
 
   // Last used ID
@@ -14,8 +17,8 @@ var Game = function() {
   this.playerIds = [];
 
   // will need to remove
-  this.state.timeStamp = (new Date()).valueOf();
-  this.state.objects = {};
+  //this.state.timeStamp = (new Date()).valueOf();
+  //this.state.objects = {};
 
   // Counter for the number of updates
   this.updateCount = 0;
@@ -44,49 +47,99 @@ Game.fpsMax = 0;
  * @param {number} delta Number of milliseconds in the future
  * @return {object} The new game state at that timestamp
  */
+//Game.prototype.computeState = function(delta) {
+  //if (typeof this.state.objects === 'undefined') {
+    //return;
+  //}
+  //var newState = {
+    //objects: this.state.objects, //{},
+    //timeStamp: this.state.timeStamp + delta
+  //};
+  //var newObjects = newState.objects;
+  //var objects = this.state.objects;
+  //// Generate a new state based on the old one
+  //for (var objId in objects) {
+    //var obj = objects[objId];
+    ////if (typeof obj === 'undefined') {
+      ////delete this.state.objects[objId];
+    ////}
+    //if (obj.alive) {
+      //// Updates the object obj for the delta timestamp
+      //newObjects[obj.id] = obj.update();
+    //}
+  //}
+
+  //// Check for collisions
+  //for (i in this.playerIds) {
+    //var p = newObjects[i];
+    //for (j in newObjects) {
+      //var o = newObjects[j];
+      //try {
+        //if (p !== o && p.intersects(o)) {
+          //// Only works with player - food interaction
+          //o.alive = false;
+          ////newObjects.splice(j, 1);
+          //delete newObjects[j];
+          //p.score++; 
+        //}
+      //}
+      //catch (e) {
+      //}
+      //// Also check to see if food / enemy should be killed
+      ////if (o.time === 100 && typeof window === 'undefined') {
+      ////if (o.time === 100) {
+        ////console.log('deleting object ' + o.id)
+        ////o.alive = false;
+        ////delete newObjects[j];
+      ////}
+    //}
+  //}
+
+  //for (j in newObjects) {
+    //var o = newObjects[j]
+    //if (o.time === 100) {
+      //console.log('deleting object ' + o.id + ' now');
+      //o.alive = false;
+      //delete newObjects[j];
+    //}
+  //}
+
+  //// Experimental food / enemy generation
+  //// Might need to relocate code
+  //if (Math.random() > 0.99 && typeof window === 'undefined') {
+    //var enemy = new Enemy();
+    //enemy.alive = true;
+    //newObjects[enemy.id] = enemy;
+  //}
+
+  //newState.objects = newObjects;
+
+  //// Need to check for collisions and bounds
+  //// check for game termination
+  //return newState;
+//};
+
 Game.prototype.computeState = function(delta) {
-  if (typeof this.state.objects === 'undefined') {
-    return;
-  }
   var newState = {
-    objects: {},
+    objects: this.state.objects,
     timeStamp: this.state.timeStamp + delta
   };
   var newObjects = newState.objects;
   var objects = this.state.objects;
-  // Generate a new state based on the old one
+  // Generate new state
   for (var objId in objects) {
     var obj = objects[objId];
-    //if (typeof obj === 'undefined') {
-      //delete this.state.objects[objId];
-    //}
     if (obj.alive) {
-      // Updates the object obj for the delta timestamp
       newObjects[obj.id] = obj.update();
     }
   }
 
-  // Check for collisions
-  for (i in this.playerIds) {
-    var p = newObjects[i];
-    for (j in newObjects) {
-      var o = newObjects[j];
-      try {
-        if (p !== o && p.intersects(o)) {
-          // Only works with player - food interaction
-          o.alive = false;
-          //newObjects.splice(j, 1);
-          delete newObjects[j];
-          p.score++; 
-        }
-      }
-      catch (e) {
-      }
-      // Also check to see if food / enemy should be killed
-      if (o.time === 100 && typeof window === 'undefined') {
-        o.alive = false;
-        delete newObjects[j];
-      }
+  for (j in newObjects) {
+    var o = newObjects[j]
+    if (o.time === 100) {
+      console.log('deleting object ' + o.id + ' now');
+      o.alive = false;
+      delete newObjects[j];
     }
   }
 
@@ -100,10 +153,8 @@ Game.prototype.computeState = function(delta) {
 
   newState.objects = newObjects;
 
-  // Need to check for collisions and bounds
-  // check for game termination
   return newState;
-};
+}
 
 Game.prototype.update = function(timeStamp) {
   var delta = timeStamp - this.state.timeStamp;
@@ -175,6 +226,7 @@ Game.prototype.leave = function(playerId) {
   if (!playerId) {
     return;
   }
+  this.state.objects[playerId].alive = false;
   delete this.state.objects[playerId];
 };
 
@@ -225,7 +277,7 @@ Game.prototype.load = function(savedState) {
   }
   catch (e) {
     console.log('no game state exists, creating empty game object');
-    objects = {};
+    //objects = {};
   }
   this.state = {
     objects: this.state.objects, // instead of {}
@@ -376,7 +428,7 @@ var Enemy = function(params) {
   this.alphaTarget = 1;
   this.time = params ? params.time : 0;
 
-  //Entity.call(this, params);
+  Entity.call(this, params);
 };
 
 Enemy.prototype = new Entity;
