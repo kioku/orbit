@@ -2,7 +2,9 @@
   "name": "orbit-fork",
   "version": "0.0.1",
   "dependencies": {
+    "connect": "^3.4.0",
     "express": "latest",
+    "morgan": "^1.6.1",
     "socket.io": "latest"
   },
   "engines": {
