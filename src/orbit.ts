@@ -327,27 +327,35 @@ class OrbitGame {
   }
 
   private updatePlayer(): void {
-    const rotationVel: number = Math.PI / (180 * 1);
-    const thrust: number = 0.01;
+    const centerX: number = this.world.width / 2;
+    const centerY: number = this.world.height / 2;
+    const rotationVel: number = Math.PI / 180; // Even slower rotation (half speed)
 
-    this.player.velocity.x += Math.cos(this.player.angle) * thrust;
-    this.player.velocity.y += Math.sin(this.player.angle) * thrust;
+    // Gradually decrease orbit radius to simulate gravity
+    this.player.radius = Math.max(50, this.player.radius - 0.1); // Slowly decrease radius with a minimum
 
+    // If the player is clicking/touching, counteract gravity by pushing out
     if (this.mouse.down) {
-      this.player.angle -= rotationVel;
+      this.player.radius = Math.min(250, this.player.radius + 0.3); // Push away faster than gravity pulls
+      this.player.angle -= rotationVel; // Counter-clockwise
     } else {
-      this.player.angle += rotationVel;
+      this.player.angle += rotationVel; // Clockwise
     }
 
-    const offs: number = 64;
+    // Calculate the player's new position based on the orbit
+    this.player.x = centerX + Math.cos(this.player.angle) * this.player.radius;
+    this.player.y = centerY + Math.sin(this.player.angle) * this.player.radius;
 
-    if (this.player.angle > Math.PI / 2 && this.player.angle < -Math.PI / 2) {
-      this.player.x -= this.player.velocity.x;
-      this.player.y += this.player.velocity.y;
-    } else {
-      this.player.x += this.player.velocity.x;
-      this.player.y += this.player.velocity.y;
-    }
+    // Set sprite angle to be tangential to the orbit (facing direction of travel)
+    // Add π/2 (90 degrees) to make it tangential to the radius
+    const spriteAngle = this.player.angle + Math.PI / 2;
+
+    // Store sprite angle separately for rendering
+    this.player.spriteAngle = spriteAngle;
+
+    // Reset velocity to prevent drifting
+    this.player.velocity.x = 0;
+    this.player.velocity.y = 0;
   }
 
   private updateEnemies(): void {
@@ -430,7 +438,8 @@ class OrbitGame {
       Math.round(this.player.y)
     );
     this.context.scale(0.5, 0.5);
-    this.context.rotate(this.player.angle);
+    // Use the spriteAngle for rendering to face the direction of travel
+    this.context.rotate(this.player.spriteAngle);
     this.context.translate(-32, -32);
     this.context.drawImage(
       sprite,
@@ -586,6 +595,7 @@ class Player extends Entity {
   public radius: number = 200;
   public velocity: { x: number; y: number } = { x: 0, y: 0 };
   public angle: number = -Math.PI / 4;
+  public spriteAngle: number = 0; // Add property for sprite rotation
   public score: number = 0;
 
   constructor() {
