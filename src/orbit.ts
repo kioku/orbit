@@ -1,5 +1,5 @@
 import $ from "jquery";
-import JQuery from "jquery";
+import "./main.css";
 
 /**
  * Intro comment
