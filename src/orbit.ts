@@ -81,6 +81,7 @@ class OrbitGame {
   };
   private notifications: Notification[] = [];
   private dirtyRegions: RegionInterface[] = [];
+  private thrustParticles: ThrustParticle[] = [];
 
   constructor() {
     this.canvas = null as any;
@@ -359,6 +360,13 @@ class OrbitGame {
       Math.cos(this.player.angle) * rotationVel * this.player.radius +
       Math.sin(this.player.angle) * this.player.interactionDelta;
     this.player.spriteAngle = Math.atan2(dy, dx);
+
+    // Add visual effect for thrust when pushing outward
+    if (this.mouse.down && this.frameCount % 3 === 0) {
+      this.createThrustParticle();
+    }
+  }
+
   // Add visual indicator for orbit path
   private renderOrbit(): void {
     const centerX: number = this.world.width / 2;
@@ -590,6 +598,8 @@ class OrbitGame {
 
       this.updatePlayer();
       this.renderOrbit();
+      this.updateThrustParticles();
+      this.renderThrustParticles();
       this.renderPlayer();
 
       this.updateMeta();
@@ -602,6 +612,64 @@ class OrbitGame {
     }
 
     requestAnimationFrame(this.update.bind(this));
+  }
+
+  // Modify the createThrustParticle method to place particles on the interior of the orbit
+  private createThrustParticle(): void {
+    // Calculate center of the world
+    const centerX: number = this.world.width / 2;
+    const centerY: number = this.world.height / 2;
+
+    // Calculate direction from player to center (interior of the orbit)
+    const towardsCenterAngle = Math.atan2(
+      centerY - this.player.y,
+      centerX - this.player.x
+    );
+
+    // Create 1-3 particles for a more dynamic effect
+    const particleCount = 1 + Math.floor(Math.random() * 3);
+
+    for (let i = 0; i < particleCount; i++) {
+      const spreadAngle = towardsCenterAngle + (Math.random() - 0.5) * 0.5; // Add some spread
+      const distance = 15 + Math.random() * 10;
+
+      const particle = new ThrustParticle(
+        this.player.x + Math.cos(spreadAngle) * distance,
+        this.player.y + Math.sin(spreadAngle) * distance,
+        spreadAngle,
+        1 + Math.random() * 3, // Size variation
+        0.6 + Math.random() * 0.4 // Lifespan variation
+      );
+
+      this.thrustParticles.push(particle);
+    }
+  }
+
+  // Add method to update thrust particles
+  private updateThrustParticles(): void {
+    let i = this.thrustParticles.length;
+
+    while (i--) {
+      const particle = this.thrustParticles[i];
+      particle.update(this.timeFactor);
+
+      if (particle.alpha <= 0) {
+        this.thrustParticles.splice(i, 1);
+      }
+    }
+  }
+
+  // Add method to render thrust particles
+  private renderThrustParticles(): void {
+    this.thrustParticles.forEach((particle) => {
+      this.context.save();
+      this.context.globalAlpha = particle.alpha;
+      this.context.beginPath();
+      this.context.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+      this.context.fillStyle = `rgba(255, 100, 50, ${particle.alpha})`;
+      this.context.fill();
+      this.context.restore();
+    });
   }
 }
 
@@ -743,6 +811,45 @@ class Region {
       width: this.right - this.left,
       height: this.bottom - this.top,
     };
+  }
+}
+
+// Add ThrustParticle class
+class ThrustParticle {
+  public x: number;
+  public y: number;
+  public angle: number;
+  public size: number;
+  public alpha: number;
+  public speed: number;
+  public decay: number;
+
+  constructor(
+    x: number,
+    y: number,
+    angle: number,
+    size: number,
+    alpha: number
+  ) {
+    this.x = x;
+    this.y = y;
+    this.angle = angle;
+    this.size = size;
+    this.alpha = alpha;
+    this.speed = 1 + Math.random() * 2;
+    this.decay = 0.01 + Math.random() * 0.03;
+  }
+
+  public update(timeFactor: number): void {
+    // Move in the direction of the angle
+    this.x += Math.cos(this.angle) * this.speed * timeFactor;
+    this.y += Math.sin(this.angle) * this.speed * timeFactor;
+
+    // Gradually fade out
+    this.alpha -= this.decay * timeFactor;
+
+    // Gradually shrink
+    this.size = Math.max(0.1, this.size - 0.05 * timeFactor);
   }
 }
 
