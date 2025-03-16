@@ -359,6 +359,26 @@ class OrbitGame {
       Math.cos(this.player.angle) * rotationVel * this.player.radius +
       Math.sin(this.player.angle) * this.player.interactionDelta;
     this.player.spriteAngle = Math.atan2(dy, dx);
+  // Add visual indicator for orbit path
+  private renderOrbit(): void {
+    const centerX: number = this.world.width / 2;
+    const centerY: number = this.world.height / 2;
+
+    // Draw current orbit path
+    this.context.save();
+    this.context.beginPath();
+    this.context.strokeStyle = "rgba(255, 255, 255, 0.2)";
+    this.context.setLineDash([5, 5]);
+    this.context.arc(centerX, centerY, this.player.radius, 0, Math.PI * 2);
+    this.context.stroke();
+
+    // Draw danger zone near sun
+    this.context.beginPath();
+    this.context.strokeStyle = "rgba(255, 100, 100, 0.3)";
+    this.context.setLineDash([]);
+    this.context.arc(centerX, centerY, 70, 0, Math.PI * 2);
+    this.context.stroke();
+    this.context.restore();
   }
 
   private updateEnemies(): void {
@@ -569,6 +589,7 @@ class OrbitGame {
       this.context.globalCompositeOperation = "lighter";
 
       this.updatePlayer();
+      this.renderOrbit();
       this.renderPlayer();
 
       this.updateMeta();
