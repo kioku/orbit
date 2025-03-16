@@ -332,22 +332,32 @@ class OrbitGame {
     const centerY: number = this.world.height / 2;
 
     // Define a constant linear velocity (pixels per frame)
-    const constantLinearVelocity: number = 6.5; // Adjust this value as needed
+    const constantLinearVelocity: number = 5.5; // Current speed
 
     // Calculate angular velocity based on radius to maintain constant linear velocity
     const rotationVel: number = constantLinearVelocity / this.player.radius;
 
+    // More intuitive acceleration/deceleration with smoother ramping
+    const pushAcceleration = 0.03; // How quickly you accelerate outward
+    const gravityStrength = 0.025; // How strongly gravity pulls inward
+
     this.player.interactionDelta = this.mouse.down
-      ? Math.round(Math.min(1.0, this.player.interactionDelta + 0.02) * 100) /
-        100
-      : Math.round(Math.max(-0.5, this.player.interactionDelta - 0.02) * 100) /
-        100;
+      ? Math.min(
+          1.5,
+          this.player.interactionDelta + pushAcceleration * this.timeFactor
+        )
+      : Math.max(
+          -0.8,
+          this.player.interactionDelta - gravityStrength * this.timeFactor
+        );
 
-    this.player.radius = this.mouse.down
-      ? Math.min(200, this.player.radius + this.player.interactionDelta) // Push away faster than gravity pulls
-      : Math.max(50, this.player.radius + this.player.interactionDelta); // Slowly decrease radius with a minimum
+    // Apply radius change with minimum/maximum constraints
+    this.player.radius = Math.max(
+      50,
+      Math.min(300, this.player.radius + this.player.interactionDelta)
+    );
 
-    this.player.angle += rotationVel; // Clockwise
+    this.player.angle += rotationVel * this.timeFactor; // Apply time factor for consistent speed
 
     // Calculate the player's new position based on the orbit
     this.player.x = centerX + Math.cos(this.player.angle) * this.player.radius;
