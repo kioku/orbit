@@ -82,6 +82,7 @@ class OrbitGame {
   private notifications: Notification[] = [];
   private dirtyRegions: RegionInterface[] = [];
   private thrustParticles: ThrustParticle[] = [];
+  private debugging: boolean = true; // Now we'll add a way to toggle this
 
   constructor() {
     this.canvas = null as any;
@@ -101,6 +102,13 @@ class OrbitGame {
 
     if (this.canvas && this.canvas.getContext) {
       this.context = this.canvas.getContext("2d") as CanvasRenderingContext2D;
+
+      // Add keyboard listener for debugging toggle
+      document.addEventListener(
+        "keydown",
+        this.onKeyDownHandler.bind(this),
+        false
+      );
 
       document.addEventListener(
         "mousedown",
@@ -147,6 +155,15 @@ class OrbitGame {
       this.update();
     } else {
       alert("Does't seem like you can play this :(");
+    }
+  }
+
+  // Add keyboard handler for debug mode
+  private onKeyDownHandler(event: KeyboardEvent): void {
+    // Toggle debug mode with 'D' key
+    if (event.key.toLowerCase() === "d") {
+      this.debugging = !this.debugging;
+      console.log(`Debug mode: ${this.debugging ? "ON" : "OFF"}`);
     }
   }
 
@@ -418,6 +435,7 @@ class OrbitGame {
       enemy.type = this.ENEMY_TYPE_SUN;
       enemy.x = this.world.width / 2 - (this.sprites.enemySun?.width || 0);
       enemy.y = this.world.height / 2 - (this.sprites.enemySun?.height || 0);
+      enemy.collisionRadius = this.ENEMY_SIZE * 2; // Changed from radius to collisionRadius
       this.enemies.push(enemy);
     }
 
@@ -430,6 +448,7 @@ class OrbitGame {
       enemy.y = Math.round(
         Math.random() * (this.world.height - padding - padding)
       );
+      enemy.collisionRadius = this.ENEMY_SIZE; // Changed from radius to collisionRadius
       this.enemies.push(enemy);
     }
 
@@ -441,16 +460,17 @@ class OrbitGame {
       enemy.scale += (enemy.scaleTarget - enemy.scale + 0.01) * 0.3;
       enemy.alpha += (enemy.alphaTarget - enemy.alpha) * 0.01;
 
+      const collision = this.collides(this.player, enemy);
       if (
         (enemy.alive &&
           enemy.time === 100 &&
           enemy.type === this.ENEMY_TYPE_NORMAL) ||
-        this.collides(this.player, enemy)
+        collision
       ) {
         this.enemies.splice(i, 1);
         enemy.alive = false;
 
-        if (this.collides(this.player, enemy)) {
+        if (collision) {
           this.player.score++;
           this.notify(
             this.player.score.toString(),
@@ -472,6 +492,9 @@ class OrbitGame {
 
     this.player.width = sprite.width / 4;
     this.player.height = sprite.height / 4;
+    // Adjust collision radius to better match visual appearance
+    this.player.collisionRadius =
+      Math.min(this.player.width, this.player.height) / 1.5;
 
     this.context.save();
     this.context.translate(
@@ -516,6 +539,15 @@ class OrbitGame {
 
       enemy.width = sprite.width;
       enemy.height = sprite.height;
+
+      // Update enemy collision radius based on type and scale - but make it more accurate
+      if (enemy.type === this.ENEMY_TYPE_SUN) {
+        // Sun is larger, match its visual size
+        enemy.collisionRadius = this.ENEMY_SIZE * 2 * enemy.scale;
+      } else {
+        // Regular enemy - make collision radius match visual appearance better
+        enemy.collisionRadius = this.ENEMY_SIZE * enemy.scale;
+      }
 
       this.context.save();
       this.context.globalAlpha = enemy.alpha;
@@ -590,41 +622,114 @@ class OrbitGame {
     });
   }
 
-  private collides(a: Player, b: Enemy): boolean {
-    return (
-      a.x < b.x + Math.round(b.width) &&
-      a.x + Math.round(a.width) - 14 > b.x &&
-      a.y < b.y + Math.round(b.height) &&
-      a.y + Math.round(a.height) - 14 > b.y
-    );
-  }
-
-  private update(): void {
-    this.clear();
-
-    if (this.playing) {
-      this.context.save();
-      this.context.globalCompositeOperation = "lighter";
-
-      this.updatePlayer();
-      this.renderOrbit();
-      this.updateThrustParticles();
-      this.renderThrustParticles();
-      this.renderPlayer();
-
-      this.updateMeta();
-
-      this.updateEnemies();
-      this.renderEnemies();
-
-      this.context.restore();
-      this.renderNotifications();
+  /**
+   * Improved collision detection using circle-to-circle collision
+   * This is more accurate for the circular shapes in our game
+   */
+  private _collides(a: Player, b: Enemy): boolean {
+    // Skip collision check for the central sun - it's special
+    if (b.type === this.ENEMY_TYPE_SUN) {
+      return false; // Don't collect the sun
     }
 
-    requestAnimationFrame(this.update.bind(this));
+    // Early optimization: Skip collision check for enemies too far away
+    const maxDistance = a.collisionRadius + b.collisionRadius;
+    const approximateDistance = Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+
+    // Quick check to avoid unnecessary calculations
+    if (approximateDistance > maxDistance) {
+      return false;
+    }
+
+    // Calculate the actual distance between centers
+    const dx = a.x - b.x;
+    const dy = a.y - b.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    // Debugging visualization
+    if (this.debugging && distance < maxDistance * 2) {
+      this.visualizeCollision(a, b, distance <= maxDistance);
+    }
+
+    // Collision occurs when distance is less than or equal to sum of radii
+    return distance <= maxDistance;
   }
 
-  // Modify the createThrustParticle method to place particles on the interior of the orbit
+  /**
+   * Improved circle-to-circle collision detection for circular game objects.
+   * Optimized for performance and accuracy in a spiral-motion game.
+   */
+  private collides(a: Player, b: Enemy): boolean {
+    // Skip collision with the central sun - it’s a special entity
+    if (b.type === this.ENEMY_TYPE_SUN) {
+      return false; // Sun isn’t collectible or collidable
+    }
+
+    // Define collision radii sum (max possible collision distance)
+    const maxDistance = a.collisionRadius + b.collisionRadius;
+    const maxDistanceSquared = maxDistance * maxDistance;
+
+    // Early optimization: Use squared Manhattan distance to skip far objects
+    const dx = a.x - b.x;
+    const dy = a.y - b.y;
+    const approxDistanceSquared = dx * dx + dy * dy; // Use squared terms directly
+    if (approxDistanceSquared > maxDistanceSquared * 2) {
+      // Conservative factor
+      return false; // Too far to collide
+    }
+
+    // Precise check using squared distance (avoids Math.sqrt)
+    const distanceSquared = dx * dx + dy * dy;
+    const isColliding = distanceSquared <= maxDistanceSquared;
+
+    // Debugging visualization for close encounters
+    if (this.debugging && distanceSquared < maxDistanceSquared * 4) {
+      // Wider range for near-misses
+      this.visualizeCollision(a, b, isColliding);
+    }
+
+    return isColliding;
+  }
+
+  /**
+   * Enhanced visualization for collision boundaries
+   */
+  private visualizeCollision(a: Player, b: Enemy, isColliding: boolean): void {
+    if (!this.debugging) return;
+
+    this.context.save();
+
+    // Draw player collision circle
+    this.context.beginPath();
+    this.context.arc(a.x, a.y, a.collisionRadius, 0, Math.PI * 2);
+    this.context.strokeStyle = isColliding
+      ? "rgba(255,0,0,0.7)"
+      : "rgba(0,255,0,0.7)";
+    this.context.lineWidth = 2;
+    this.context.stroke();
+
+    // Draw enemy collision circle
+    this.context.beginPath();
+    this.context.arc(b.x, b.y, b.collisionRadius, 0, Math.PI * 2);
+    this.context.strokeStyle = isColliding
+      ? "rgba(255,0,0,0.7)"
+      : "rgba(0,100,255,0.7)";
+    this.context.lineWidth = 2;
+    this.context.stroke();
+
+    // Draw line between centers when close
+    this.context.beginPath();
+    this.context.moveTo(a.x, a.y);
+    this.context.lineTo(b.x, b.y);
+    this.context.strokeStyle = isColliding
+      ? "rgba(255,0,0,0.5)"
+      : "rgba(255,255,255,0.3)";
+    this.context.lineWidth = 1;
+    this.context.stroke();
+
+    this.context.restore();
+  }
+
   private createThrustParticle(): void {
     // Calculate center of the world
     const centerX: number = this.world.width / 2;
@@ -655,7 +760,6 @@ class OrbitGame {
     }
   }
 
-  // Add method to update thrust particles
   private updateThrustParticles(): void {
     let i = this.thrustParticles.length;
 
@@ -669,7 +773,6 @@ class OrbitGame {
     }
   }
 
-  // Add method to render thrust particles
   private renderThrustParticles(): void {
     this.thrustParticles.forEach((particle) => {
       this.context.save();
@@ -681,6 +784,70 @@ class OrbitGame {
       this.context.restore();
     });
   }
+
+  private update(): void {
+    this.clear();
+
+    if (this.playing) {
+      this.context.save();
+      this.context.globalCompositeOperation = "lighter";
+
+      this.updatePlayer();
+      this.renderOrbit();
+      this.updateThrustParticles();
+      this.renderThrustParticles();
+
+      this.updateMeta();
+      this.updateEnemies();
+      this.renderEnemies();
+
+      this.renderPlayer(); // Moved after enemies to ensure player is on top
+
+      // Show debug info when enabled
+      if (this.debugging) {
+        this.renderDebugInfo();
+      }
+
+      this.context.restore();
+      this.renderNotifications();
+    }
+
+    requestAnimationFrame(this.update.bind(this));
+  }
+
+  /**
+   * Render debugging information
+   */
+  private renderDebugInfo(): void {
+    this.context.save();
+    this.context.fillStyle = "rgba(255,255,255,0.7)";
+    this.context.font = "12px monospace";
+
+    // Display some useful debug info
+    this.context.fillText(`FPS: ${this.fps}`, 10, 20);
+    this.context.fillText(
+      `Player radius: ${this.player.radius.toFixed(1)}`,
+      10,
+      35
+    );
+    this.context.fillText(
+      `Collision radius: ${this.player.collisionRadius.toFixed(1)}`,
+      10,
+      50
+    );
+    this.context.fillText(`Enemies: ${this.enemies.length}`, 10, 65);
+    this.context.fillText(`Score: ${this.player.score}`, 10, 80);
+
+    // Draw center point
+    const centerX = this.world.width / 2;
+    const centerY = this.world.height / 2;
+    this.context.beginPath();
+    this.context.arc(centerX, centerY, 5, 0, Math.PI * 2);
+    this.context.fillStyle = "rgba(255,255,0,0.7)";
+    this.context.fill();
+
+    this.context.restore();
+  }
 }
 
 // Base class for all game entities
@@ -690,14 +857,15 @@ class Entity {
   public height: number = 0;
   public x: number = 0;
   public y: number = 0;
+  public collisionRadius: number = 0; // Rename to collisionRadius for clarity
 }
 
 // Player entity
 class Player extends Entity {
-  public radius: number = 200;
+  public radius: number = 200; // This is the orbital radius
   public velocity: { x: number; y: number } = { x: 0, y: 0 };
   public angle: number = -Math.PI / 4;
-  public spriteAngle: number = 0; // Add property for sprite rotation
+  public spriteAngle: number = 0;
   public score: number = 0;
   public interactionDelta = -0.1;
 
@@ -705,6 +873,7 @@ class Player extends Entity {
     super();
     this.x = 200;
     this.y = 200;
+    this.collisionRadius = 8; // Default collision radius
   }
 }
 
