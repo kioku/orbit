@@ -442,13 +442,32 @@ class OrbitGame {
     while (Math.random() > 0.99) {
       enemy = new Enemy();
       enemy.type = this.ENEMY_TYPE_NORMAL;
-      enemy.x = Math.round(
-        Math.random() * (this.world.width - padding - padding)
-      );
-      enemy.y = Math.round(
-        Math.random() * (this.world.height - padding - padding)
-      );
-      enemy.collisionRadius = this.ENEMY_SIZE; // Changed from radius to collisionRadius
+
+      // Update enemy spawn logic to avoid spawning too close to player
+      const minDistanceFromPlayer = 100;
+      let validPosition = false;
+      let attempts = 0;
+
+      while (!validPosition && attempts < 10) {
+        enemy.x = Math.round(
+          Math.random() * (this.world.width - padding - padding) + padding
+        );
+        enemy.y = Math.round(
+          Math.random() * (this.world.height - padding - padding) + padding
+        );
+
+        // Check distance from player
+        const dx = enemy.x - this.player.x;
+        const dy = enemy.y - this.player.y;
+        const distSquared = dx * dx + dy * dy;
+
+        if (distSquared > minDistanceFromPlayer * minDistanceFromPlayer) {
+          validPosition = true;
+        }
+        attempts++;
+      }
+
+      enemy.collisionRadius = this.ENEMY_SIZE;
       this.enemies.push(enemy);
     }
 
@@ -492,9 +511,9 @@ class OrbitGame {
 
     this.player.width = sprite.width / 4;
     this.player.height = sprite.height / 4;
-    // Adjust collision radius to better match visual appearance
-    this.player.collisionRadius =
-      Math.min(this.player.width, this.player.height) / 1.5;
+
+    // Significantly increase collision radius to match the visual ship size
+    this.player.collisionRadius = 12; // Fixed collision radius that works well with the visual
 
     this.context.save();
     this.context.translate(
@@ -657,34 +676,29 @@ class OrbitGame {
 
   /**
    * Improved circle-to-circle collision detection for circular game objects.
-   * Optimized for performance and accuracy in a spiral-motion game.
    */
   private collides(a: Player, b: Enemy): boolean {
-    // Skip collision with the central sun - it’s a special entity
+    // Skip collision with the central sun - it's a special entity
     if (b.type === this.ENEMY_TYPE_SUN) {
-      return false; // Sun isn’t collectible or collidable
+      return false; // Sun isn't collectible or collidable
     }
 
-    // Define collision radii sum (max possible collision distance)
+    // Define collision radii sum
     const maxDistance = a.collisionRadius + b.collisionRadius;
-    const maxDistanceSquared = maxDistance * maxDistance;
 
-    // Early optimization: Use squared Manhattan distance to skip far objects
+    // Calculate the actual distance between centers
     const dx = a.x - b.x;
     const dy = a.y - b.y;
-    const approxDistanceSquared = dx * dx + dy * dy; // Use squared terms directly
-    if (approxDistanceSquared > maxDistanceSquared * 2) {
-      // Conservative factor
-      return false; // Too far to collide
-    }
-
-    // Precise check using squared distance (avoids Math.sqrt)
     const distanceSquared = dx * dx + dy * dy;
-    const isColliding = distanceSquared <= maxDistanceSquared;
 
-    // Debugging visualization for close encounters
-    if (this.debugging && distanceSquared < maxDistanceSquared * 4) {
-      // Wider range for near-misses
+    // Collision occurs when distance is less than or equal to sum of radii
+    const isColliding = distanceSquared <= maxDistance * maxDistance;
+
+    // Always visualize collision for debugging when near miss or hit
+    if (
+      this.debugging &&
+      distanceSquared <= maxDistance * 3 * (maxDistance * 3)
+    ) {
       this.visualizeCollision(a, b, isColliding);
     }
 
@@ -698,13 +712,14 @@ class OrbitGame {
     if (!this.debugging) return;
 
     this.context.save();
+    this.context.globalAlpha = 1.0; // Full opacity for debug visualization
 
     // Draw player collision circle
     this.context.beginPath();
     this.context.arc(a.x, a.y, a.collisionRadius, 0, Math.PI * 2);
     this.context.strokeStyle = isColliding
-      ? "rgba(255,0,0,0.7)"
-      : "rgba(0,255,0,0.7)";
+      ? "rgba(255,0,0,0.9)"
+      : "rgba(0,255,0,0.9)";
     this.context.lineWidth = 2;
     this.context.stroke();
 
@@ -712,20 +727,36 @@ class OrbitGame {
     this.context.beginPath();
     this.context.arc(b.x, b.y, b.collisionRadius, 0, Math.PI * 2);
     this.context.strokeStyle = isColliding
-      ? "rgba(255,0,0,0.7)"
-      : "rgba(0,100,255,0.7)";
+      ? "rgba(255,0,0,0.9)"
+      : "rgba(0,100,255,0.9)";
     this.context.lineWidth = 2;
     this.context.stroke();
 
-    // Draw line between centers when close
+    // Draw line between centers
     this.context.beginPath();
     this.context.moveTo(a.x, a.y);
     this.context.lineTo(b.x, b.y);
     this.context.strokeStyle = isColliding
-      ? "rgba(255,0,0,0.5)"
-      : "rgba(255,255,255,0.3)";
+      ? "rgba(255,0,0,0.9)"
+      : "rgba(255,255,255,0.5)";
     this.context.lineWidth = 1;
     this.context.stroke();
+
+    // Display distance for debugging
+    const dx = a.x - b.x;
+    const dy = a.y - b.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    const requiredDistance = a.collisionRadius + b.collisionRadius;
+
+    this.context.fillStyle = isColliding
+      ? "rgba(255,0,0,0.9)"
+      : "rgba(255,255,255,0.9)";
+    this.context.font = "10px monospace";
+    this.context.fillText(
+      `${Math.round(distance)}/${Math.round(requiredDistance)}`,
+      (a.x + b.x) / 2,
+      (a.y + b.y) / 2 - 10
+    );
 
     this.context.restore();
   }
@@ -844,6 +875,25 @@ class OrbitGame {
     this.context.beginPath();
     this.context.arc(centerX, centerY, 5, 0, Math.PI * 2);
     this.context.fillStyle = "rgba(255,255,0,0.7)";
+    this.context.fill();
+
+    // Always draw player collision circle in debug mode with extreme clarity
+    this.context.beginPath();
+    this.context.arc(
+      this.player.x,
+      this.player.y,
+      this.player.collisionRadius,
+      0,
+      Math.PI * 2
+    );
+    this.context.strokeStyle = "rgba(255,0,255,1.0)"; // Bright magenta for visibility
+    this.context.lineWidth = 2;
+    this.context.stroke();
+
+    // Draw a center point on the player
+    this.context.beginPath();
+    this.context.arc(this.player.x, this.player.y, 3, 0, Math.PI * 2);
+    this.context.fillStyle = "rgba(255,255,0,1.0)"; // Bright yellow
     this.context.fill();
 
     this.context.restore();
