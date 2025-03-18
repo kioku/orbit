@@ -1,30 +1,29 @@
-# orbit-fork
+# Orbit Game
 
-Orbit-fork is a simple, addictive game where you control a spaceship orbiting a central point. Your goal is to avoid colliding with enemies while collecting points.
+A simple web-based orbit game where you control a spacecraft orbiting around a central body while avoiding obstacles.
 
-## How to Play
+## Development
 
-1.  **Install dependencies:**
+```bash
+# Install dependencies
+npm install
 
-    ```bash
-    bun install
-    ```
+# Start development server
+npm run dev
 
-2.  **Build the game:**
+# Build for production
+npm run build
 
-    ```bash
-    bun run build
-    ```
+# Preview production build
+npm run preview
+```
 
-3.  **Open `game.html` in your browser.**
+## Deployment
 
-## Game Controls
+This project is configured for easy deployment to Vercel:
 
-- **Mouse Click/Touch:** Click or touch the game area to rotate your spaceship.
+1. Fork this repository
+2. Connect to your Vercel account
+3. Deploy!
 
-## Objective
-
-- Avoid colliding with the red enemies.
-- Collect points by staying alive.
-
-This project was created using `bun init` in bun v1.2.3. [Bun](https://bun.sh) is a fast all-in-one JavaScript runtime.
+When pushing to your repository, Vercel will automatically build and deploy the application.
