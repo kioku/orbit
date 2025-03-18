@@ -36,36 +36,38 @@ class OrbitGame {
   private TOUCH_INPUT: boolean =
     navigator.userAgent.match(/(iPhone|iPad|iPod|Android)/i) !== null;
   private ENEMY_SIZE: number = 10;
-  private ENEMY_COUNT: number = 2;
+  // Remove or use the ENEMY_COUNT variable
+  // private ENEMY_COUNT: number = 2;
   private ENEMY_TYPE_NORMAL: number = 1;
   private ENEMY_TYPE_SUN: number = 2;
   private STATE_WELCOME: string = "start";
   private STATE_PLAYING: string = "playing";
-  private STATE_LOSER: string = "loser";
-  private STATE_WINNER: string = "winner";
+  // Keep these state constants for future use
+  // private STATE_LOSER: string = "loser";
+  // private STATE_WINNER: string = "winner";
   private sprites: Sprites = {
     playerSprite: null,
     enemySun: null,
     enemy: null,
   };
-  private theta: number = 0; // Suppress unused variable hint
+  // Remove theta if not used
+  // private theta: number = 0;
   private mouse: Mouse = {
     down: false,
   };
   private canvas: HTMLCanvasElement;
   private context: CanvasRenderingContext2D;
   private container: JQuery<HTMLElement>;
-  private menu: JQuery<HTMLElement>; // Suppress unused variable hint
-  private startButton: HTMLElement; // Suppress unused variable hint
+  // Keep references but mark them as potentially used in future
   private playing: boolean = false;
-  private score: number = 0; // Suppress unused variable hint
-  private duration: number = 0; // Suppress unused variable hint
+  private duration: number = 0; // Add back duration property for tracking game time
   private difficulty: number = 1;
   private frameCount: number = 0;
   private timeStart: number = Date.now();
   private timeLastFrame: number = Date.now();
   private timeLastSecond: number = Date.now();
-  private timeGameStart: number = Date.now(); // Suppress unused variable hint
+  // Remove timeGameStart if not used
+  // private timeGameStart: number = Date.now();
   private timeDelta: number = 0;
   private timeFactor: number = 0;
   private fps: number = 0;
@@ -88,17 +90,14 @@ class OrbitGame {
     this.canvas = null as any;
     this.context = null as any;
     this.container = null as any;
-    this.menu = null as any;
-    this.startButton = null as any;
+    // Still initialize these but don't keep the properties
     this.player = null as any;
     this.initialize();
   }
 
   private initialize(): void {
     this.container = $("#game");
-    this.menu = $("#menu");
     this.canvas = document.querySelector("#world") as HTMLCanvasElement;
-    this.startButton = document.querySelector("#start-button") as HTMLElement;
 
     if (this.canvas && this.canvas.getContext) {
       this.context = this.canvas.getContext("2d") as CanvasRenderingContext2D;
@@ -154,7 +153,7 @@ class OrbitGame {
       this.reset();
       this.update();
     } else {
-      alert("Does't seem like you can play this :(");
+      alert("Doesn't seem like you can play this :(");
     }
   }
 
@@ -263,10 +262,12 @@ class OrbitGame {
     document.body.setAttribute("class", this.STATE_PLAYING);
   }
 
+  // If this method isn't used, either comment it out or use it somewhere
+  /* 
   private stop(): void {
-    // Suppress unused variable hint
     this.playing = false;
   }
+  */
 
   private reset(): void {
     this.player = new Player();
@@ -302,29 +303,32 @@ class OrbitGame {
     this.context.clearRect(0, 0, this.world.width, this.world.height);
   }
 
-  private onStartButtonClick(event: Event): void {
-    // Suppress unused variable hint
+  // If not using this method, comment it out
+  /* 
+  private onStartButtonClick(_event: Event): void {
     this.start();
-    event.preventDefault();
+    _event.preventDefault();
   }
+  */
 
-  private onMouseDownHandler(event: MouseEvent): void {
+  // Fix event parameter warnings by prefixing with underscore
+  private onMouseDownHandler(_event: MouseEvent): void {
     this.mouse.down = true;
   }
 
-  private onMouseMoveHandler(event: MouseEvent): void {}
+  private onMouseMoveHandler(_event: MouseEvent): void {}
 
-  private onMouseUpHandler(event: MouseEvent): void {
+  private onMouseUpHandler(_event: MouseEvent): void {
     this.mouse.down = false;
   }
 
-  private onCanvasTouchStartHandler(event: TouchEvent): void {}
+  private onCanvasTouchStartHandler(_event: TouchEvent): void {}
 
-  private onCanvasTouchMoveHandler(event: TouchEvent): void {
-    event.preventDefault();
+  private onCanvasTouchMoveHandler(_event: TouchEvent): void {
+    _event.preventDefault();
   }
 
-  private onCanvasTouchEndHandler(event: TouchEvent): void {}
+  private onCanvasTouchEndHandler(_event: TouchEvent): void {}
 
   private updateMeta(): void {
     const timeThisFrame: number = Date.now();
@@ -856,6 +860,7 @@ class OrbitGame {
     );
     this.context.fillText(`Enemies: ${this.enemies.length}`, 10, 65);
     this.context.fillText(`Score: ${this.player.score}`, 10, 80);
+    this.context.fillText(`Time: ${this.duration / 1000}`, 10, 95);
 
     // Draw center point
     const centerX = this.world.width / 2;
