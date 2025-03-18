@@ -199,12 +199,14 @@ class OrbitGame {
 
     this.sprites.enemy = cvs;
 
-    // Player
+    // Player - redefined to have a more centered appearance
     cvs = document.createElement("canvas");
     canvasWidth = canvasHeight = 64;
     cvs.setAttribute("width", canvasWidth.toString());
     cvs.setAttribute("height", canvasHeight.toString());
     ctx = cvs.getContext("2d") as CanvasRenderingContext2D;
+
+    // Draw a ship that's more visibly centered
     ctx.beginPath();
     ctx.fillStyle = "rgba(220, 50, 50, 0.9)";
     ctx.moveTo(0, 20);
@@ -216,6 +218,12 @@ class OrbitGame {
     ctx.shadowOffsetY = 0;
     ctx.shadowBlur = 10;
     ctx.fill();
+
+    // Optional: Add visual indicator of center point for debugging
+    if (this.debugging) {
+      ctx.fillStyle = "rgba(255,255,0,0.5)";
+      ctx.fillRect(31, 31, 2, 2);
+    }
 
     this.sprites.playerSprite = cvs;
 
@@ -512,23 +520,36 @@ class OrbitGame {
     this.player.width = sprite.width / 4;
     this.player.height = sprite.height / 4;
 
-    // Significantly increase collision radius to match the visual ship size
-    this.player.collisionRadius = 12; // Fixed collision radius that works well with the visual
+    // Update collision radius to match visual representation better
+    this.player.collisionRadius = 12;
 
+    // Draw player sprite
     this.context.save();
+
+    // First translate to the player's position
     this.context.translate(
       Math.round(this.player.x),
       Math.round(this.player.y)
     );
+
+    // Apply scaling
     this.context.scale(0.5, 0.5);
-    // Use the spriteAngle for rendering to face the direction of travel
+
+    // Rotate for direction
     this.context.rotate(this.player.spriteAngle);
+
+    // Center the sprite by translating back by half the original sprite dimensions
     this.context.translate(-32, -32);
-    this.context.drawImage(
-      sprite,
-      Math.round(sprite.width / 2),
-      Math.round(sprite.height / 2)
-    );
+
+    // Draw the sprite
+    this.context.drawImage(sprite, 0, 0, sprite.width, sprite.height);
+
+    if (this.debugging) {
+      // Draw indicator for sprite center in local coordinates
+      this.context.fillStyle = "rgba(0,255,255,0.9)";
+      this.context.fillRect(30, 32, 5, 5);
+    }
+
     this.context.restore();
 
     bounds.inflate(this.player.x, this.player.y);
@@ -639,39 +660,6 @@ class OrbitGame {
       // left: cx,
       // top: cy,
     });
-  }
-
-  /**
-   * Improved collision detection using circle-to-circle collision
-   * This is more accurate for the circular shapes in our game
-   */
-  private _collides(a: Player, b: Enemy): boolean {
-    // Skip collision check for the central sun - it's special
-    if (b.type === this.ENEMY_TYPE_SUN) {
-      return false; // Don't collect the sun
-    }
-
-    // Early optimization: Skip collision check for enemies too far away
-    const maxDistance = a.collisionRadius + b.collisionRadius;
-    const approximateDistance = Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
-
-    // Quick check to avoid unnecessary calculations
-    if (approximateDistance > maxDistance) {
-      return false;
-    }
-
-    // Calculate the actual distance between centers
-    const dx = a.x - b.x;
-    const dy = a.y - b.y;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-
-    // Debugging visualization
-    if (this.debugging && distance < maxDistance * 2) {
-      this.visualizeCollision(a, b, distance <= maxDistance);
-    }
-
-    // Collision occurs when distance is less than or equal to sum of radii
-    return distance <= maxDistance;
   }
 
   /**
@@ -895,6 +883,15 @@ class OrbitGame {
     this.context.arc(this.player.x, this.player.y, 3, 0, Math.PI * 2);
     this.context.fillStyle = "rgba(255,255,0,1.0)"; // Bright yellow
     this.context.fill();
+
+    // Draw axes for clarity
+    this.context.beginPath();
+    this.context.moveTo(this.player.x - 20, this.player.y);
+    this.context.lineTo(this.player.x + 20, this.player.y);
+    this.context.moveTo(this.player.x, this.player.y - 20);
+    this.context.lineTo(this.player.x, this.player.y + 20);
+    this.context.strokeStyle = "rgba(100,100,255,0.5)";
+    this.context.stroke();
 
     this.context.restore();
   }
