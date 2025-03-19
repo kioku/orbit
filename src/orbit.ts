@@ -1,4 +1,3 @@
-import $ from "jquery";
 import "./main.css";
 
 /**
@@ -57,7 +56,7 @@ class OrbitGame {
   };
   private canvas: HTMLCanvasElement;
   private context: CanvasRenderingContext2D;
-  private container: JQuery<HTMLElement>;
+  private container: HTMLElement;
   // Keep references but mark them as potentially used in future
   private playing: boolean = false;
   private duration: number = 0; // Add back duration property for tracking game time
@@ -96,7 +95,7 @@ class OrbitGame {
   }
 
   private initialize(): void {
-    this.container = $("#game");
+    this.container = document.getElementById("game") as HTMLElement;
     this.canvas = document.querySelector("#world") as HTMLCanvasElement;
 
     if (this.canvas && this.canvas.getContext) {
@@ -645,8 +644,8 @@ class OrbitGame {
       ? window.innerHeight
       : this.DEFAULT_HEIGHT;
 
-    this.container.width(this.world.width);
-    this.container.height(this.world.height);
+    this.container.style.width = `${this.world.width}px`;
+    this.container.style.height = `${this.world.height}px`;
 
     this.canvas.width = this.world.width;
     this.canvas.height = this.world.height;
@@ -660,10 +659,8 @@ class OrbitGame {
     //   1
     // );
 
-    this.container.css({
-      // left: cx,
-      // top: cy,
-    });
+    // this.container.style.left = `${cx}px`;
+    // this.container.style.top = `${cy}px`;
   }
 
   /**
@@ -1098,6 +1095,6 @@ window.requestAnimationFrame = (function () {
   );
 })();
 
-$(function () {
+document.addEventListener("DOMContentLoaded", function () {
   new OrbitGame();
 });
