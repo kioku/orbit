@@ -191,44 +191,192 @@ class OrbitGame {
 
   private styleStartButton(): void {
     const button = this.startButton;
+
+    // Force clear any existing elements first
+    button.innerHTML = ""; // Clear any existing content
+
+    // Position in center
     button.style.position = "absolute";
     button.style.top = "50%";
     button.style.left = "50%";
     button.style.transform = "translate(-50%, -50%)";
 
-    // Make button larger and more touchable for mobile
-    button.style.padding = "20px 40px"; // Larger padding
-    button.style.fontSize = "28px"; // Larger font
-    button.style.backgroundColor = "rgba(255, 100, 100, 0.8)";
-    button.style.color = "white";
-    button.style.border = "none";
-    button.style.borderRadius = "12px"; // Larger border radius
-    button.style.cursor = "pointer";
-    button.style.boxShadow = "0 0 20px rgba(255, 100, 100, 0.5)";
-    button.style.zIndex = "100";
-    button.style.fontFamily = "Arial, sans-serif";
-    button.style.transition = "all 0.2s ease";
-    button.style.minWidth = "200px"; // Ensure minimum width for better tap target
-    button.style.textAlign = "center"; // Center text
+    // Set visible text content
+    button.textContent = "INITIALIZE";
 
-    // Add hover effect with event listeners
+    // Ensure display is visible
+    button.style.display = "block";
+
+    // TRON-inspired styling with glowing edges and true TRON aesthetic
+    button.style.padding = "15px 40px";
+    button.style.fontSize = "22px";
+    button.style.fontFamily = "'Rajdhani', 'Arial', sans-serif"; // Futuristic font
+    button.style.fontWeight = "300";
+    button.style.letterSpacing = "6px";
+    button.style.textTransform = "uppercase";
+    button.style.backgroundColor = "rgba(0, 10, 20, 0.7)"; // Very dark blue, nearly black
+    button.style.color = "rgba(140, 240, 255, 1)"; // TRON blue
+
+    // Complex border with corner accents - authentic TRON UI design
+    button.style.border = "1px solid rgba(80, 220, 255, 0.8)";
+    button.style.borderRadius = "0"; // TRON interface is sharp-edged
+    button.style.boxShadow =
+      "0 0 15px rgba(80, 220, 255, 0.5), inset 0 0 8px rgba(80, 220, 255, 0.2)";
+    button.style.textShadow = "0 0 8px rgba(140, 240, 255, 0.8)";
+    button.style.cursor = "pointer";
+    button.style.zIndex = "100";
+    button.style.transition = "all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1.0)";
+    button.style.minWidth = "220px";
+    button.style.textAlign = "center";
+    button.style.overflow = "hidden"; // For the before/after effects
+
+    // Create pseudo-elements for geometric accent lines (using JavaScript since we can't use CSS ::before/::after)
+    const createCornerAccent = (
+      size: number,
+      position: string
+    ): HTMLDivElement => {
+      const accent = document.createElement("div");
+      accent.style.position = "absolute";
+      accent.style.width = `${size}px`;
+      accent.style.height = `${size}px`;
+      accent.style.borderTop = position.includes("top")
+        ? "2px solid rgba(80, 220, 255, 0.9)"
+        : "none";
+      accent.style.borderBottom = position.includes("bottom")
+        ? "2px solid rgba(80, 220, 255, 0.9)"
+        : "none";
+      accent.style.borderLeft = position.includes("left")
+        ? "2px solid rgba(80, 220, 255, 0.9)"
+        : "none";
+      accent.style.borderRight = position.includes("right")
+        ? "2px solid rgba(80, 220, 255, 0.9)"
+        : "none";
+
+      // Position the accent
+      if (position.includes("top")) accent.style.top = "-1px";
+      if (position.includes("bottom")) accent.style.bottom = "-1px";
+      if (position.includes("left")) accent.style.left = "-1px";
+      if (position.includes("right")) accent.style.right = "-1px";
+
+      return accent;
+    };
+
+    // Add corner accents - classic TRON UI feature
+    button.appendChild(createCornerAccent(15, "top-left"));
+    button.appendChild(createCornerAccent(15, "top-right"));
+    button.appendChild(createCornerAccent(15, "bottom-left"));
+    button.appendChild(createCornerAccent(15, "bottom-right"));
+
+    // Create background grid effect
+    const gridOverlay = document.createElement("div");
+    gridOverlay.style.position = "absolute";
+    gridOverlay.style.top = "0";
+    gridOverlay.style.left = "0";
+    gridOverlay.style.right = "0";
+    gridOverlay.style.bottom = "0";
+    gridOverlay.style.backgroundImage =
+      "linear-gradient(0deg, rgba(80, 220, 255, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(80, 220, 255, 0.1) 1px, transparent 1px)";
+    gridOverlay.style.backgroundSize = "10px 10px";
+    gridOverlay.style.opacity = "0.4";
+    gridOverlay.style.zIndex = "-1";
+    button.appendChild(gridOverlay);
+
+    // Make responsive for small screens
+    if (window.innerWidth < 450) {
+      button.style.fontSize = "18px";
+      button.style.padding = "12px 30px";
+      button.style.letterSpacing = "4px";
+      button.style.minWidth = "180px";
+    }
+
+    // Create TRON-style pulsing animation with circuit-like glow effect
+    let glowIntensity = 0.5;
+    let increasing = true;
+
+    // Store interval ID so it can be properly cleared
+    const startButtonPulseInterval = setInterval(() => {
+      if (this.playing) {
+        clearInterval(startButtonPulseInterval);
+        return;
+      }
+
+      if (increasing) {
+        glowIntensity += 0.025;
+        if (glowIntensity >= 1) {
+          increasing = false;
+        }
+      } else {
+        glowIntensity -= 0.025;
+        if (glowIntensity <= 0.5) {
+          increasing = true;
+        }
+      }
+
+      const glowColor = `rgba(80, 220, 255, ${0.5 + glowIntensity * 0.3})`;
+      const textGlowColor = `rgba(140, 240, 255, ${0.6 + glowIntensity * 0.4})`;
+
+      button.style.boxShadow = `0 0 ${
+        15 + 10 * glowIntensity
+      }px ${glowColor}, inset 0 0 8px ${glowColor}`;
+      button.style.textShadow = `0 0 ${
+        5 + 5 * glowIntensity
+      }px ${textGlowColor}`;
+      button.style.borderColor = `rgba(80, 220, 255, ${
+        0.7 + glowIntensity * 0.3
+      })`;
+
+      // Update grid overlay for pulse effect
+      gridOverlay.style.opacity = `${0.3 + glowIntensity * 0.2}`;
+    }, 40);
+
+    // Add hover states with TRON light cycle activation feel
     button.addEventListener("mouseover", () => {
-      button.style.backgroundColor = "rgba(255, 50, 50, 0.9)";
-      button.style.boxShadow = "0 0 30px rgba(255, 100, 100, 0.7)";
+      button.style.backgroundColor = "rgba(10, 30, 50, 0.8)";
+      button.style.color = "rgba(180, 255, 255, 1)";
+      button.style.boxShadow =
+        "0 0 30px rgba(80, 220, 255, 0.7), inset 0 0 15px rgba(80, 220, 255, 0.4)";
+      button.style.borderColor = "rgba(140, 240, 255, 1)";
+      gridOverlay.style.opacity = "0.6";
     });
 
     button.addEventListener("mouseout", () => {
-      button.style.backgroundColor = "rgba(255, 100, 100, 0.8)";
-      button.style.boxShadow = "0 0 20px rgba(255, 100, 100, 0.5)";
+      button.style.backgroundColor = "rgba(0, 10, 20, 0.7)";
+      button.style.color = "rgba(140, 240, 255, 1)";
+      button.style.borderColor = `rgba(80, 220, 255, ${
+        0.7 + glowIntensity * 0.3
+      })`;
+      gridOverlay.style.opacity = `${0.3 + glowIntensity * 0.2}`;
+
+      // Restore the pulsing effect's current state
+      const glowColor = `rgba(80, 220, 255, ${0.5 + glowIntensity * 0.3})`;
+      button.style.boxShadow = `0 0 ${
+        15 + 10 * glowIntensity
+      }px ${glowColor}, inset 0 0 8px ${glowColor}`;
     });
 
-    // Add explicit touch event listeners for mobile/iOS
+    button.addEventListener("mousedown", () => {
+      button.style.transform = "translate(-50%, -48%)"; // Press down effect
+      button.style.boxShadow =
+        "0 0 20px rgba(80, 220, 255, 0.9), inset 0 0 12px rgba(80, 220, 255, 0.6)";
+      button.style.backgroundColor = "rgba(20, 40, 60, 0.9)";
+    });
+
+    button.addEventListener("mouseup", () => {
+      button.style.transform = "translate(-50%, -50%)";
+      button.style.boxShadow =
+        "0 0 30px rgba(80, 220, 255, 0.7), inset 0 0 15px rgba(80, 220, 255, 0.4)";
+      button.style.backgroundColor = "rgba(10, 30, 50, 0.8)";
+    });
+
+    // Touch event handling for mobile devices
     button.addEventListener(
       "touchstart",
       (e) => {
-        e.preventDefault(); // Prevent default to avoid double-firing
-        button.style.backgroundColor = "rgba(255, 50, 50, 0.9)";
-        button.style.boxShadow = "0 0 30px rgba(255, 100, 100, 0.7)";
+        e.preventDefault();
+        button.style.transform = "translate(-50%, -48%)";
+        button.style.boxShadow =
+          "0 0 20px rgba(80, 220, 255, 0.9), inset 0 0 12px rgba(80, 220, 255, 0.6)";
+        button.style.backgroundColor = "rgba(20, 40, 60, 0.9)";
       },
       { passive: false }
     );
@@ -236,10 +384,11 @@ class OrbitGame {
     button.addEventListener(
       "touchend",
       (e) => {
-        e.preventDefault(); // Prevent default to avoid double-firing
-        button.style.backgroundColor = "rgba(255, 100, 100, 0.8)";
-        button.style.boxShadow = "0 0 20px rgba(255, 100, 100, 0.5)";
-        // Call the start function directly to ensure it works
+        e.preventDefault();
+        button.style.transform = "translate(-50%, -50%)";
+        button.style.boxShadow =
+          "0 0 15px rgba(80, 220, 255, 0.5), inset 0 0 8px rgba(80, 220, 255, 0.2)";
+        button.style.backgroundColor = "rgba(0, 10, 20, 0.7)";
         this.start();
       },
       { passive: false }
@@ -248,43 +397,168 @@ class OrbitGame {
 
   private styleSettingsButton(): void {
     const button = this.settingsButton;
-    button.style.position = "absolute";
-    button.style.top = "10px";
-    button.style.right = "10px";
-    // Make button more touchable on mobile
-    button.style.padding = "10px 15px";
-    button.style.fontSize = "16px";
-    button.style.backgroundColor = this.debugging
-      ? "rgba(0, 200, 0, 0.7)"
-      : "rgba(200, 0, 0, 0.7)";
-    button.style.color = "white";
-    button.style.border = "none";
-    button.style.borderRadius = "6px"; // Slightly larger radius
-    button.style.cursor = "pointer";
-    button.style.zIndex = "100";
-    button.style.fontFamily = "Arial, sans-serif";
-    button.style.transition = "all 0.2s ease";
-    button.style.opacity = "0.7";
-    button.style.minWidth = "100px"; // Ensure minimum width for better tap target
 
-    // Add hover effect with event listeners
+    // Clear any existing content
+    button.innerHTML = "";
+
+    // TRON-style minimalist debug control inspired by Identity Disc design
+    const buttonSize = window.innerWidth < 450 ? "42px" : "48px";
+    const cornerSpacing = window.innerWidth < 450 ? "12px" : "16px";
+
+    // Position in top right corner
+    button.style.position = "absolute";
+    button.style.top = cornerSpacing;
+    button.style.right = cornerSpacing;
+
+    // Create circular button with TRON Identity Disc appearance
+    button.style.width = buttonSize;
+    button.style.height = buttonSize;
+    button.style.padding = "0";
+    button.style.display = "flex";
+    button.style.alignItems = "center";
+    button.style.justifyContent = "center";
+    button.style.overflow = "hidden"; // For inner ring effect
+
+    // Modern TRON UI styling - cleaner, more minimal
+    button.style.backgroundColor = "rgba(0, 10, 20, 0.7)";
+    button.style.border = `1px solid ${
+      this.debugging ? "rgba(80, 220, 255, 0.8)" : "rgba(255, 100, 100, 0.8)"
+    }`;
+    button.style.borderRadius = "50%"; // Identity Disc is circular
+
+    // Remove text, use only visual design elements for cleaner look
+    button.style.cursor = "pointer";
+    button.style.boxShadow = `0 0 15px ${
+      this.debugging ? "rgba(80, 220, 255, 0.5)" : "rgba(255, 100, 100, 0.5)"
+    }`;
+    button.style.zIndex = "100";
+    button.style.transition = "all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1.0)";
+
+    // Create TRON-style inner ring, like the Identity Disc
+    const innerRing = document.createElement("div");
+    innerRing.style.position = "absolute";
+    innerRing.style.top = "50%";
+    innerRing.style.left = "50%";
+    innerRing.style.transform = "translate(-50%, -50%)";
+    innerRing.style.width = "60%";
+    innerRing.style.height = "60%";
+    innerRing.style.borderRadius = "50%";
+    innerRing.style.border = `1px solid ${
+      this.debugging ? "rgba(80, 220, 255, 0.9)" : "rgba(255, 100, 100, 0.9)"
+    }`;
+    button.appendChild(innerRing);
+
+    // Add center dot to indicate debug state
+    const centerDot = document.createElement("div");
+    centerDot.style.position = "absolute";
+    centerDot.style.top = "50%";
+    centerDot.style.left = "50%";
+    centerDot.style.transform = "translate(-50%, -50%)";
+    centerDot.style.width = "30%";
+    centerDot.style.height = "30%";
+    centerDot.style.borderRadius = "50%";
+    centerDot.style.backgroundColor = this.debugging
+      ? "rgba(80, 220, 255, 0.9)"
+      : "rgba(255, 100, 100, 0.9)";
+    button.appendChild(centerDot);
+
+    // Setup pulse animation for the debug button
+    let glowIntensity = 0.5;
+    let increasing = true;
+
+    // Store interval ID so it can be properly cleared
+    const settingsButtonPulseInterval = setInterval(() => {
+      if (this.playing) {
+        // Also clear this interval when the game starts
+        clearInterval(settingsButtonPulseInterval);
+        return;
+      }
+
+      if (increasing) {
+        glowIntensity += 0.03;
+        if (glowIntensity >= 1) {
+          increasing = false;
+        }
+      } else {
+        glowIntensity -= 0.03;
+        if (glowIntensity <= 0.5) {
+          increasing = true;
+        }
+      }
+
+      const glowColor = this.debugging
+        ? `rgba(80, 220, 255, ${0.3 + glowIntensity * 0.3})`
+        : `rgba(255, 100, 100, ${0.3 + glowIntensity * 0.3})`;
+
+      button.style.boxShadow = `0 0 ${10 + 8 * glowIntensity}px ${glowColor}`;
+      button.style.borderColor = this.debugging
+        ? `rgba(80, 220, 255, ${0.6 + glowIntensity * 0.3})`
+        : `rgba(255, 100, 100, ${0.6 + glowIntensity * 0.3})`;
+
+      innerRing.style.borderColor = this.debugging
+        ? `rgba(80, 220, 255, ${0.7 + glowIntensity * 0.3})`
+        : `rgba(255, 100, 100, ${0.7 + glowIntensity * 0.3})`;
+    }, 40);
+
+    // Add hover effect with TRON power-up feel
     button.addEventListener("mouseover", () => {
-      button.style.opacity = "1";
-      button.style.boxShadow = "0 0 10px rgba(255, 255, 255, 0.5)";
+      button.style.backgroundColor = "rgba(10, 30, 50, 0.8)";
+      button.style.boxShadow = `0 0 25px ${
+        this.debugging ? "rgba(80, 220, 255, 0.7)" : "rgba(255, 100, 100, 0.7)"
+      }`;
+      innerRing.style.width = "70%";
+      innerRing.style.height = "70%";
+      centerDot.style.width = "35%";
+      centerDot.style.height = "35%";
     });
 
     button.addEventListener("mouseout", () => {
-      button.style.opacity = "0.7";
-      button.style.boxShadow = "none";
+      button.style.backgroundColor = "rgba(0, 10, 20, 0.7)";
+      innerRing.style.width = "60%";
+      innerRing.style.height = "60%";
+      centerDot.style.width = "30%";
+      centerDot.style.height = "30%";
+
+      // Restore pulsing state
+      const glowColor = this.debugging
+        ? `rgba(80, 220, 255, ${0.3 + glowIntensity * 0.3})`
+        : `rgba(255, 100, 100, ${0.3 + glowIntensity * 0.3})`;
+
+      button.style.boxShadow = `0 0 ${10 + 8 * glowIntensity}px ${glowColor}`;
     });
 
-    // Add explicit touch event listeners for mobile/iOS
+    // Add press effect that resembles TRON disc activation
+    button.addEventListener("mousedown", () => {
+      button.style.transform = "scale(0.92)";
+      innerRing.style.width = "50%";
+      innerRing.style.height = "50%";
+      button.style.boxShadow = `0 0 15px ${
+        this.debugging ? "rgba(80, 220, 255, 0.9)" : "rgba(255, 100, 100, 0.9)"
+      }`;
+    });
+
+    button.addEventListener("mouseup", () => {
+      button.style.transform = "scale(1)";
+      innerRing.style.width = "70%";
+      innerRing.style.height = "70%";
+      button.style.boxShadow = `0 0 25px ${
+        this.debugging ? "rgba(80, 220, 255, 0.7)" : "rgba(255, 100, 100, 0.7)"
+      }`;
+    });
+
+    // Touch handlers for mobile
     button.addEventListener(
       "touchstart",
       (e) => {
-        e.preventDefault(); // Prevent default to avoid double-firing
-        button.style.opacity = "1";
-        button.style.boxShadow = "0 0 10px rgba(255, 255, 255, 0.5)";
+        e.preventDefault();
+        button.style.transform = "scale(0.92)";
+        innerRing.style.width = "50%";
+        innerRing.style.height = "50%";
+        button.style.boxShadow = `0 0 15px ${
+          this.debugging
+            ? "rgba(80, 220, 255, 0.9)"
+            : "rgba(255, 100, 100, 0.9)"
+        }`;
       },
       { passive: false }
     );
@@ -292,59 +566,63 @@ class OrbitGame {
     button.addEventListener(
       "touchend",
       (e) => {
-        e.preventDefault(); // Prevent default to avoid double-firing
-        button.style.opacity = "0.7";
-        button.style.boxShadow = "none";
+        e.preventDefault();
+        button.style.transform = "scale(1)";
 
-        // Toggle debug mode directly
+        // Toggle debug mode
         this.debugging = !this.debugging;
 
-        // Update button text and color
-        button.textContent = `Debug: ${this.debugging ? "ON" : "OFF"}`;
-        button.style.backgroundColor = this.debugging
-          ? "rgba(0, 200, 0, 0.7)"
-          : "rgba(200, 0, 0, 0.7)";
+        // Update button appearance with TRON theme
+        button.innerHTML = this.debugging ? "ON" : "OFF";
+        button.style.color = this.debugging
+          ? "rgba(140, 240, 255, 1)"
+          : "rgba(255, 100, 100, 1)";
+        button.style.textShadow = `0 0 6px ${
+          this.debugging
+            ? "rgba(80, 220, 255, 0.7)"
+            : "rgba(255, 100, 100, 0.7)"
+        }`;
+        button.style.borderColor = this.debugging
+          ? "rgba(80, 220, 255, 0.8)"
+          : "rgba(255, 100, 100, 0.8)";
+        button.style.boxShadow = `0 0 15px ${
+          this.debugging
+            ? "rgba(80, 220, 255, 0.5)"
+            : "rgba(255, 100, 100, 0.5)"
+        }`;
 
-        if (this.debugging) {
-          console.log("Debug mode enabled via touch");
-        } else {
-          console.log("Debug mode disabled via touch");
-        }
+        // Update inner ring color
+        innerRing.style.borderColor = this.debugging
+          ? "rgba(80, 220, 255, 0.9)"
+          : "rgba(255, 100, 100, 0.9)";
+
+        console.log(`Debug mode: ${this.debugging ? "ON" : "OFF"}`);
       },
       { passive: false }
     );
   }
 
   private onSettingsButtonClick(_event: Event): void {
-    // Prevent default to ensure no conflicts
+    // Prevent default
     _event.preventDefault();
 
     // Toggle debug mode
     this.debugging = !this.debugging;
 
-    // Update button text and color
-    this.settingsButton.textContent = `Debug: ${this.debugging ? "ON" : "OFF"}`;
-    this.settingsButton.style.backgroundColor = this.debugging
-      ? "rgba(0, 200, 0, 0.7)"
-      : "rgba(200, 0, 0, 0.7)";
+    // Update button styling according to state
+    this.styleSettingsButton();
 
     console.log(`Debug mode: ${this.debugging ? "ON" : "OFF"}`);
   }
 
-  // Add keyboard handler for debug mode
   private onKeyDownHandler(event: KeyboardEvent): void {
     // Toggle debug mode with 'D' key
     if (event.key.toLowerCase() === "d") {
       this.debugging = !this.debugging;
 
-      // Also update the settings button to reflect current state
+      // Update button styling according to state
       if (this.settingsButton) {
-        this.settingsButton.textContent = `Debug: ${
-          this.debugging ? "ON" : "OFF"
-        }`;
-        this.settingsButton.style.backgroundColor = this.debugging
-          ? "rgba(0, 200, 0, 0.7)"
-          : "rgba(200, 0, 0, 0.7)";
+        this.styleSettingsButton(); // Re-apply entire style to ensure full update
       }
 
       console.log(`Debug mode: ${this.debugging ? "ON" : "OFF"}`);
@@ -974,6 +1252,15 @@ class OrbitGame {
 
     // Update sun position if it exists
     this.updateSunPosition();
+
+    // Update button styles on resize to ensure responsiveness
+    if (this.startButton) {
+      this.styleStartButton();
+    }
+
+    if (this.settingsButton) {
+      this.styleSettingsButton();
+    }
   }
 
   // Add a new method to update the sun position when needed
