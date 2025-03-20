@@ -84,11 +84,13 @@ class OrbitGame {
   private dirtyRegions: RegionInterface[] = [];
   private thrustParticles: ThrustParticle[] = [];
   private debugging: boolean = true; // Now we'll add a way to toggle this
+  private startButton: HTMLButtonElement; // Add start button reference
 
   constructor() {
     this.canvas = null as any;
     this.context = null as any;
     this.container = null as any;
+    this.startButton = null as any;
     // Still initialize these but don't keep the properties
     this.player = null as any;
     this.initialize();
@@ -100,6 +102,17 @@ class OrbitGame {
 
     if (this.canvas && this.canvas.getContext) {
       this.context = this.canvas.getContext("2d") as CanvasRenderingContext2D;
+
+      // Create start button
+      this.startButton = document.createElement("button");
+      this.startButton.textContent = "Start Game";
+      this.startButton.id = "start-button";
+      this.styleStartButton();
+      this.container.appendChild(this.startButton);
+      this.startButton.addEventListener(
+        "click",
+        this.onStartButtonClick.bind(this)
+      );
 
       // Add keyboard listener for debugging toggle
       document.addEventListener(
@@ -148,12 +161,42 @@ class OrbitGame {
       this.createSprites();
       document.body.setAttribute("class", this.STATE_WELCOME);
 
-      this.start();
+      // Initialize the game but don't start playing yet
       this.reset();
       this.update();
     } else {
       alert("Doesn't seem like you can play this :(");
     }
+  }
+
+  private styleStartButton(): void {
+    const button = this.startButton;
+    button.style.position = "absolute";
+    button.style.top = "50%";
+    button.style.left = "50%";
+    button.style.transform = "translate(-50%, -50%)";
+    button.style.padding = "15px 30px";
+    button.style.fontSize = "24px";
+    button.style.backgroundColor = "rgba(255, 100, 100, 0.8)";
+    button.style.color = "white";
+    button.style.border = "none";
+    button.style.borderRadius = "8px";
+    button.style.cursor = "pointer";
+    button.style.boxShadow = "0 0 20px rgba(255, 100, 100, 0.5)";
+    button.style.zIndex = "100";
+    button.style.fontFamily = "Arial, sans-serif";
+    button.style.transition = "all 0.2s ease";
+
+    // Add hover effect with event listeners
+    button.addEventListener("mouseover", () => {
+      button.style.backgroundColor = "rgba(255, 50, 50, 0.9)";
+      button.style.boxShadow = "0 0 30px rgba(255, 100, 100, 0.7)";
+    });
+
+    button.addEventListener("mouseout", () => {
+      button.style.backgroundColor = "rgba(255, 100, 100, 0.8)";
+      button.style.boxShadow = "0 0 20px rgba(255, 100, 100, 0.5)";
+    });
   }
 
   // Add keyboard handler for debug mode
@@ -258,7 +301,18 @@ class OrbitGame {
 
     this.playing = true;
 
+    // Hide the start button
+    if (this.startButton) {
+      this.startButton.style.display = "none";
+    }
+
     document.body.setAttribute("class", this.STATE_PLAYING);
+  }
+
+  // Uncomment the onStartButtonClick method
+  private onStartButtonClick(_event: Event): void {
+    this.start();
+    _event.preventDefault();
   }
 
   // If this method isn't used, either comment it out or use it somewhere
@@ -301,14 +355,6 @@ class OrbitGame {
   private clear(): void {
     this.context.clearRect(0, 0, this.world.width, this.world.height);
   }
-
-  // If not using this method, comment it out
-  /* 
-  private onStartButtonClick(_event: Event): void {
-    this.start();
-    _event.preventDefault();
-  }
-  */
 
   // Fix event parameter warnings by prefixing with underscore
   private onMouseDownHandler(_event: MouseEvent): void {
@@ -661,6 +707,13 @@ class OrbitGame {
 
     // Ensure the container has proper box-sizing
     this.container.style.boxSizing = "border-box";
+
+    // Update start button position if it exists
+    if (this.startButton) {
+      // Center the button
+      this.startButton.style.top = "50%";
+      this.startButton.style.left = "50%";
+    }
   }
 
   /**
@@ -830,6 +883,20 @@ class OrbitGame {
 
       this.context.restore();
       this.renderNotifications();
+    } else {
+      // Draw a subtle pulsing effect in the background when not playing
+      const centerX = this.world.width / 2;
+      const centerY = this.world.height / 2;
+      const time = Date.now() / 1000;
+      const pulseSize = 100 + Math.sin(time * 2) * 20;
+
+      this.context.save();
+      this.context.globalAlpha = 0.2;
+      this.context.beginPath();
+      this.context.arc(centerX, centerY, pulseSize, 0, Math.PI * 2);
+      this.context.fillStyle = "rgba(255, 100, 100, 0.3)";
+      this.context.fill();
+      this.context.restore();
     }
 
     requestAnimationFrame(this.update.bind(this));
