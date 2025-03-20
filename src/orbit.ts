@@ -638,7 +638,7 @@ class OrbitGame {
 
     // Enemy Sprite
     cvs = document.createElement("canvas");
-    canvasWidth = canvasHeight = 38;
+    canvasWidth = canvasHeight = 48;
     cvs.setAttribute("width", canvasWidth.toString());
     cvs.setAttribute("height", canvasHeight.toString());
     ctx = cvs.getContext("2d") as CanvasRenderingContext2D;
