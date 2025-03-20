@@ -111,9 +111,12 @@ class OrbitGame {
       this.startButton.id = "start-button";
       this.styleStartButton();
       this.container.appendChild(this.startButton);
+
+      // Add click event listener - this will work for mouse clicks
       this.startButton.addEventListener(
         "click",
-        this.onStartButtonClick.bind(this)
+        this.onStartButtonClick.bind(this),
+        { passive: false } // Add passive: false for consistency
       );
 
       // Create settings button
@@ -189,17 +192,21 @@ class OrbitGame {
     button.style.top = "50%";
     button.style.left = "50%";
     button.style.transform = "translate(-50%, -50%)";
-    button.style.padding = "15px 30px";
-    button.style.fontSize = "24px";
+
+    // Make button larger and more touchable for mobile
+    button.style.padding = "20px 40px"; // Larger padding
+    button.style.fontSize = "28px"; // Larger font
     button.style.backgroundColor = "rgba(255, 100, 100, 0.8)";
     button.style.color = "white";
     button.style.border = "none";
-    button.style.borderRadius = "8px";
+    button.style.borderRadius = "12px"; // Larger border radius
     button.style.cursor = "pointer";
     button.style.boxShadow = "0 0 20px rgba(255, 100, 100, 0.5)";
     button.style.zIndex = "100";
     button.style.fontFamily = "Arial, sans-serif";
     button.style.transition = "all 0.2s ease";
+    button.style.minWidth = "200px"; // Ensure minimum width for better tap target
+    button.style.textAlign = "center"; // Center text
 
     // Add hover effect with event listeners
     button.addEventListener("mouseover", () => {
@@ -211,6 +218,29 @@ class OrbitGame {
       button.style.backgroundColor = "rgba(255, 100, 100, 0.8)";
       button.style.boxShadow = "0 0 20px rgba(255, 100, 100, 0.5)";
     });
+
+    // Add explicit touch event listeners for mobile/iOS
+    button.addEventListener(
+      "touchstart",
+      (e) => {
+        e.preventDefault(); // Prevent default to avoid double-firing
+        button.style.backgroundColor = "rgba(255, 50, 50, 0.9)";
+        button.style.boxShadow = "0 0 30px rgba(255, 100, 100, 0.7)";
+      },
+      { passive: false }
+    );
+
+    button.addEventListener(
+      "touchend",
+      (e) => {
+        e.preventDefault(); // Prevent default to avoid double-firing
+        button.style.backgroundColor = "rgba(255, 100, 100, 0.8)";
+        button.style.boxShadow = "0 0 20px rgba(255, 100, 100, 0.5)";
+        // Call the start function directly to ensure it works
+        this.start();
+      },
+      { passive: false }
+    );
   }
 
   private styleSettingsButton(): void {
@@ -364,6 +394,11 @@ class OrbitGame {
   }
 
   private start(): void {
+    // Don't restart if already playing
+    if (this.playing) {
+      return;
+    }
+
     this.reset();
 
     this.timeStart = Date.now();
@@ -377,12 +412,26 @@ class OrbitGame {
     }
 
     document.body.setAttribute("class", this.STATE_PLAYING);
+
+    if (this.debugging) {
+      console.log("Game started - timestamp:", Date.now());
+    }
   }
 
   // Uncomment the onStartButtonClick method
   private onStartButtonClick(_event: Event): void {
-    this.start();
+    // Prevent default for both mouse and touch events
     _event.preventDefault();
+
+    // Check if the game is already playing to avoid multiple starts
+    if (!this.playing) {
+      this.start();
+
+      // Log for debugging
+      if (this.debugging) {
+        console.log("Game started via button click");
+      }
+    }
   }
 
   // If this method isn't used, either comment it out or use it somewhere
