@@ -149,21 +149,22 @@ class OrbitGame {
         this.onMouseUpHandler.bind(this),
         false
       );
-      this.canvas.addEventListener(
+
+      // Touch events need to be added to the document instead of canvas for iOS
+      document.addEventListener(
         "touchstart",
-        this.onCanvasTouchStartHandler.bind(this),
-        false
+        this.onTouchStartHandler.bind(this),
+        { passive: false }
       );
-      this.canvas.addEventListener(
+      document.addEventListener(
         "touchmove",
-        this.onCanvasTouchMoveHandler.bind(this),
-        false
+        this.onTouchMoveHandler.bind(this),
+        { passive: false }
       );
-      this.canvas.addEventListener(
-        "touchend",
-        this.onCanvasTouchEndHandler.bind(this),
-        false
-      );
+      document.addEventListener("touchend", this.onTouchEndHandler.bind(this), {
+        passive: false,
+      });
+
       window.addEventListener(
         "resize",
         this.onWindowResizeHandler.bind(this),
@@ -436,13 +437,40 @@ class OrbitGame {
     this.mouse.down = false;
   }
 
-  private onCanvasTouchStartHandler(_event: TouchEvent): void {}
+  // Touch event handlers - Updated to work on iOS
+  private onTouchStartHandler(event: TouchEvent): void {
+    // Always prevent default to avoid scrolling/zooming
+    event.preventDefault();
 
-  private onCanvasTouchMoveHandler(_event: TouchEvent): void {
-    _event.preventDefault();
+    // Set mouse down to true on touch start
+    this.mouse.down = true;
+
+    // Optional: log for debugging
+    if (this.debugging) {
+      console.log("Touch start detected, mouse.down =", this.mouse.down);
+    }
   }
 
-  private onCanvasTouchEndHandler(_event: TouchEvent): void {}
+  private onTouchMoveHandler(event: TouchEvent): void {
+    // Always prevent default to avoid scrolling
+    event.preventDefault();
+
+    // Keep mouse down state during move
+    this.mouse.down = true;
+  }
+
+  private onTouchEndHandler(event: TouchEvent): void {
+    // Always prevent default
+    event.preventDefault();
+
+    // Set mouse down to false on touch end
+    this.mouse.down = false;
+
+    // Optional: log for debugging
+    if (this.debugging) {
+      console.log("Touch end detected, mouse.down =", this.mouse.down);
+    }
+  }
 
   private updateMeta(): void {
     const timeThisFrame: number = Date.now();
@@ -1000,6 +1028,7 @@ class OrbitGame {
     this.context.fillText(`Enemies: ${this.enemies.length}`, 10, 65);
     this.context.fillText(`Score: ${this.player.score}`, 10, 80);
     this.context.fillText(`Time: ${this.duration / 1000}`, 10, 95);
+    this.context.fillText(`Touch/Mouse down: ${this.mouse.down}`, 10, 110); // Add touch status
 
     // Draw center point
     const centerX = this.world.width / 2;
