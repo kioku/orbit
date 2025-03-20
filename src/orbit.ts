@@ -41,9 +41,9 @@ class OrbitGame {
   private ENEMY_TYPE_SUN: number = 2;
   private STATE_WELCOME: string = "start";
   private STATE_PLAYING: string = "playing";
-  // Keep these state constants for future use
-  // private STATE_LOSER: string = "loser";
-  // private STATE_WINNER: string = "winner";
+  // Use these state constants for game end conditions
+  private STATE_LOSER: string = "loser";
+  private STATE_WINNER: string = "winner";
   private sprites: Sprites = {
     playerSprite: null,
     enemySun: null,
@@ -65,8 +65,7 @@ class OrbitGame {
   private timeStart: number = Date.now();
   private timeLastFrame: number = Date.now();
   private timeLastSecond: number = Date.now();
-  // Remove timeGameStart if not used
-  // private timeGameStart: number = Date.now();
+  private timeGameStart: number = Date.now(); // Now we'll use this for game duration tracking
   private timeDelta: number = 0;
   private timeFactor: number = 0;
   private fps: number = 0;
@@ -86,6 +85,12 @@ class OrbitGame {
   private debugging: boolean = true; // Now we'll add a way to toggle this
   private startButton: HTMLButtonElement; // Add start button reference
   private settingsButton: HTMLButtonElement; // Add settings button reference
+  private gameState: string = ""; // Track current game state
+  private gameTimer: number = 60; // Game duration in seconds (default 60s)
+  private gameMode: string = "survival"; // Default game mode
+  private victoryScore: number = 15; // Score needed to win in score mode
+  private sunDangerRadius: number = 70; // How close to sun is dangerous
+  private gameOverMessage: string = ""; // Message to display when game ends
 
   constructor() {
     this.canvas = null as any;
@@ -121,7 +126,6 @@ class OrbitGame {
 
       // Create settings button
       this.settingsButton = document.createElement("button");
-      this.settingsButton.textContent = "Debug: ON";
       this.settingsButton.id = "settings-button";
       this.styleSettingsButton();
       this.container.appendChild(this.settingsButton);
@@ -573,7 +577,6 @@ class OrbitGame {
         this.debugging = !this.debugging;
 
         // Update button appearance with TRON theme
-        button.innerHTML = this.debugging ? "ON" : "OFF";
         button.style.color = this.debugging
           ? "rgba(140, 240, 255, 1)"
           : "rgba(255, 100, 100, 1)";
@@ -602,30 +605,55 @@ class OrbitGame {
     );
   }
 
-  private onSettingsButtonClick(_event: Event): void {
-    // Prevent default
-    _event.preventDefault();
+  private onSettingsButtonClick(e: Event): void {
+    e.preventDefault();
 
-    // Toggle debug mode
+    // Toggle debugging state
     this.debugging = !this.debugging;
 
-    // Update button styling according to state
     this.styleSettingsButton();
-
-    console.log(`Debug mode: ${this.debugging ? "ON" : "OFF"}`);
   }
 
-  private onKeyDownHandler(event: KeyboardEvent): void {
-    // Toggle debug mode with 'D' key
-    if (event.key.toLowerCase() === "d") {
-      this.debugging = !this.debugging;
+  private onKeyDownHandler(e: KeyboardEvent): void {
+    // Press 'R' to restart game after win/loss
+    if (
+      (e.key === "r" || e.key === "R") &&
+      (this.gameState === this.STATE_WINNER ||
+        this.gameState === this.STATE_LOSER)
+    ) {
+      this.reset();
+      this.onStartButtonClick(new MouseEvent("click"));
+    }
 
-      // Update button styling according to state
-      if (this.settingsButton) {
-        this.styleSettingsButton(); // Re-apply entire style to ensure full update
+    // Press 'M' to toggle game mode when not playing
+    if ((e.key === "m" || e.key === "M") && !this.playing) {
+      this.gameMode = this.gameMode === "survival" ? "score" : "survival";
+
+      // Show notification about game mode change
+      if (this.gameMode === "survival") {
+        this.notify(
+          "SURVIVAL MODE",
+          this.world.width / 2,
+          this.world.height / 2.5,
+          1.5,
+          [50, 200, 255]
+        );
       }
 
-      console.log(`Debug mode: ${this.debugging ? "ON" : "OFF"}`);
+      if (this.gameMode === "score") {
+        this.notify(
+          "SCORE MODE",
+          this.world.width / 2,
+          this.world.height / 2.5,
+          1.5,
+          [255, 200, 50]
+        );
+      }
+    }
+
+    // Press 'D' to toggle debugging
+    if (e.key === "d" || e.key === "D") {
+      this.onSettingsButtonClick(e);
     }
   }
 
@@ -740,32 +768,61 @@ class OrbitGame {
   }
 
   // Uncomment the onStartButtonClick method
-  private onStartButtonClick(_event: Event): void {
-    // Prevent default for both mouse and touch events
-    _event.preventDefault();
+  private onStartButtonClick(e: MouseEvent): void {
+    e.preventDefault();
 
-    // Check if the game is already playing to avoid multiple starts
-    if (!this.playing) {
-      this.start();
+    this.reset();
+    this.player.alive = true;
+    this.playing = true;
+    this.timeGameStart = Date.now();
+    this.gameState = this.STATE_PLAYING;
+    document.body.setAttribute("class", this.STATE_PLAYING);
 
-      // Log for debugging
-      if (this.debugging) {
-        console.log("Game started via button click");
-      }
+    this.startButton.style.display = "none";
+
+    // Show game mode notification at start
+    if (this.gameMode === "survival") {
+      this.notify(
+        `SURVIVE ${this.gameTimer}s`,
+        this.world.width / 2,
+        this.world.height / 2.5,
+        1.5,
+        [50, 200, 255]
+      );
+    }
+
+    if (this.gameMode === "score") {
+      this.notify(
+        `SCORE ${this.victoryScore} TO WIN`,
+        this.world.width / 2,
+        this.world.height / 2.5,
+        1.5,
+        [50, 200, 255]
+      );
     }
   }
 
-  // If this method isn't used, either comment it out or use it somewhere
-  /* 
-  private stop(): void {
-    this.playing = false;
-  }
-  */
-
   private reset(): void {
-    this.player = new Player();
     this.enemies = [];
+    this.thrustParticles = [];
     this.notifications = [];
+    this.haveSun = false;
+    this.playing = false;
+    this.duration = 0;
+
+    this.player = new Player();
+    this.player.x = (1.5 * this.world.width) / 2; // Start right of center
+    this.player.y = this.world.height / 2; // Start at vertical center
+    this.player.radius = 100; // Initial orbit radius
+    this.player.score = 0;
+
+    this.gameState = this.STATE_WELCOME;
+    this.gameOverMessage = "";
+    document.body.setAttribute("class", this.STATE_WELCOME);
+
+    if (this.startButton) {
+      this.startButton.style.display = "block";
+    }
   }
 
   private notify(
@@ -952,7 +1009,7 @@ class OrbitGame {
     this.context.beginPath();
     this.context.strokeStyle = "rgba(255, 100, 100, 0.3)";
     this.context.setLineDash([]);
-    this.context.arc(centerX, centerY, 70, 0, Math.PI * 2);
+    this.context.arc(centerX, centerY, this.sunDangerRadius, 0, Math.PI * 2);
     this.context.stroke();
 
     this.context.restore();
@@ -1244,14 +1301,14 @@ class OrbitGame {
       this.startButton.style.left = "50%";
     }
 
-    // Update settings button position to stay in top right
+    // Update settings button position to stay in top left
     if (this.settingsButton) {
       this.settingsButton.style.top = "10px";
-      this.settingsButton.style.right = "10px";
+      this.settingsButton.style.right = "10px"; // Changed from right to left
     }
 
     // Update sun position if it exists
-    this.updateSunPosition();
+    // this.updateSunPosition();
 
     // Update button styles on resize to ensure responsiveness
     if (this.startButton) {
@@ -1264,17 +1321,17 @@ class OrbitGame {
   }
 
   // Add a new method to update the sun position when needed
-  private updateSunPosition(): void {
-    // Find the sun enemy and update its position if it exists
-    for (let i = 0; i < this.enemies.length; i++) {
-      if (this.enemies[i].type === this.ENEMY_TYPE_SUN) {
-        // Make sure sun is exactly at center of the world
-        this.enemies[i].x = this.world.width / 2;
-        this.enemies[i].y = this.world.height / 2;
-        break;
-      }
-    }
-  }
+  // private updateSunPosition(): void {
+  //   // Find the sun enemy and update its position if it exists
+  //   for (let i = 0; i < this.enemies.length; i++) {
+  //     if (this.enemies[i].type === this.ENEMY_TYPE_SUN) {
+  //       // Make sure sun is exactly at center of the world
+  //       this.enemies[i].x = this.world.width / 2;
+  //       this.enemies[i].y = this.world.height / 2;
+  //       break;
+  //     }
+  //   }
+  // }
 
   /**
    * Improved circle-to-circle collision detection for circular game objects.
@@ -1366,7 +1423,7 @@ class OrbitGame {
       midY
     );
 
-    this.context.restore();
+    // this.context.restore();
   }
 
   private createThrustParticle(): void {
@@ -1425,47 +1482,189 @@ class OrbitGame {
   }
 
   private update(): void {
-    this.clear();
+    // Get timing info
+    const now = Date.now();
+    this.timeDelta = now - this.timeLastFrame;
 
+    // Handle excessive frame time (if tab was inactive)
+    if (this.timeDelta > 200) this.timeDelta = 200;
+
+    this.timeFactor = this.timeDelta / (1000 / this.FRAMERATE);
+    this.timeLastFrame = now;
+    this.framesThisSecond++;
+
+    // Update game if playing
     if (this.playing) {
-      this.context.save();
-      this.context.globalCompositeOperation = "lighter";
+      this.duration = (now - this.timeGameStart) / 1000; // Track game duration in seconds
 
       this.updatePlayer();
-      this.renderOrbit();
-      this.updateThrustParticles();
-      this.renderThrustParticles();
-
-      this.updateMeta();
       this.updateEnemies();
-      this.renderEnemies();
+      this.updateThrustParticles();
 
-      this.renderPlayer(); // Moved after enemies to ensure player is on top
-
-      // Show debug info when enabled
-      if (this.debugging) {
-        this.renderDebugInfo();
-      }
-
-      this.context.restore();
-      this.renderNotifications();
-    } else {
-      // Draw a subtle pulsing effect in the background when not playing
-      const centerX = this.world.width / 2;
-      const centerY = this.world.height / 2;
-      const time = Date.now() / 1000;
-      const pulseSize = 100 + Math.sin(time * 2) * 20;
-
-      this.context.save();
-      this.context.globalAlpha = 0.2;
-      this.context.beginPath();
-      this.context.arc(centerX, centerY, pulseSize, 0, Math.PI * 2);
-      this.context.fillStyle = "rgba(255, 100, 100, 0.3)";
-      this.context.fill();
-      this.context.restore();
+      // Check for end conditions
+      this.checkEndConditions();
     }
 
-    requestAnimationFrame(this.update.bind(this));
+    // Track FPS calculation
+    if (now > this.timeLastSecond + 1000) {
+      this.fps = this.framesThisSecond;
+      this.fpsMin = Math.min(this.fpsMin, this.fps);
+      this.fpsMax = Math.max(this.fpsMax, this.fps);
+      this.timeLastSecond = now;
+      this.framesThisSecond = 0;
+    }
+
+    // Render the world
+    this.render();
+
+    // Schedule next update
+    window.requestAnimationFrame(this.update.bind(this));
+  }
+
+  private checkEndConditions(): void {
+    // Get player position relative to center (sun)
+    const centerX = this.world.width / 2;
+    const centerY = this.world.height / 2;
+    const dx = this.player.x - centerX;
+    const dy = this.player.y - centerY;
+    const distToSun = Math.sqrt(dx * dx + dy * dy);
+
+    // Check for collision with sun (game over)
+    if (distToSun < this.sunDangerRadius) {
+      this.endGame(false, "CONSUMED BY THE SUN");
+      return;
+    }
+
+    // Check for falling out of bounds (game over)
+    const maxRadius = Math.min(this.world.width, this.world.height) / 2 - 20;
+    if (distToSun > maxRadius) {
+      this.endGame(false, "LOST IN DEEP SPACE");
+      return;
+    }
+
+    // Time-based end condition (survival mode)
+    if (this.gameMode === "survival") {
+      // Check if time is up (victory)
+      const timeLeft = this.gameTimer - Math.floor(this.duration);
+
+      if (timeLeft <= 0) {
+        this.endGame(true, `SURVIVED! SCORE: ${this.player.score}`);
+        return;
+      }
+
+      // Show time warning when low
+      if (timeLeft <= 10 && timeLeft % 2 === 0) {
+        this.notify(`${timeLeft}s`, centerX, centerY - 100, 1, [255, 50, 50]);
+      }
+    }
+
+    // Score-based end condition (score mode)
+    if (this.gameMode === "score" && this.player.score >= this.victoryScore) {
+      this.endGame(true, `VICTORY! TIME: ${Math.floor(this.duration)}s`);
+      return;
+    }
+  }
+
+  private endGame(isVictory: boolean, message: string): void {
+    this.playing = false;
+    this.gameState = isVictory ? this.STATE_WINNER : this.STATE_LOSER;
+    this.gameOverMessage = message;
+    document.body.setAttribute("class", this.gameState);
+
+    // Large notification for game over message
+    this.notify(
+      message,
+      this.world.width / 2,
+      this.world.height / 2 - 40,
+      2,
+      isVictory ? [100, 255, 100] : [255, 100, 100]
+    );
+
+    // Add restart instruction
+    this.notify(
+      "PRESS 'R' TO RESTART",
+      this.world.width / 2,
+      this.world.height / 2 + 80,
+      1,
+      [200, 200, 200]
+    );
+
+    // Show start button again
+    this.startButton.style.display = "block";
+    this.startButton.textContent = "PLAY AGAIN";
+  }
+
+  private render(): void {
+    // Clear canvas
+    this.context.clearRect(0, 0, this.world.width, this.world.height);
+
+    // Render game elements
+    this.renderOrbit();
+    this.renderThrustParticles();
+    this.renderEnemies();
+
+    if (this.player && this.player.alive) {
+      this.renderPlayer();
+    }
+
+    this.renderNotifications();
+
+    // Display game info (scores, target, etc)
+    this.renderGameInfo();
+
+    // Add debug info rendering if debugging is enabled
+    if (this.debugging) {
+      this.renderDebugInfo();
+    }
+  }
+
+  private renderGameInfo(): void {
+    // Display game stats at the bottom instead of the top
+    this.context.save();
+    this.context.fillStyle = "rgba(140, 240, 255, 0.8)";
+    this.context.font = "14px Rajdhani, Arial";
+
+    // Left align score at the bottom
+    this.context.textAlign = "left";
+    this.context.fillText(
+      `SCORE: ${this.player.score}`,
+      10,
+      this.world.height - 40
+    );
+
+    // Right align time or goal at the bottom
+    this.context.textAlign = "right";
+    if (this.gameMode === "survival" && this.playing) {
+      const timeLeft = Math.max(0, Math.ceil(this.gameTimer - this.duration));
+      this.context.fillText(
+        `TIME: ${timeLeft}s`,
+        this.world.width - 10,
+        this.world.height - 40
+      );
+    } else if (this.gameMode === "score" && this.playing) {
+      this.context.fillText(
+        `TARGET: ${this.victoryScore}`,
+        this.world.width - 10,
+        this.world.height - 40
+      );
+    }
+
+    // Center align game mode when not playing
+    if (!this.playing && this.gameState === this.STATE_WELCOME) {
+      this.context.textAlign = "center";
+      this.context.fillText(
+        `MODE: ${this.gameMode.toUpperCase()}`,
+        this.world.width / 2,
+        this.world.height - 20
+      );
+      this.context.fillText(
+        `PRESS 'M' TO CHANGE MODE`,
+        this.world.width / 2,
+        this.world.height - 40
+      );
+    }
+
+    this.context.restore();
   }
 
   /**
@@ -1476,26 +1675,40 @@ class OrbitGame {
     this.context.fillStyle = "rgba(255,255,255,0.7)";
     this.context.font = "12px monospace";
 
-    // Display some useful debug info
-    this.context.fillText(`FPS: ${this.fps}`, 10, 20);
+    // Display some useful debug info in the top left corner
+    this.context.fillText(`FPS: ${this.fps}`, 10, 40); // Move down to avoid button
     this.context.fillText(
       `Player radius: ${this.player.radius.toFixed(1)}`,
       10,
-      35
+      55
     );
     this.context.fillText(
       `Collision radius: ${this.player.collisionRadius.toFixed(1)}`,
       10,
-      50
+      70
     );
-    this.context.fillText(`Enemies: ${this.enemies.length}`, 10, 65);
-    this.context.fillText(`Score: ${this.player.score}`, 10, 80);
-    this.context.fillText(`Time: ${this.duration / 1000}`, 10, 95);
-    this.context.fillText(`Touch/Mouse down: ${this.mouse.down}`, 10, 110); // Add touch status
+    this.context.fillText(`Enemies: ${this.enemies.length}`, 10, 85);
+    this.context.fillText(`Score: ${this.player.score}`, 10, 100);
+    this.context.fillText(
+      `Time: ${(this.duration / 1000).toFixed(1)}s`,
+      10,
+      115
+    );
+    this.context.fillText(`Touch/Mouse down: ${this.mouse.down}`, 10, 130);
 
-    // Draw center point
+    // Add orbital distance
     const centerX = this.world.width / 2;
     const centerY = this.world.height / 2;
+    const dx = this.player.x - centerX;
+    const dy = this.player.y - centerY;
+    const distToSun = Math.sqrt(dx * dx + dy * dy).toFixed(1);
+    this.context.fillText(`Distance to sun: ${distToSun}px`, 10, 145);
+
+    // Add danger zone info
+    this.context.fillText(`Danger radius: ${this.sunDangerRadius}px`, 10, 160);
+    this.context.fillText(`Game mode: ${this.gameMode}`, 10, 175);
+
+    // Draw center point
     this.context.beginPath();
     this.context.arc(centerX, centerY, 5, 0, Math.PI * 2);
     this.context.fillStyle = "rgba(255,255,0,0.7)";
@@ -1528,6 +1741,15 @@ class OrbitGame {
     this.context.lineTo(this.player.x, this.player.y + 20);
     this.context.strokeStyle = "rgba(100,100,255,0.5)";
     this.context.stroke();
+
+    // Draw sun danger radius for visualization
+    this.context.beginPath();
+    this.context.arc(centerX, centerY, this.sunDangerRadius, 0, Math.PI * 2);
+    this.context.strokeStyle = "rgba(255,50,50,0.5)";
+    this.context.setLineDash([5, 5]);
+    this.context.lineWidth = 2;
+    this.context.stroke();
+    this.context.setLineDash([]);
 
     this.context.restore();
   }
