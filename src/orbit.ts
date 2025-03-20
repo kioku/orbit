@@ -639,9 +639,9 @@ class OrbitGame {
 
   private updateEnemies(): void {
     let enemy: Enemy;
-    const padding: number = 60;
     let i: number = this.enemies.length;
 
+    // Check for sun enemy
     while (i-- && !this.haveSun) {
       if (this.enemies[i].type === this.ENEMY_TYPE_SUN) {
         this.haveSun = true;
@@ -651,40 +651,50 @@ class OrbitGame {
       }
     }
 
+    // Create sun if needed
     if (!this.haveSun) {
       enemy = new Enemy();
       enemy.type = this.ENEMY_TYPE_SUN;
-
-      // Explicitly set the sun position at the exact center of the world
       enemy.x = this.world.width / 2;
       enemy.y = this.world.height / 2;
-
       enemy.collisionRadius = this.ENEMY_SIZE * 2;
-      enemy.scale = 1; // Ensure full scale immediately
-      enemy.alpha = 1; // Ensure full visibility immediately
+      enemy.scale = 1;
+      enemy.alpha = 1;
       enemy.scaleTarget = 1;
       enemy.alphaTarget = 1;
       this.enemies.push(enemy);
     }
 
+    // Spawn new enemies with improved placement logic
+    const centerX = this.world.width / 2;
+    const centerY = this.world.height / 2;
+
+    // Calculate spawn boundaries based on player's orbital constraints
+    const minRadius = 60; // Minimum safe distance from center (slightly more than player minimum)
+    const maxRadius = Math.min(this.world.width, this.world.height) / 2 - 30; // Maximum safe distance (less than player max)
+
+    // Randomly spawn enemies
     while (Math.random() > 0.99) {
       enemy = new Enemy();
       enemy.type = this.ENEMY_TYPE_NORMAL;
 
-      // Update enemy spawn logic to avoid spawning too close to player
-      const minDistanceFromPlayer = 100;
+      // Update enemy spawn logic to spawn within the orbital range
+      const minDistanceFromPlayer = 100; // Minimum distance from player
       let validPosition = false;
       let attempts = 0;
 
       while (!validPosition && attempts < 10) {
-        enemy.x = Math.round(
-          Math.random() * (this.world.width - padding - padding) + padding
-        );
-        enemy.y = Math.round(
-          Math.random() * (this.world.height - padding - padding) + padding
-        );
+        // Choose a random radius between min and max
+        const spawnRadius = minRadius + Math.random() * (maxRadius - minRadius);
 
-        // Check distance from player
+        // Choose a random angle
+        const spawnAngle = Math.random() * Math.PI * 2;
+
+        // Calculate position based on radius and angle
+        enemy.x = centerX + Math.cos(spawnAngle) * spawnRadius;
+        enemy.y = centerY + Math.sin(spawnAngle) * spawnRadius;
+
+        // Check distance from player to avoid spawning too close
         const dx = enemy.x - this.player.x;
         const dy = enemy.y - this.player.y;
         const distSquared = dx * dx + dy * dy;
@@ -692,6 +702,7 @@ class OrbitGame {
         if (distSquared > minDistanceFromPlayer * minDistanceFromPlayer) {
           validPosition = true;
         }
+
         attempts++;
       }
 
@@ -699,8 +710,8 @@ class OrbitGame {
       this.enemies.push(enemy);
     }
 
+    // Update existing enemies
     i = this.enemies.length;
-
     while (i--) {
       enemy = this.enemies[i];
       enemy.time = Math.min(enemy.time + 0.2 * this.timeFactor, 100);
