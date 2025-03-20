@@ -125,9 +125,12 @@ class OrbitGame {
       this.settingsButton.id = "settings-button";
       this.styleSettingsButton();
       this.container.appendChild(this.settingsButton);
+
+      // Add click event listener with passive: false for consistency
       this.settingsButton.addEventListener(
         "click",
-        this.onSettingsButtonClick.bind(this)
+        this.onSettingsButtonClick.bind(this),
+        { passive: false }
       );
 
       // Add keyboard listener for debugging toggle
@@ -248,19 +251,21 @@ class OrbitGame {
     button.style.position = "absolute";
     button.style.top = "10px";
     button.style.right = "10px";
-    button.style.padding = "8px 12px";
-    button.style.fontSize = "14px";
+    // Make button more touchable on mobile
+    button.style.padding = "10px 15px";
+    button.style.fontSize = "16px";
     button.style.backgroundColor = this.debugging
       ? "rgba(0, 200, 0, 0.7)"
       : "rgba(200, 0, 0, 0.7)";
     button.style.color = "white";
     button.style.border = "none";
-    button.style.borderRadius = "4px";
+    button.style.borderRadius = "6px"; // Slightly larger radius
     button.style.cursor = "pointer";
     button.style.zIndex = "100";
     button.style.fontFamily = "Arial, sans-serif";
     button.style.transition = "all 0.2s ease";
     button.style.opacity = "0.7";
+    button.style.minWidth = "100px"; // Ensure minimum width for better tap target
 
     // Add hover effect with event listeners
     button.addEventListener("mouseover", () => {
@@ -272,9 +277,48 @@ class OrbitGame {
       button.style.opacity = "0.7";
       button.style.boxShadow = "none";
     });
+
+    // Add explicit touch event listeners for mobile/iOS
+    button.addEventListener(
+      "touchstart",
+      (e) => {
+        e.preventDefault(); // Prevent default to avoid double-firing
+        button.style.opacity = "1";
+        button.style.boxShadow = "0 0 10px rgba(255, 255, 255, 0.5)";
+      },
+      { passive: false }
+    );
+
+    button.addEventListener(
+      "touchend",
+      (e) => {
+        e.preventDefault(); // Prevent default to avoid double-firing
+        button.style.opacity = "0.7";
+        button.style.boxShadow = "none";
+
+        // Toggle debug mode directly
+        this.debugging = !this.debugging;
+
+        // Update button text and color
+        button.textContent = `Debug: ${this.debugging ? "ON" : "OFF"}`;
+        button.style.backgroundColor = this.debugging
+          ? "rgba(0, 200, 0, 0.7)"
+          : "rgba(200, 0, 0, 0.7)";
+
+        if (this.debugging) {
+          console.log("Debug mode enabled via touch");
+        } else {
+          console.log("Debug mode disabled via touch");
+        }
+      },
+      { passive: false }
+    );
   }
 
   private onSettingsButtonClick(_event: Event): void {
+    // Prevent default to ensure no conflicts
+    _event.preventDefault();
+
     // Toggle debug mode
     this.debugging = !this.debugging;
 
@@ -285,7 +329,6 @@ class OrbitGame {
       : "rgba(200, 0, 0, 0.7)";
 
     console.log(`Debug mode: ${this.debugging ? "ON" : "OFF"}`);
-    _event.preventDefault();
   }
 
   // Add keyboard handler for debug mode
