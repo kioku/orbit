@@ -32,8 +32,8 @@ class OrbitGame {
   private FRAMERATE: number = 60;
   private DEFAULT_WIDTH: number = 600;
   private DEFAULT_HEIGHT: number = 600;
-  private TOUCH_INPUT: boolean =
-    navigator.userAgent.match(/(iPhone|iPad|iPod|Android)/i) !== null;
+  // private TOUCH_INPUT: boolean =
+  // navigator.userAgent.match(/(iPhone|iPad|iPod|Android)/i) !== null;
   private ENEMY_SIZE: number = 10;
   // Remove or use the ENEMY_COUNT variable
   // private ENEMY_COUNT: number = 2;
@@ -605,10 +605,16 @@ class OrbitGame {
     if (!this.haveSun) {
       enemy = new Enemy();
       enemy.type = this.ENEMY_TYPE_SUN;
-      // Center the sun enemy precisely at the center of the world
+
+      // Explicitly set the sun position at the exact center of the world
       enemy.x = this.world.width / 2;
       enemy.y = this.world.height / 2;
-      enemy.collisionRadius = this.ENEMY_SIZE * 2; // Changed from radius to collisionRadius
+
+      enemy.collisionRadius = this.ENEMY_SIZE * 2;
+      enemy.scale = 1; // Ensure full scale immediately
+      enemy.alpha = 1; // Ensure full visibility immediately
+      enemy.scaleTarget = 1;
+      enemy.alphaTarget = 1;
       this.enemies.push(enemy);
     }
 
@@ -861,6 +867,22 @@ class OrbitGame {
     if (this.settingsButton) {
       this.settingsButton.style.top = "10px";
       this.settingsButton.style.right = "10px";
+    }
+
+    // Update sun position if it exists
+    this.updateSunPosition();
+  }
+
+  // Add a new method to update the sun position when needed
+  private updateSunPosition(): void {
+    // Find the sun enemy and update its position if it exists
+    for (let i = 0; i < this.enemies.length; i++) {
+      if (this.enemies[i].type === this.ENEMY_TYPE_SUN) {
+        // Make sure sun is exactly at center of the world
+        this.enemies[i].x = this.world.width / 2;
+        this.enemies[i].y = this.world.height / 2;
+        break;
+      }
     }
   }
 
