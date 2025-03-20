@@ -605,8 +605,9 @@ class OrbitGame {
     if (!this.haveSun) {
       enemy = new Enemy();
       enemy.type = this.ENEMY_TYPE_SUN;
-      enemy.x = this.world.width / 2 - (this.sprites.enemySun?.width || 0);
-      enemy.y = this.world.height / 2 - (this.sprites.enemySun?.height || 0);
+      // Center the sun enemy precisely at the center of the world
+      enemy.x = this.world.width / 2;
+      enemy.y = this.world.height / 2;
       enemy.collisionRadius = this.ENEMY_SIZE * 2; // Changed from radius to collisionRadius
       this.enemies.push(enemy);
     }
@@ -744,7 +745,7 @@ class OrbitGame {
       enemy.width = sprite.width;
       enemy.height = sprite.height;
 
-      // Update enemy collision radius based on type and scale - but make it more accurate
+      // Update enemy collision radius based on type and scale
       if (enemy.type === this.ENEMY_TYPE_SUN) {
         // Sun is larger, match its visual size
         enemy.collisionRadius = this.ENEMY_SIZE * 2 * enemy.scale;
@@ -756,11 +757,37 @@ class OrbitGame {
       this.context.save();
       this.context.globalAlpha = enemy.alpha;
       this.context.translate(Math.round(enemy.x), Math.round(enemy.y));
+
+      // Fix the rendering offset - we were drawing off-center
+      // Draw the sprite centered at the enemy's position
       this.context.drawImage(
         sprite,
-        Math.round(sprite.width / 2),
-        Math.round(sprite.height / 2)
+        -Math.round(sprite.width / 2),
+        -Math.round(sprite.height / 2)
       );
+
+      // Debug visualization for enemies
+      if (this.debugging) {
+        // Draw a circle showing the enemy's collision boundary
+        this.context.beginPath();
+        this.context.arc(0, 0, enemy.collisionRadius, 0, Math.PI * 2);
+        this.context.strokeStyle =
+          enemy.type === this.ENEMY_TYPE_SUN
+            ? "rgba(255,100,100,0.5)"
+            : "rgba(100,255,255,0.5)";
+        this.context.lineWidth = 1;
+        this.context.stroke();
+
+        // Draw crosshair at center for clarity
+        this.context.beginPath();
+        this.context.moveTo(-5, 0);
+        this.context.lineTo(5, 0);
+        this.context.moveTo(0, -5);
+        this.context.lineTo(0, 5);
+        this.context.strokeStyle = "rgba(255,255,255,0.5)";
+        this.context.stroke();
+      }
+
       this.context.restore();
     }
   }
@@ -895,7 +922,7 @@ class OrbitGame {
     this.context.lineWidth = 2;
     this.context.stroke();
 
-    // Draw line between centers
+    // Draw line between centers with distance
     this.context.beginPath();
     this.context.moveTo(a.x, a.y);
     this.context.lineTo(b.x, b.y);
@@ -911,14 +938,20 @@ class OrbitGame {
     const distance = Math.sqrt(dx * dx + dy * dy);
     const requiredDistance = a.collisionRadius + b.collisionRadius;
 
+    // Make text more visible
+    this.context.fillStyle = "rgba(0,0,0,0.6)";
+    const midX = (a.x + b.x) / 2;
+    const midY = (a.y + b.y) / 2 - 12;
+    this.context.fillRect(midX - 30, midY - 10, 60, 16);
+
     this.context.fillStyle = isColliding
       ? "rgba(255,0,0,0.9)"
       : "rgba(255,255,255,0.9)";
     this.context.font = "10px monospace";
     this.context.fillText(
       `${Math.round(distance)}/${Math.round(requiredDistance)}`,
-      (a.x + b.x) / 2,
-      (a.y + b.y) / 2 - 10
+      midX - 25,
+      midY
     );
 
     this.context.restore();
