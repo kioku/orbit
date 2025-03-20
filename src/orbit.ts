@@ -85,12 +85,14 @@ class OrbitGame {
   private thrustParticles: ThrustParticle[] = [];
   private debugging: boolean = true; // Now we'll add a way to toggle this
   private startButton: HTMLButtonElement; // Add start button reference
+  private settingsButton: HTMLButtonElement; // Add settings button reference
 
   constructor() {
     this.canvas = null as any;
     this.context = null as any;
     this.container = null as any;
     this.startButton = null as any;
+    this.settingsButton = null as any;
     // Still initialize these but don't keep the properties
     this.player = null as any;
     this.initialize();
@@ -112,6 +114,17 @@ class OrbitGame {
       this.startButton.addEventListener(
         "click",
         this.onStartButtonClick.bind(this)
+      );
+
+      // Create settings button
+      this.settingsButton = document.createElement("button");
+      this.settingsButton.textContent = "Debug: ON";
+      this.settingsButton.id = "settings-button";
+      this.styleSettingsButton();
+      this.container.appendChild(this.settingsButton);
+      this.settingsButton.addEventListener(
+        "click",
+        this.onSettingsButtonClick.bind(this)
       );
 
       // Add keyboard listener for debugging toggle
@@ -199,11 +212,67 @@ class OrbitGame {
     });
   }
 
+  private styleSettingsButton(): void {
+    const button = this.settingsButton;
+    button.style.position = "absolute";
+    button.style.top = "10px";
+    button.style.right = "10px";
+    button.style.padding = "8px 12px";
+    button.style.fontSize = "14px";
+    button.style.backgroundColor = this.debugging
+      ? "rgba(0, 200, 0, 0.7)"
+      : "rgba(200, 0, 0, 0.7)";
+    button.style.color = "white";
+    button.style.border = "none";
+    button.style.borderRadius = "4px";
+    button.style.cursor = "pointer";
+    button.style.zIndex = "100";
+    button.style.fontFamily = "Arial, sans-serif";
+    button.style.transition = "all 0.2s ease";
+    button.style.opacity = "0.7";
+
+    // Add hover effect with event listeners
+    button.addEventListener("mouseover", () => {
+      button.style.opacity = "1";
+      button.style.boxShadow = "0 0 10px rgba(255, 255, 255, 0.5)";
+    });
+
+    button.addEventListener("mouseout", () => {
+      button.style.opacity = "0.7";
+      button.style.boxShadow = "none";
+    });
+  }
+
+  private onSettingsButtonClick(_event: Event): void {
+    // Toggle debug mode
+    this.debugging = !this.debugging;
+
+    // Update button text and color
+    this.settingsButton.textContent = `Debug: ${this.debugging ? "ON" : "OFF"}`;
+    this.settingsButton.style.backgroundColor = this.debugging
+      ? "rgba(0, 200, 0, 0.7)"
+      : "rgba(200, 0, 0, 0.7)";
+
+    console.log(`Debug mode: ${this.debugging ? "ON" : "OFF"}`);
+    _event.preventDefault();
+  }
+
   // Add keyboard handler for debug mode
   private onKeyDownHandler(event: KeyboardEvent): void {
     // Toggle debug mode with 'D' key
     if (event.key.toLowerCase() === "d") {
       this.debugging = !this.debugging;
+
+      // Also update the settings button to reflect current state
+      if (this.settingsButton) {
+        this.settingsButton.textContent = `Debug: ${
+          this.debugging ? "ON" : "OFF"
+        }`;
+        this.settingsButton.style.backgroundColor = this.debugging
+          ? "rgba(0, 200, 0, 0.7)"
+          : "rgba(200, 0, 0, 0.7)";
+      }
+
       console.log(`Debug mode: ${this.debugging ? "ON" : "OFF"}`);
     }
   }
@@ -713,6 +782,12 @@ class OrbitGame {
       // Center the button
       this.startButton.style.top = "50%";
       this.startButton.style.left = "50%";
+    }
+
+    // Update settings button position to stay in top right
+    if (this.settingsButton) {
+      this.settingsButton.style.top = "10px";
+      this.settingsButton.style.right = "10px";
     }
   }
 
