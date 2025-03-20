@@ -637,30 +637,30 @@ class OrbitGame {
   }
 
   private onWindowResizeHandler(): void {
-    this.world.width = this.TOUCH_INPUT
-      ? window.innerWidth
-      : this.DEFAULT_WIDTH;
-    this.world.height = this.TOUCH_INPUT
-      ? window.innerHeight
-      : this.DEFAULT_HEIGHT;
+    // Get the smallest dimension of the viewport
+    const minDimension = Math.min(window.innerWidth, window.innerHeight);
 
-    this.container.style.width = `${this.world.width}px`;
-    this.container.style.height = `${this.world.height}px`;
+    // Apply a small margin to ensure it's not flush against the edge on small screens
+    const margin = 10;
+    const effectiveSize = minDimension - margin * 2;
 
-    this.canvas.width = this.world.width;
-    this.canvas.height = this.world.height;
+    // Set both width and height to this dimension to create a square
+    this.world.width = effectiveSize;
+    this.world.height = effectiveSize;
 
-    // const cx: number = Math.max(
-    //   (window.innerWidth - this.world.width) * 0.5,
-    //   1
-    // );
-    // const cy: number = Math.max(
-    //   (window.innerHeight - this.world.height) * 0.5,
-    //   1
-    // );
+    // Set container size
+    this.container.style.width = `${effectiveSize}px`;
+    this.container.style.height = `${effectiveSize}px`;
 
-    // this.container.style.left = `${cx}px`;
-    // this.container.style.top = `${cy}px`;
+    // Set canvas size
+    this.canvas.width = effectiveSize;
+    this.canvas.height = effectiveSize;
+
+    // Add a background color to the container to make it more visible
+    this.container.style.backgroundColor = "rgba(0, 0, 0, 0.3)";
+
+    // Ensure the container has proper box-sizing
+    this.container.style.boxSizing = "border-box";
   }
 
   /**
