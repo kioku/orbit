@@ -502,16 +502,15 @@ class OrbitGame {
     const centerX: number = this.world.width / 2;
     const centerY: number = this.world.height / 2;
 
-    // Define a constant linear velocity (pixels per frame)
-    const constantLinearVelocity: number = 5.5; // Current speed
-
-    // Calculate angular velocity based on radius to maintain constant linear velocity
-    const rotationVel: number = constantLinearVelocity / this.player.radius;
+    // Calculate maximum safe radius based on container size
+    const maxRadius = Math.min(this.world.width, this.world.height) / 2 - 20; // Leave margin
+    const minRadius = 50; // Minimum safe distance from center
 
     // More intuitive acceleration/deceleration with smoother ramping
     const pushAcceleration = 0.03; // How quickly you accelerate outward
     const gravityStrength = 0.025; // How strongly gravity pulls inward
 
+    // Update player's interaction delta based on input
     this.player.interactionDelta = this.mouse.down
       ? Math.min(
           1.5,
@@ -522,24 +521,33 @@ class OrbitGame {
           this.player.interactionDelta - gravityStrength * this.timeFactor
         );
 
-    // Apply radius change with minimum/maximum constraints
+    // Apply radius change with minimum/maximum constraints based on container size
     this.player.radius = Math.max(
-      50,
-      Math.min(300, this.player.radius + this.player.interactionDelta)
+      minRadius,
+      Math.min(maxRadius, this.player.radius + this.player.interactionDelta)
     );
 
-    this.player.angle += rotationVel * this.timeFactor; // Apply time factor for consistent speed
+    // Calculate rotational velocity inversely proportional to radius
+    // This makes the ship move at a more constant linear speed regardless of radius
+    const baseRotationSpeed = 5.5;
+    const rotationVel: number = baseRotationSpeed / this.player.radius;
+
+    // Update angle based on rotational velocity
+    this.player.angle += rotationVel * this.timeFactor;
 
     // Calculate the player's new position based on the orbit
     this.player.x = centerX + Math.cos(this.player.angle) * this.player.radius;
     this.player.y = centerY + Math.sin(this.player.angle) * this.player.radius;
 
+    // Calculate the tangential and radial components of velocity for proper ship orientation
     const dx =
       -Math.sin(this.player.angle) * rotationVel * this.player.radius +
       Math.cos(this.player.angle) * this.player.interactionDelta;
     const dy =
       Math.cos(this.player.angle) * rotationVel * this.player.radius +
       Math.sin(this.player.angle) * this.player.interactionDelta;
+
+    // Set the ship's angle based on its motion direction
     this.player.spriteAngle = Math.atan2(dy, dx);
 
     // Add visual effect for thrust when pushing outward
@@ -552,13 +560,22 @@ class OrbitGame {
   private renderOrbit(): void {
     const centerX: number = this.world.width / 2;
     const centerY: number = this.world.height / 2;
+    const maxRadius = Math.min(this.world.width, this.world.height) / 2 - 20;
+
+    this.context.save();
 
     // Draw current orbit path
-    this.context.save();
     this.context.beginPath();
     this.context.strokeStyle = "rgba(255, 255, 255, 0.2)";
     this.context.setLineDash([5, 5]);
     this.context.arc(centerX, centerY, this.player.radius, 0, Math.PI * 2);
+    this.context.stroke();
+
+    // Draw max safe orbit
+    this.context.beginPath();
+    this.context.strokeStyle = "rgba(255, 255, 255, 0.1)";
+    this.context.setLineDash([2, 8]);
+    this.context.arc(centerX, centerY, maxRadius, 0, Math.PI * 2);
     this.context.stroke();
 
     // Draw danger zone near sun
@@ -567,6 +584,7 @@ class OrbitGame {
     this.context.setLineDash([]);
     this.context.arc(centerX, centerY, 70, 0, Math.PI * 2);
     this.context.stroke();
+
     this.context.restore();
   }
 
