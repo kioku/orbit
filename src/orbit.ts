@@ -82,7 +82,7 @@ class OrbitGame {
   private notifications: Notification[] = [];
   private dirtyRegions: RegionInterface[] = [];
   private thrustParticles: ThrustParticle[] = [];
-  private debugging: boolean = true; // Now we'll add a way to toggle this
+  private debugging: boolean = false; // Now we'll add a way to toggle this
   private startButton: HTMLButtonElement; // Add start button reference
   private settingsButton: HTMLButtonElement; // Add settings button reference
   private gameState: string = ""; // Track current game state
@@ -90,7 +90,6 @@ class OrbitGame {
   private gameMode: string = "survival"; // Default game mode
   private victoryScore: number = 15; // Score needed to win in score mode
   private sunDangerRadius: number = 70; // How close to sun is dangerous
-  private gameOverMessage: string = ""; // Message to display when game ends
 
   constructor() {
     this.canvas = null as any;
@@ -599,6 +598,11 @@ class OrbitGame {
           ? "rgba(80, 220, 255, 0.9)"
           : "rgba(255, 100, 100, 0.9)";
 
+        // Update center dot color
+        centerDot.style.backgroundColor = this.debugging
+          ? "rgba(80, 220, 255, 0.9)"
+          : "rgba(255, 100, 100, 0.9)";
+
         console.log(`Debug mode: ${this.debugging ? "ON" : "OFF"}`);
       },
       { passive: false }
@@ -817,7 +821,6 @@ class OrbitGame {
     this.player.score = 0;
 
     this.gameState = this.STATE_WELCOME;
-    this.gameOverMessage = "";
     document.body.setAttribute("class", this.STATE_WELCOME);
 
     if (this.startButton) {
@@ -849,10 +852,6 @@ class OrbitGame {
     });
   }
 
-  private clear(): void {
-    this.context.clearRect(0, 0, this.world.width, this.world.height);
-  }
-
   // Fix event parameter warnings by prefixing with underscore
   private onMouseDownHandler(_event: MouseEvent): void {
     this.mouse.down = true;
@@ -864,7 +863,7 @@ class OrbitGame {
     this.mouse.down = false;
   }
 
-  // Touch event handlers - Updated to work on iOS
+  // Fix touch event handlers for the whole game
   private onTouchStartHandler(event: TouchEvent): void {
     // Always prevent default to avoid scrolling/zooming
     event.preventDefault();
@@ -897,32 +896,6 @@ class OrbitGame {
     if (this.debugging) {
       console.log("Touch end detected, mouse.down =", this.mouse.down);
     }
-  }
-
-  private updateMeta(): void {
-    const timeThisFrame: number = Date.now();
-    this.framesThisSecond++;
-
-    if (timeThisFrame > this.timeLastSecond + 1000) {
-      this.fps = Math.min(
-        Math.round(
-          (this.framesThisSecond * 1000) / (timeThisFrame - this.timeLastSecond)
-        ),
-        this.FRAMERATE
-      );
-      this.fpsMin = Math.min(this.fpsMin, this.fps);
-      this.fpsMax = Math.max(this.fpsMax, this.fps);
-
-      this.timeLastSecond = timeThisFrame;
-      this.framesThisSecond = 0;
-    }
-
-    this.timeDelta = timeThisFrame - this.timeLastFrame;
-    this.timeFactor = this.timeDelta / (1000 / this.FRAMERATE);
-    this.difficulty += 0.002 * Math.max(this.timeFactor, 1);
-    this.frameCount++;
-    this.duration = timeThisFrame - this.timeStart;
-    this.timeLastFrame = timeThisFrame;
   }
 
   private updatePlayer(): void {
@@ -1365,65 +1338,68 @@ class OrbitGame {
   }
 
   /**
-   * Enhanced visualization for collision boundaries
+   * Enhanced visualization for collision boundaries - fixed to ensure visibility
    */
   private visualizeCollision(a: Player, b: Enemy, isColliding: boolean): void {
     if (!this.debugging) return;
 
-    this.context.save();
-    this.context.globalAlpha = 1.0; // Full opacity for debug visualization
+    // Force opacity to 1.0 for better visibility
+    this.context.globalAlpha = 1.0;
 
-    // Draw player collision circle
+    // Draw player collision circle with higher contrast
     this.context.beginPath();
     this.context.arc(a.x, a.y, a.collisionRadius, 0, Math.PI * 2);
+    this.context.lineWidth = 2; // Thicker line
     this.context.strokeStyle = isColliding
-      ? "rgba(255,0,0,0.9)"
-      : "rgba(0,255,0,0.9)";
-    this.context.lineWidth = 2;
+      ? "rgba(255, 0, 0, 1.0)" // Fully opaque red when colliding
+      : "rgba(0, 255, 0, 1.0)"; // Fully opaque green when not colliding
     this.context.stroke();
 
-    // Draw enemy collision circle
+    // Draw enemy collision circle with higher contrast
     this.context.beginPath();
     this.context.arc(b.x, b.y, b.collisionRadius, 0, Math.PI * 2);
+    this.context.lineWidth = 2; // Thicker line
     this.context.strokeStyle = isColliding
-      ? "rgba(255,0,0,0.9)"
-      : "rgba(0,100,255,0.9)";
-    this.context.lineWidth = 2;
+      ? "rgba(255, 0, 0, 1.0)" // Fully opaque red when colliding
+      : "rgba(0, 100, 255, 1.0)"; // Fully opaque blue when not colliding
     this.context.stroke();
 
-    // Draw line between centers with distance
+    // Draw line between centers with higher visibility
     this.context.beginPath();
     this.context.moveTo(a.x, a.y);
     this.context.lineTo(b.x, b.y);
+    this.context.lineWidth = 2; // Thicker line
     this.context.strokeStyle = isColliding
-      ? "rgba(255,0,0,0.9)"
-      : "rgba(255,255,255,0.5)";
-    this.context.lineWidth = 1;
+      ? "rgba(255, 0, 0, 1.0)" // Fully opaque red when colliding
+      : "rgba(255, 255, 255, 0.8)"; // More visible white when not colliding
     this.context.stroke();
 
-    // Display distance for debugging
+    // Display distance with better visibility
     const dx = a.x - b.x;
     const dy = a.y - b.y;
     const distance = Math.sqrt(dx * dx + dy * dy);
     const requiredDistance = a.collisionRadius + b.collisionRadius;
 
-    // Make text more visible
-    this.context.fillStyle = "rgba(0,0,0,0.6)";
+    // Create a more visible background for text
     const midX = (a.x + b.x) / 2;
-    const midY = (a.y + b.y) / 2 - 12;
-    this.context.fillRect(midX - 30, midY - 10, 60, 16);
+    const midY = (a.y + b.y) / 2 - 15; // Moved up slightly
+    this.context.fillStyle = "rgba(0, 0, 0, 0.8)"; // More opaque background
+    this.context.fillRect(midX - 35, midY - 10, 70, 20); // Larger rectangle
 
+    // Draw text with higher contrast
     this.context.fillStyle = isColliding
-      ? "rgba(255,0,0,0.9)"
-      : "rgba(255,255,255,0.9)";
-    this.context.font = "10px monospace";
+      ? "rgba(255, 100, 100, 1.0)" // Brighter red for colliding
+      : "rgba(255, 255, 255, 1.0)"; // White for not colliding
+    this.context.font = "bold 12px monospace"; // Bold font
+    this.context.textAlign = "center"; // Center align for cleaner look
     this.context.fillText(
       `${Math.round(distance)}/${Math.round(requiredDistance)}`,
-      midX - 25,
-      midY
+      midX,
+      midY + 4 // Adjusted position
     );
 
-    // this.context.restore();
+    // Reset globalAlpha to avoid affecting other rendering
+    this.context.globalAlpha = 1.0;
   }
 
   private createThrustParticle(): void {
@@ -1568,7 +1544,6 @@ class OrbitGame {
   private endGame(isVictory: boolean, message: string): void {
     this.playing = false;
     this.gameState = isVictory ? this.STATE_WINNER : this.STATE_LOSER;
-    this.gameOverMessage = message;
     document.body.setAttribute("class", this.gameState);
 
     // Large notification for game over message
