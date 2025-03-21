@@ -60,7 +60,6 @@ class OrbitGame {
   // Keep references but mark them as potentially used in future
   private playing: boolean = false;
   private duration: number = 0; // Add back duration property for tracking game time
-  private difficulty: number = 1;
   private frameCount: number = 0;
   private timeStart: number = Date.now();
   private timeLastFrame: number = Date.now();
