@@ -404,13 +404,14 @@ class OrbitGame {
     button.innerHTML = "";
 
     // TRON-style minimalist debug control inspired by Identity Disc design
-    const buttonSize = window.innerWidth < 450 ? "42px" : "48px";
+    const buttonSize = window.innerWidth < 450 ? "60px" : "48px"; // Increased size on mobile
     const cornerSpacing = window.innerWidth < 450 ? "12px" : "16px";
 
     // Position in top right corner
     button.style.position = "absolute";
     button.style.top = cornerSpacing;
     button.style.right = cornerSpacing;
+    button.style.zIndex = "9999"; // Ensure it's on top of everything
 
     // Create circular button with TRON Identity Disc appearance
     button.style.width = buttonSize;
@@ -423,9 +424,9 @@ class OrbitGame {
 
     // Modern TRON UI styling - cleaner, more minimal
     button.style.backgroundColor = "rgba(0, 10, 20, 0.7)";
-    button.style.border = `1px solid ${
+    button.style.border = `2px solid ${
       this.debugging ? "rgba(80, 220, 255, 0.8)" : "rgba(255, 100, 100, 0.8)"
-    }`;
+    }`; // Thicker border for better visibility
     button.style.borderRadius = "50%"; // Identity Disc is circular
 
     // Remove text, use only visual design elements for cleaner look
@@ -433,7 +434,6 @@ class OrbitGame {
     button.style.boxShadow = `0 0 15px ${
       this.debugging ? "rgba(80, 220, 255, 0.5)" : "rgba(255, 100, 100, 0.5)"
     }`;
-    button.style.zIndex = "100";
     button.style.transition = "all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1.0)";
 
     // Create TRON-style inner ring, like the Identity Disc
@@ -445,9 +445,9 @@ class OrbitGame {
     innerRing.style.width = "60%";
     innerRing.style.height = "60%";
     innerRing.style.borderRadius = "50%";
-    innerRing.style.border = `1px solid ${
+    innerRing.style.border = `2px solid ${
       this.debugging ? "rgba(80, 220, 255, 0.9)" : "rgba(255, 100, 100, 0.9)"
-    }`;
+    }`; // Thicker border for visibility
     button.appendChild(innerRing);
 
     // Add center dot to indicate debug state
@@ -548,11 +548,12 @@ class OrbitGame {
       }`;
     });
 
-    // Touch handlers for mobile
+    // Improved touch handlers for mobile
     button.addEventListener(
       "touchstart",
       (e) => {
         e.preventDefault();
+        e.stopPropagation(); // Stop event from propagating
         button.style.transform = "scale(0.92)";
         innerRing.style.width = "50%";
         innerRing.style.height = "50%";
@@ -569,6 +570,7 @@ class OrbitGame {
       "touchend",
       (e) => {
         e.preventDefault();
+        e.stopPropagation(); // Stop event from propagating
         button.style.transform = "scale(1)";
 
         // Toggle debug mode
@@ -610,6 +612,7 @@ class OrbitGame {
 
   private onSettingsButtonClick(e: Event): void {
     e.preventDefault();
+    e.stopPropagation(); // Stop event from propagating
 
     // Toggle debugging state
     this.debugging = !this.debugging;
@@ -1096,7 +1099,10 @@ class OrbitGame {
     const bounds: Region = new Region();
     const sprite: HTMLCanvasElement | null = this.sprites.playerSprite;
 
-    if (!sprite) return;
+    if (!sprite) {
+      console.error("Player sprite is null");
+      return;
+    }
 
     this.player.width = sprite.width / 4;
     this.player.height = sprite.height / 4;
@@ -1104,31 +1110,45 @@ class OrbitGame {
     // Update collision radius to match visual representation better
     this.player.collisionRadius = 12;
 
-    // Draw player sprite
+    // Draw player sprite - modified for better mobile compatibility
     this.context.save();
 
-    // First translate to the player's position
-    this.context.translate(
-      Math.round(this.player.x),
-      Math.round(this.player.y)
-    );
+    try {
+      // First translate to the player's position
+      this.context.translate(
+        Math.round(this.player.x),
+        Math.round(this.player.y)
+      );
 
-    // Apply scaling
-    this.context.scale(0.5, 0.5);
+      // Apply scaling - using a scale that works well on all devices
+      const scaleFactor = 0.5;
+      this.context.scale(scaleFactor, scaleFactor);
 
-    // Rotate for direction
-    this.context.rotate(this.player.spriteAngle);
+      // Rotate for direction
+      this.context.rotate(this.player.spriteAngle);
 
-    // Center the sprite by translating back by half the original sprite dimensions
-    this.context.translate(-32, -32);
+      // Center the sprite - use half of sprite dimensions for centering
+      const offsetX = sprite.width / 2;
+      const offsetY = sprite.height / 2;
+      this.context.translate(-offsetX, -offsetY);
 
-    // Draw the sprite
-    this.context.drawImage(sprite, 0, 0, sprite.width, sprite.height);
+      // Draw the sprite
+      this.context.drawImage(sprite, 0, 0, sprite.width, sprite.height);
 
-    if (this.debugging) {
-      // Draw indicator for sprite center in local coordinates
-      this.context.fillStyle = "rgba(0,255,255,0.9)";
-      this.context.fillRect(30, 32, 5, 5);
+      if (this.debugging) {
+        // Draw indicator for sprite center in local coordinates
+        this.context.fillStyle = "rgba(0,255,255,0.9)";
+        this.context.fillRect(offsetX, offsetY, 5, 5);
+      }
+    } catch (e) {
+      // If there's an error in the rendering process, try a simplified approach
+      console.error("Error rendering player sprite:", e);
+
+      // Fallback rendering if the normal method fails
+      this.context.beginPath();
+      this.context.fillStyle = "rgba(220, 50, 50, 0.9)";
+      this.context.arc(0, 0, 15, 0, Math.PI * 2);
+      this.context.fill();
     }
 
     this.context.restore();
@@ -1559,6 +1579,15 @@ class OrbitGame {
       "PRESS 'R' TO RESTART",
       this.world.width / 2,
       this.world.height / 2 + 80,
+      1,
+      [200, 200, 200]
+    );
+
+    // Add touch instruction for mobile
+    this.notify(
+      "TAP TO PLAY AGAIN",
+      this.world.width / 2,
+      this.world.height / 2 + 110,
       1,
       [200, 200, 200]
     );
