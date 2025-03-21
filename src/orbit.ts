@@ -1648,27 +1648,35 @@ class OrbitGame {
     this.context.save();
     this.context.fillStyle = "rgba(255,255,255,0.7)";
     this.context.font = "12px monospace";
+    this.context.textAlign = "left"; // Ensure text is left-aligned
+
+    const lineHeight = 15; // Space between lines
+    let y = 40; // Starting Y position, adjusted to avoid overlap with buttons
+    const x = 10; // X position
 
     // Display some useful debug info in the top left corner
-    this.context.fillText(`FPS: ${this.fps}`, 10, 40); // Move down to avoid button
+    this.context.fillText(`FPS: ${this.fps}`, x, y);
+    y += lineHeight;
     this.context.fillText(
       `Player radius: ${this.player.radius.toFixed(1)}`,
-      10,
-      55
+      x,
+      y
     );
+    y += lineHeight;
     this.context.fillText(
       `Collision radius: ${this.player.collisionRadius.toFixed(1)}`,
-      10,
-      70
+      x,
+      y
     );
-    this.context.fillText(`Enemies: ${this.enemies.length}`, 10, 85);
-    this.context.fillText(`Score: ${this.player.score}`, 10, 100);
-    this.context.fillText(
-      `Time: ${(this.duration / 1000).toFixed(1)}s`,
-      10,
-      115
-    );
-    this.context.fillText(`Touch/Mouse down: ${this.mouse.down}`, 10, 130);
+    y += lineHeight;
+    this.context.fillText(`Enemies: ${this.enemies.length}`, x, y);
+    y += lineHeight;
+    this.context.fillText(`Score: ${this.player.score}`, x, y);
+    y += lineHeight;
+    this.context.fillText(`Time: ${(this.duration / 1000).toFixed(1)}s`, x, y);
+    y += lineHeight;
+    this.context.fillText(`Touch/Mouse down: ${this.mouse.down}`, x, y);
+    y += lineHeight;
 
     // Add orbital distance
     const centerX = this.world.width / 2;
@@ -1676,11 +1684,14 @@ class OrbitGame {
     const dx = this.player.x - centerX;
     const dy = this.player.y - centerY;
     const distToSun = Math.sqrt(dx * dx + dy * dy).toFixed(1);
-    this.context.fillText(`Distance to sun: ${distToSun}px`, 10, 145);
+    this.context.fillText(`Distance to sun: ${distToSun}px`, x, y);
+    y += lineHeight;
 
     // Add danger zone info
-    this.context.fillText(`Danger radius: ${this.sunDangerRadius}px`, 10, 160);
-    this.context.fillText(`Game mode: ${this.gameMode}`, 10, 175);
+    this.context.fillText(`Danger radius: ${this.sunDangerRadius}px`, x, y);
+    y += lineHeight;
+    this.context.fillText(`Game mode: ${this.gameMode}`, x, y);
+    y += lineHeight;
 
     // Draw center point
     this.context.beginPath();
