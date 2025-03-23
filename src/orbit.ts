@@ -86,7 +86,7 @@ class OrbitGame {
   private gameState: string = ""; // Track current game state
   private gameTimer: number = 60; // Game duration in seconds (default 60s)
   private gameMode: string = "survival"; // Default game mode
-  private victoryScore: number = 15; // Score needed to win in score mode
+  private victoryScore: number = 30; // Score needed to win in score mode
   private sunDangerRadius: number = 70; // How close to sun is dangerous
 
   constructor() {
@@ -954,7 +954,7 @@ class OrbitGame {
 
     // Draw max safe orbit
     this.context.beginPath();
-    this.context.strokeStyle = "rgba(255, 255, 255, 0.1)";
+    this.context.strokeStyle = "rgba(255, 255, 255, 0.2)";
     this.context.setLineDash([2, 8]);
     this.context.arc(centerX, centerY, maxRadius, 0, Math.PI * 2);
     this.context.stroke();
