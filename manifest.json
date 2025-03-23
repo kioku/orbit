@@ -1,0 +1,17 @@
+{
+  "name": "Orbit Game",
+  "short_name": "Orbit",
+  "description": "A mesmerizing orbital navigation game",
+  "start_url": "/",
+  "display": "fullscreen",
+  "background_color": "#111111",
+  "theme_color": "#111111",
+  "icons": [
+    {
+      "src": "/src/ouroboros.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
