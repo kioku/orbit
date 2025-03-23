@@ -61,7 +61,6 @@ class OrbitGame {
   private playing: boolean = false;
   private duration: number = 0; // Add back duration property for tracking game time
   private frameCount: number = 0;
-  private timeStart: number = Date.now();
   private timeLastFrame: number = Date.now();
   private timeLastSecond: number = Date.now();
   private timeGameStart: number = Date.now(); // Now we'll use this for game duration tracking
@@ -105,95 +104,93 @@ class OrbitGame {
     this.container = document.getElementById("game") as HTMLElement;
     this.canvas = document.querySelector("#world") as HTMLCanvasElement;
 
-    if (this.canvas && this.canvas.getContext) {
-      this.context = this.canvas.getContext("2d") as CanvasRenderingContext2D;
-
-      // Create start button
-      this.startButton = document.createElement("button");
-      this.startButton.textContent = "Start Game";
-      this.startButton.id = "start-button";
-      this.styleStartButton();
-      this.container.appendChild(this.startButton);
-
-      // Add click event listener - this will work for mouse clicks
-      this.startButton.addEventListener(
-        "click",
-        this.onStartButtonClick.bind(this),
-        { passive: false } // Add passive: false for consistency
-      );
-
-      // Create settings button
-      this.settingsButton = document.createElement("button");
-      this.settingsButton.id = "settings-button";
-      this.styleSettingsButton();
-      this.container.appendChild(this.settingsButton);
-
-      // Add both click and touch event listeners for settings button
-      this.settingsButton.addEventListener(
-        "click",
-        this.onSettingsButtonClick.bind(this),
-        { passive: false }
-      );
-      this.settingsButton.addEventListener(
-        "touchstart",
-        this.onSettingsButtonClick.bind(this),
-        { passive: false }
-      );
-
-      // Add keyboard listener for debugging toggle
-      document.addEventListener(
-        "keydown",
-        this.onKeyDownHandler.bind(this),
-        false
-      );
-
-      document.addEventListener(
-        "mousedown",
-        this.onMouseDownHandler.bind(this),
-        false
-      );
-      document.addEventListener(
-        "mousemove",
-        this.onMouseMoveHandler.bind(this),
-        false
-      );
-      document.addEventListener(
-        "mouseup",
-        this.onMouseUpHandler.bind(this),
-        false
-      );
-
-      // Touch events need to be added to the document instead of canvas for iOS
-      document.addEventListener(
-        "touchstart",
-        this.onTouchStartHandler.bind(this),
-        { passive: false }
-      );
-      document.addEventListener(
-        "touchmove",
-        this.onTouchMoveHandler.bind(this),
-        { passive: false }
-      );
-      document.addEventListener("touchend", this.onTouchEndHandler.bind(this), {
-        passive: false,
-      });
-
-      window.addEventListener(
-        "resize",
-        this.onWindowResizeHandler.bind(this),
-        false
-      );
-
-      this.onWindowResizeHandler();
-      this.createSprites();
-      document.body.setAttribute("class", this.STATE_WELCOME);
-
-      // Initialize the game but don't start playing yet
-      this.reset();
-      this.update();
-    } else {
+    if (!(this.canvas && this.canvas.getContext)) {
       alert("Doesn't seem like you can play this :(");
     }
+
+    this.context = this.canvas.getContext("2d") as CanvasRenderingContext2D;
+
+    // Create start button
+    this.startButton = document.createElement("button");
+    this.startButton.textContent = "Start Game";
+    this.startButton.id = "start-button";
+    this.styleStartButton();
+    this.container.appendChild(this.startButton);
+
+    // Add click event listener - this will work for mouse clicks
+    this.startButton.addEventListener(
+      "click",
+      this.onStartButtonClick.bind(this),
+      { passive: false } // Add passive: false for consistency
+    );
+
+    // Create settings button
+    this.settingsButton = document.createElement("button");
+    this.settingsButton.id = "settings-button";
+    this.styleSettingsButton();
+    this.container.appendChild(this.settingsButton);
+
+    // Add both click and touch event listeners for settings button
+    this.settingsButton.addEventListener(
+      "click",
+      this.onSettingsButtonClick.bind(this),
+      { passive: false }
+    );
+    this.settingsButton.addEventListener(
+      "touchstart",
+      this.onSettingsButtonClick.bind(this),
+      { passive: false }
+    );
+
+    // Add keyboard listener for debugging toggle
+    document.addEventListener(
+      "keydown",
+      this.onKeyDownHandler.bind(this),
+      false
+    );
+
+    document.addEventListener(
+      "mousedown",
+      this.onMouseDownHandler.bind(this),
+      false
+    );
+    document.addEventListener(
+      "mousemove",
+      this.onMouseMoveHandler.bind(this),
+      false
+    );
+    document.addEventListener(
+      "mouseup",
+      this.onMouseUpHandler.bind(this),
+      false
+    );
+
+    // Touch events need to be added to the document instead of canvas for iOS
+    document.addEventListener(
+      "touchstart",
+      this.onTouchStartHandler.bind(this),
+      { passive: false }
+    );
+    document.addEventListener("touchmove", this.onTouchMoveHandler.bind(this), {
+      passive: false,
+    });
+    document.addEventListener("touchend", this.onTouchEndHandler.bind(this), {
+      passive: false,
+    });
+
+    window.addEventListener(
+      "resize",
+      this.onWindowResizeHandler.bind(this),
+      false
+    );
+
+    this.onWindowResizeHandler();
+    this.createSprites();
+    document.body.setAttribute("class", this.STATE_WELCOME);
+
+    // Initialize the game but don't start playing yet
+    this.reset();
+    this.update();
   }
 
   private styleStartButton(): void {
@@ -396,7 +393,7 @@ class OrbitGame {
         button.style.boxShadow =
           "0 0 15px rgba(80, 220, 255, 0.5), inset 0 0 8px rgba(80, 220, 255, 0.2)";
         button.style.backgroundColor = "rgba(0, 10, 20, 0.7)";
-        this.start();
+        this.onStartButtonClick(e);
       },
       { passive: false }
     );
@@ -753,34 +750,13 @@ class OrbitGame {
     this.sprites.enemySun = cvs;
   }
 
-  private start(): void {
-    // Don't restart if already playing
+  // Uncomment the onStartButtonClick method
+  private onStartButtonClick(e: Event): void {
+    e.preventDefault();
+
     if (this.playing) {
       return;
     }
-
-    this.reset();
-
-    this.timeStart = Date.now();
-    this.timeLastFrame = this.timeStart;
-
-    this.playing = true;
-
-    // Hide the start button
-    if (this.startButton) {
-      this.startButton.style.display = "none";
-    }
-
-    document.body.setAttribute("class", this.STATE_PLAYING);
-
-    if (this.debugging) {
-      console.log("Game started - timestamp:", Date.now());
-    }
-  }
-
-  // Uncomment the onStartButtonClick method
-  private onStartButtonClick(e: MouseEvent): void {
-    e.preventDefault();
 
     this.reset();
     this.player.alive = true;
@@ -789,7 +765,9 @@ class OrbitGame {
     this.gameState = this.STATE_PLAYING;
     document.body.setAttribute("class", this.STATE_PLAYING);
 
-    this.startButton.style.display = "none";
+    if (this.startButton) {
+      this.startButton.style.display = "none";
+    }
 
     // Show game mode notification at start
     if (this.gameMode === "survival") {
@@ -821,11 +799,7 @@ class OrbitGame {
     this.playing = false;
     this.duration = 0;
 
-    this.player = new Player();
-    this.player.x = (1.5 * this.world.width) / 2; // Start right of center
-    this.player.y = this.world.height / 2; // Start at vertical center
-    this.player.radius = 100; // Initial orbit radius
-    this.player.score = 0;
+    this.player = new Player(this.world.width / 2, this.world.height / 2, 100);
 
     this.gameState = this.STATE_WELCOME;
     document.body.setAttribute("class", this.STATE_WELCOME);
@@ -1270,7 +1244,7 @@ class OrbitGame {
     const minDimension = Math.min(window.innerWidth, window.innerHeight);
 
     // Apply a small margin to ensure it's not flush against the edge on small screens
-    const margin = 10;
+    const margin = 8;
     const effectiveSize = minDimension - margin * 2;
 
     // Set both width and height to this dimension to create a square
@@ -1305,7 +1279,7 @@ class OrbitGame {
     }
 
     // Update sun position if it exists
-    // this.updateSunPosition();
+    this.updateSunPosition();
 
     // Update button styles on resize to ensure responsiveness
     if (this.startButton) {
@@ -1318,17 +1292,18 @@ class OrbitGame {
   }
 
   // Add a new method to update the sun position when needed
-  // private updateSunPosition(): void {
-  //   // Find the sun enemy and update its position if it exists
-  //   for (let i = 0; i < this.enemies.length; i++) {
-  //     if (this.enemies[i].type === this.ENEMY_TYPE_SUN) {
-  //       // Make sure sun is exactly at center of the world
-  //       this.enemies[i].x = this.world.width / 2;
-  //       this.enemies[i].y = this.world.height / 2;
-  //       break;
-  //     }
-  //   }
-  // }
+  private updateSunPosition(): void {
+    // Find the sun enemy and update its position if it exists
+    const index = this.enemies.findIndex(
+      (enemy) => enemy.type === this.ENEMY_TYPE_SUN
+    );
+    if (index == -1) {
+      return; // Sun doesn't exist
+    }
+    // Make sure sun is exactly at center of the world
+    this.enemies[index].x = this.world.width / 2;
+    this.enemies[index].y = this.world.height / 2;
+  }
 
   /**
    * Improved circle-to-circle collision detection for circular game objects.
@@ -1348,13 +1323,11 @@ class OrbitGame {
     const distanceSquared = dx * dx + dy * dy;
 
     // Collision occurs when distance is less than or equal to sum of radii
-    const isColliding = distanceSquared <= maxDistance * maxDistance;
+    const maxDistanceSquared = maxDistance * maxDistance;
+    const isColliding = distanceSquared <= maxDistanceSquared;
 
     // Always visualize collision for debugging when near miss or hit
-    if (
-      this.debugging &&
-      distanceSquared <= maxDistance * 3 * (maxDistance * 3)
-    ) {
+    if (this.debugging && distanceSquared <= maxDistanceSquared * 3 * 3) {
       this.visualizeCollision(a, b, isColliding);
     }
 
@@ -1487,7 +1460,7 @@ class OrbitGame {
     this.timeDelta = now - this.timeLastFrame;
 
     // Handle excessive frame time (if tab was inactive)
-    if (this.timeDelta > 200) this.timeDelta = 200;
+    this.timeDelta = Math.min(200, this.timeDelta);
 
     this.timeFactor = this.timeDelta / (1000 / this.FRAMERATE);
     this.timeLastFrame = now;
@@ -1795,10 +1768,11 @@ class Player extends Entity {
   public score: number = 0;
   public interactionDelta = -0.1;
 
-  constructor() {
+  constructor(x: number = 200, y: number = 200, radius: number) {
     super();
-    this.x = 200;
-    this.y = 200;
+    this.x = x;
+    this.y = y;
+    this.radius = radius;
     this.collisionRadius = 8; // Default collision radius
   }
 }
