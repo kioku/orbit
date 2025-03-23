@@ -1008,6 +1008,7 @@ class OrbitGame {
     // Randomly spawn enemies
     while (Math.random() > 0.99) {
       enemy = new Enemy();
+      enemy.alive = true;
       enemy.type = this.ENEMY_TYPE_NORMAL;
 
       // Update enemy spawn logic to spawn within the orbital range
@@ -1146,11 +1147,10 @@ class OrbitGame {
 
   private renderEnemies(): void {
     let i: number = this.enemies.length;
-    let sprite: HTMLCanvasElement | null = this.sprites.enemy;
 
     while (i--) {
       const enemy: Enemy = this.enemies[i];
-      sprite =
+      const sprite: HTMLCanvasElement | null =
         enemy.type === this.ENEMY_TYPE_NORMAL
           ? this.sprites.enemy
           : this.sprites.enemySun;
@@ -1160,21 +1160,10 @@ class OrbitGame {
       enemy.width = sprite.width;
       enemy.height = sprite.height;
 
-      // Update enemy collision radius based on type and scale
-      if (enemy.type === this.ENEMY_TYPE_SUN) {
-        // Sun is larger, match its visual size
-        enemy.collisionRadius = this.ENEMY_SIZE * 2 * enemy.scale;
-      } else {
-        // Regular enemy - make collision radius match visual appearance better
-        enemy.collisionRadius = this.ENEMY_SIZE * enemy.scale;
-      }
-
       this.context.save();
       this.context.globalAlpha = enemy.alpha;
       this.context.translate(Math.round(enemy.x), Math.round(enemy.y));
 
-      // Fix the rendering offset - we were drawing off-center
-      // Draw the sprite centered at the enemy's position
       this.context.drawImage(
         sprite,
         -Math.round(sprite.width / 2),
@@ -1326,77 +1315,92 @@ class OrbitGame {
     const maxDistanceSquared = maxDistance * maxDistance;
     const isColliding = distanceSquared <= maxDistanceSquared;
 
-    // Always visualize collision for debugging when near miss or hit
-    if (this.debugging && distanceSquared <= maxDistanceSquared * 3 * 3) {
-      this.visualizeCollision(a, b, isColliding);
-    }
-
     return isColliding;
   }
 
   /**
    * Enhanced visualization for collision boundaries - fixed to ensure visibility
    */
-  private visualizeCollision(a: Player, b: Enemy, isColliding: boolean): void {
-    if (!this.debugging) return;
+  private visualizeCollisions(): void {
+    for (let i = 0; i < this.enemies.length; i++) {
+      const enemy = this.enemies[i];
+      if (enemy.type === this.ENEMY_TYPE_SUN) {
+        continue; // Skip sun for visualization
+      }
 
-    // Force opacity to 1.0 for better visibility
-    this.context.globalAlpha = 1.0;
+      // Display distance with better visibility
+      const dx = this.player.x - enemy.x;
+      const dy = this.player.y - enemy.y;
+      const distanceSquared = dx * dx + dy * dy;
+      const distance = Math.sqrt(distanceSquared);
+      const maxDistanceSquared = Math.pow(
+        this.player.collisionRadius + enemy.collisionRadius,
+        2
+      );
+      const requiredDistance =
+        this.player.collisionRadius + enemy.collisionRadius;
+      const isColliding = distanceSquared <= maxDistanceSquared;
 
-    // Draw player collision circle with higher contrast
-    this.context.beginPath();
-    this.context.arc(a.x, a.y, a.collisionRadius, 0, Math.PI * 2);
-    this.context.lineWidth = 2; // Thicker line
-    this.context.strokeStyle = isColliding
-      ? "rgba(255, 0, 0, 1.0)" // Fully opaque red when colliding
-      : "rgba(0, 255, 0, 1.0)"; // Fully opaque green when not colliding
-    this.context.stroke();
+      if (!(distanceSquared <= maxDistanceSquared * 16)) {
+        continue;
+      }
 
-    // Draw enemy collision circle with higher contrast
-    this.context.beginPath();
-    this.context.arc(b.x, b.y, b.collisionRadius, 0, Math.PI * 2);
-    this.context.lineWidth = 2; // Thicker line
-    this.context.strokeStyle = isColliding
-      ? "rgba(255, 0, 0, 1.0)" // Fully opaque red when colliding
-      : "rgba(0, 100, 255, 1.0)"; // Fully opaque blue when not colliding
-    this.context.stroke();
+      this.context.save();
 
-    // Draw line between centers with higher visibility
-    this.context.beginPath();
-    this.context.moveTo(a.x, a.y);
-    this.context.lineTo(b.x, b.y);
-    this.context.lineWidth = 2; // Thicker line
-    this.context.strokeStyle = isColliding
-      ? "rgba(255, 0, 0, 1.0)" // Fully opaque red when colliding
-      : "rgba(255, 255, 255, 0.8)"; // More visible white when not colliding
-    this.context.stroke();
+      // Draw player collision circle with higher contrast
+      this.context.beginPath();
+      this.context.arc(
+        this.player.x,
+        this.player.y,
+        this.player.collisionRadius,
+        0,
+        Math.PI * 2
+      );
+      this.context.lineWidth = 2; // Thicker line
+      this.context.strokeStyle = isColliding
+        ? "rgba(255, 0, 0, 1.0)" // Fully opaque red when colliding
+        : "rgba(0, 255, 0, 1.0)"; // Fully opaque green when not colliding
+      this.context.stroke();
 
-    // Display distance with better visibility
-    const dx = a.x - b.x;
-    const dy = a.y - b.y;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    const requiredDistance = a.collisionRadius + b.collisionRadius;
+      // Draw enemy collision circle with higher contrast
+      this.context.beginPath();
+      this.context.arc(enemy.x, enemy.y, enemy.collisionRadius, 0, Math.PI * 2);
+      this.context.lineWidth = 2; // Thicker line
+      this.context.strokeStyle = isColliding
+        ? "rgba(255, 0, 0, 1.0)" // Fully opaque red when colliding
+        : "rgba(0, 100, 255, 1.0)"; // Fully opaque blue when not colliding
+      this.context.stroke();
 
-    // Create a more visible background for text
-    const midX = (a.x + b.x) / 2;
-    const midY = (a.y + b.y) / 2 - 15; // Moved up slightly
-    this.context.fillStyle = "rgba(0, 0, 0, 0.8)"; // More opaque background
-    this.context.fillRect(midX - 35, midY - 10, 70, 20); // Larger rectangle
+      // Draw line between centers with higher visibility
+      this.context.beginPath();
+      this.context.moveTo(this.player.x, this.player.y);
+      this.context.lineTo(enemy.x, enemy.y);
+      this.context.lineWidth = 2; // Thicker line
+      this.context.strokeStyle = isColliding
+        ? "rgba(255, 0, 0, 1.0)" // Fully opaque red when colliding
+        : "rgba(255, 255, 255, 0.8)"; // More visible white when not colliding
+      this.context.stroke();
 
-    // Draw text with higher contrast
-    this.context.fillStyle = isColliding
-      ? "rgba(255, 100, 100, 1.0)" // Brighter red for colliding
-      : "rgba(255, 255, 255, 1.0)"; // White for not colliding
-    this.context.font = "bold 12px monospace"; // Bold font
-    this.context.textAlign = "center"; // Center align for cleaner look
-    this.context.fillText(
-      `${Math.round(distance)}/${Math.round(requiredDistance)}`,
-      midX,
-      midY + 4 // Adjusted position
-    );
+      // Create a more visible background for text
+      const midX = (this.player.x + enemy.x) / 2;
+      const midY = (this.player.y + enemy.y) / 2 - 15; // Moved up slightly
+      this.context.fillStyle = "rgba(0, 0, 0, 0.8)"; // More opaque background
+      this.context.fillRect(midX - 35, midY - 10, 70, 20); // Larger rectangle
 
-    // Reset globalAlpha to avoid affecting other rendering
-    this.context.globalAlpha = 1.0;
+      // Draw text with higher contrast
+      this.context.fillStyle = isColliding
+        ? "rgba(255, 100, 100, 1.0)" // Brighter red for colliding
+        : "rgba(255, 255, 255, 1.0)"; // White for not colliding
+      this.context.font = "bold 12px monospace"; // Bold font
+      this.context.textAlign = "center"; // Center align for cleaner look
+      this.context.fillText(
+        `${Math.round(distance)}/${Math.round(requiredDistance)}`,
+        midX,
+        midY + 4 // Adjusted position
+      );
+
+      this.context.restore();
+    }
   }
 
   private createThrustParticle(): void {
@@ -1596,6 +1600,7 @@ class OrbitGame {
     // Add debug info rendering if debugging is enabled
     if (this.debugging) {
       this.renderDebugInfo();
+      this.visualizeCollisions();
     }
   }
 
