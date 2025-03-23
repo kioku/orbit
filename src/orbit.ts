@@ -1052,25 +1052,18 @@ class OrbitGame {
       enemy.alpha += (enemy.alphaTarget - enemy.alpha) * 0.01;
 
       const collision = this.collides(this.player, enemy);
-      if (
-        (enemy.alive &&
-          enemy.time === 100 &&
-          enemy.type === this.ENEMY_TYPE_NORMAL) ||
-        collision
-      ) {
+      if (enemy.alive && enemy.type === this.ENEMY_TYPE_NORMAL && collision) {
         this.enemies.splice(i, 1);
         enemy.alive = false;
 
-        if (collision) {
-          this.player.score++;
-          this.notify(
-            this.player.score.toString(),
-            this.player.x,
-            this.player.y - 10,
-            1,
-            [250, 250, 100]
-          );
-        }
+        this.player.score++;
+        this.notify(
+          this.player.score.toString(),
+          this.player.x,
+          this.player.y - 10,
+          1,
+          [250, 250, 100]
+        );
       }
     }
   }
