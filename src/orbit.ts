@@ -128,9 +128,14 @@ class OrbitGame {
       this.styleSettingsButton();
       this.container.appendChild(this.settingsButton);
 
-      // Add click event listener with passive: false for consistency
+      // Add both click and touch event listeners for settings button
       this.settingsButton.addEventListener(
         "click",
+        this.onSettingsButtonClick.bind(this),
+        { passive: false }
+      );
+      this.settingsButton.addEventListener(
+        "touchstart",
         this.onSettingsButtonClick.bind(this),
         { passive: false }
       );
