@@ -87,7 +87,12 @@ class OrbitGame {
   private gameTimer: number = 60; // Game duration in seconds (default 60s)
   private gameMode: string = "survival"; // Default game mode
   private victoryScore: number = 30; // Score needed to win in score mode
-  private sunDangerRadius: number = 70; // How close to sun is dangerous
+  private get sunDangerRadius(): number {
+    // Base the danger radius on the sun's size and world dimensions
+    const baseSunRadius = this.ENEMY_SIZE * 2; // Sun is twice the size of normal enemies
+    const worldMinDimension = Math.min(this.world.width, this.world.height);
+    return baseSunRadius + worldMinDimension * 0.03;
+  }
 
   constructor() {
     this.canvas = null as any;
