@@ -1579,8 +1579,6 @@ class OrbitGame {
     // Clear canvas
     this.context.clearRect(0, 0, this.world.width, this.world.height);
 
-    this.context.globalCompositeOperation = "lighter";
-
     // Render game elements
     this.renderOrbit();
     this.renderThrustParticles();
