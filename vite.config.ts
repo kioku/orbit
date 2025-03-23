@@ -3,9 +3,6 @@ import vercel from "vite-plugin-vercel";
 
 export default defineConfig({
   plugins: [vercel()],
-  server: {
-    port: 3000,
-  },
   build: {
     sourcemap: true,
   },
