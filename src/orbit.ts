@@ -908,20 +908,25 @@ class OrbitGame {
     const timeScale = this.player.slowTimeActive ? 0.5 : 1;
     const gravityMult = this.player.gravityReversed ? -1 : 1;
 
-    // Reverse both push and gravity when gravity is reversed
-    const pushAcceleration = baseAcceleration * timeScale * gravityMult;
-    const gravityStrength = baseGravity * timeScale * gravityMult;
+    const pushAcceleration = baseAcceleration * timeScale;
+    const gravityStrength = baseGravity * timeScale;
 
-    // Update player's interaction delta with reversed directions
-    this.player.interactionDelta = this.mouse.down
-      ? Math.min(
-          1.5 * gravityMult, // Limit in the appropriate direction
-          this.player.interactionDelta + pushAcceleration * this.timeFactor
-        )
-      : Math.max(
-          -0.8 * gravityMult, // Limit in the appropriate direction
-          this.player.interactionDelta - gravityStrength * this.timeFactor
-        );
+    // Allow pushing in either direction, but gravity is still reversed
+    if (this.mouse.down) {
+      // When pushing, use regular acceleration but keep gravity's direction
+      this.player.interactionDelta = Math.min(
+        1.5,
+        this.player.interactionDelta +
+          pushAcceleration * this.timeFactor * gravityMult
+      );
+    } else {
+      // When not pushing, use reversed gravity
+      this.player.interactionDelta = Math.max(
+        -0.8,
+        this.player.interactionDelta -
+          gravityStrength * this.timeFactor * gravityMult
+      );
+    }
 
     // Apply radius change with minimum/maximum constraints based on container size
     this.player.radius = Math.max(
