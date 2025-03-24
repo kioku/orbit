@@ -900,31 +900,26 @@ class OrbitGame {
     const centerX: number = this.world.width / 2;
     const centerY: number = this.world.height / 2;
 
-    // Calculate maximum safe radius based on container size
-    const maxRadius = Math.min(this.world.width, this.world.height) / 2 - 20; // Leave margin
-    const minRadius = 50; // Minimum safe distance from center
+    const maxRadius = Math.min(this.world.width, this.world.height) / 2 - 20;
+    const minRadius = 50;
 
-    // More intuitive acceleration/deceleration with smoother ramping
-    const baseAcceleration = 0.03; // How quickly you accelerate outward
-    const baseGravity = 0.025; // How strongly gravity pulls inward
-
-    // Slow time affects all movement
+    const baseAcceleration = 0.03;
+    const baseGravity = 0.025;
     const timeScale = this.player.slowTimeActive ? 0.5 : 1;
-
-    // Gravity reversal inverts the pull direction
     const gravityMult = this.player.gravityReversed ? -1 : 1;
 
-    const pushAcceleration = baseAcceleration * timeScale;
+    // Reverse both push and gravity when gravity is reversed
+    const pushAcceleration = baseAcceleration * timeScale * gravityMult;
     const gravityStrength = baseGravity * timeScale * gravityMult;
 
-    // Update player's interaction delta based on input
+    // Update player's interaction delta with reversed directions
     this.player.interactionDelta = this.mouse.down
       ? Math.min(
-          1.5,
+          1.5 * gravityMult, // Limit in the appropriate direction
           this.player.interactionDelta + pushAcceleration * this.timeFactor
         )
       : Math.max(
-          -0.8,
+          -0.8 * gravityMult, // Limit in the appropriate direction
           this.player.interactionDelta - gravityStrength * this.timeFactor
         );
 
@@ -1448,7 +1443,6 @@ class OrbitGame {
   }
 
   private createThrustParticle(): void {
-    // Calculate center of the world
     const centerX: number = this.world.width / 2;
     const centerY: number = this.world.height / 2;
 
@@ -1458,19 +1452,23 @@ class OrbitGame {
       centerX - this.player.x
     );
 
-    // Create 1-3 particles for a more dynamic effect
+    // Reverse the angle if gravity is reversed
+    const particleAngle = this.player.gravityReversed
+      ? towardsCenterAngle + Math.PI // Point away from center
+      : towardsCenterAngle; // Point toward center
+
     const particleCount = 1 + Math.floor(Math.random() * 3);
 
     for (let i = 0; i < particleCount; i++) {
-      const spreadAngle = towardsCenterAngle + (Math.random() - 0.5) * 0.5; // Add some spread
+      const spreadAngle = particleAngle + (Math.random() - 0.5) * 0.5;
       const distance = 15 + Math.random() * 10;
 
       const particle = new ThrustParticle(
         this.player.x + Math.cos(spreadAngle) * distance,
         this.player.y + Math.sin(spreadAngle) * distance,
         spreadAngle,
-        1 + Math.random() * 3, // Size variation
-        0.6 + Math.random() * 0.4 // Lifespan variation
+        1 + Math.random() * 3,
+        0.6 + Math.random() * 0.4
       );
 
       this.thrustParticles.push(particle);
