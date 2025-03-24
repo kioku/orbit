@@ -905,8 +905,17 @@ class OrbitGame {
     const minRadius = 50; // Minimum safe distance from center
 
     // More intuitive acceleration/deceleration with smoother ramping
-    const pushAcceleration = 0.03; // How quickly you accelerate outward
-    const gravityStrength = 0.025; // How strongly gravity pulls inward
+    const baseAcceleration = 0.03; // How quickly you accelerate outward
+    const baseGravity = 0.025; // How strongly gravity pulls inward
+
+    // Slow time affects all movement
+    const timeScale = this.player.slowTimeActive ? 0.5 : 1;
+
+    // Gravity reversal inverts the pull direction
+    const gravityMult = this.player.gravityReversed ? -1 : 1;
+
+    const pushAcceleration = baseAcceleration * timeScale;
+    const gravityStrength = baseGravity * timeScale * gravityMult;
 
     // Update player's interaction delta based on input
     this.player.interactionDelta = this.mouse.down
@@ -1068,14 +1077,30 @@ class OrbitGame {
       enemy.scale += (enemy.scaleTarget - enemy.scale + 0.01) * 0.3;
       enemy.alpha += (enemy.alphaTarget - enemy.alpha) * 0.01;
 
+      // Apply magnet effect if active
+      if (this.player.magnetActive && enemy.type === this.ENEMY_TYPE_NORMAL) {
+        const dx = this.player.x - enemy.x;
+        const dy = this.player.y - enemy.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < 150) {
+          // Magnet range
+          enemy.x += (dx / dist) * 2 * this.timeFactor;
+          enemy.y += (dy / dist) * 2 * this.timeFactor;
+        }
+      }
+
       const collision = this.collides(this.player, enemy);
       if (enemy.alive && enemy.type === this.ENEMY_TYPE_NORMAL && collision) {
         this.enemies.splice(i, 1);
         enemy.alive = false;
 
-        this.player.score++;
+        // Apply score multiplier
+        const points = this.player.scoreMultiplier;
+        this.player.score += points;
+
+        // Show actual points gained
         this.notify(
-          this.player.score.toString(),
+          points > 1 ? `+${points}!` : points.toString(),
           this.player.x,
           this.player.y - 10,
           1,
@@ -1139,6 +1164,15 @@ class OrbitGame {
       this.context.fillStyle = "rgba(220, 50, 50, 0.9)";
       this.context.arc(0, 0, 15, 0, Math.PI * 2);
       this.context.fill();
+    }
+
+    // Draw shield effect if active
+    if (this.player.shielded) {
+      this.context.beginPath();
+      this.context.arc(0, 0, this.player.collisionRadius + 5, 0, Math.PI * 2);
+      this.context.strokeStyle = "rgba(0, 255, 255, 0.6)";
+      this.context.lineWidth = 2;
+      this.context.stroke();
     }
 
     this.context.restore();
@@ -1685,8 +1719,25 @@ class OrbitGame {
 
     // Check for collision with sun (game over)
     if (distToSun < this.sunDangerRadius) {
-      this.endGame(false, "CONSUMED BY THE SUN");
-      return;
+      if (this.player.shielded) {
+        this.player.shielded = false;
+        this.notify(
+          "SHIELD BROKEN!",
+          this.player.x,
+          this.player.y - 20,
+          1.5,
+          [255, 100, 100]
+        );
+
+        // Push player away from sun slightly
+        const angle = Math.atan2(dy, dx);
+        this.player.radius = this.sunDangerRadius + 20;
+        this.player.x = centerX + Math.cos(angle) * this.player.radius;
+        this.player.y = centerY + Math.sin(angle) * this.player.radius;
+      } else {
+        this.endGame(false, "CONSUMED BY THE SUN");
+        return;
+      }
     }
 
     // Check for falling out of bounds (game over)
@@ -1952,6 +2003,7 @@ class Player extends Entity {
   public scoreMultiplier: number = 1;
   public magnetActive: boolean = false;
   public gravityReversed: boolean = false;
+  public slowTimeActive: boolean = false;
 
   constructor(x: number = 200, y: number = 200, radius: number) {
     super();
