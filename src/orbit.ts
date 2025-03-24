@@ -87,6 +87,17 @@ class OrbitGame {
   private gameTimer: number = 60; // Game duration in seconds (default 60s)
   private gameMode: string = "survival"; // Default game mode
   private victoryScore: number = 30; // Score needed to win in score mode
+  private powerUps: PowerUp[] = [];
+  private powerUpTypes = {
+    SHIELD: 1,
+    SCORE_MULTIPLIER: 2,
+    SLOW_TIME: 3,
+    MAGNET: 4,
+    GRAVITY_REVERSE: 5,
+  };
+  private activePowerUps: Map<number, number> = new Map(); // type -> endTime
+  private powerUpSpawnInterval: number = 5000; // 5 seconds
+  private lastPowerUpSpawn: number = 0;
   private get sunDangerRadius(): number {
     // Base the danger radius on the sun's size and world dimensions
     const baseSunRadius = this.ENEMY_SIZE * 2; // Sun is twice the size of normal enemies
@@ -102,6 +113,7 @@ class OrbitGame {
     this.settingsButton = null as any;
     // Still initialize these but don't keep the properties
     this.player = null as any;
+    this.lastPowerUpSpawn = Date.now();
     this.initialize();
   }
 
@@ -1295,9 +1307,9 @@ class OrbitGame {
   /**
    * Improved circle-to-circle collision detection for circular game objects.
    */
-  private collides(a: Player, b: Enemy): boolean {
+  private collides(a: Player, b: Entity): boolean {
     // Skip collision with the central sun - it's a special entity
-    if (b.type === this.ENEMY_TYPE_SUN) {
+    if (b instanceof Enemy && b.type === this.ENEMY_TYPE_SUN) {
       return false; // Sun isn't collectible or collidable
     }
 
@@ -1456,6 +1468,172 @@ class OrbitGame {
     });
   }
 
+  private spawnPowerUp(): void {
+    const now = Date.now();
+    if (now - this.lastPowerUpSpawn < this.powerUpSpawnInterval) return;
+
+    // Calculate spawn position in orbit between min and max radius
+    const minRadius = 100;
+    const maxRadius = Math.min(this.world.width, this.world.height) / 2 - 50;
+    const radius = minRadius + Math.random() * (maxRadius - minRadius);
+    const angle = Math.random() * Math.PI * 2;
+    const centerX = this.world.width / 2;
+    const centerY = this.world.height / 2;
+
+    const powerUp = new PowerUp(
+      centerX + Math.cos(angle) * radius,
+      centerY + Math.sin(angle) * radius,
+      Object.values(this.powerUpTypes)[Math.floor(Math.random() * 5)]
+    );
+
+    this.powerUps.push(powerUp);
+    this.lastPowerUpSpawn = now;
+  }
+
+  private updatePowerUps(): void {
+    const now = Date.now();
+
+    // Update active powerup timers
+    for (const [type, endTime] of this.activePowerUps.entries()) {
+      if (now >= endTime) {
+        this.activePowerUps.delete(type);
+        // Handle powerup end effects
+        this.deactivatePowerUp(type);
+      }
+    }
+
+    // Check collisions with powerups
+    for (let i = this.powerUps.length - 1; i >= 0; i--) {
+      const powerUp = this.powerUps[i];
+      powerUp.update(this.timeFactor);
+
+      if (this.collides(this.player, powerUp)) {
+        this.collectPowerUp(powerUp);
+        this.powerUps.splice(i, 1);
+      }
+    }
+
+    // Spawn new powerups
+    this.spawnPowerUp();
+  }
+
+  private collectPowerUp(powerUp: PowerUp): void {
+    const duration = 10000; // 10 seconds
+    this.activePowerUps.set(powerUp.type, Date.now() + duration);
+
+    switch (powerUp.type) {
+      case this.powerUpTypes.SHIELD:
+        this.player.shielded = true;
+        this.notify(
+          "SHIELD",
+          this.player.x,
+          this.player.y - 20,
+          1,
+          [0, 255, 255]
+        );
+        break;
+      case this.powerUpTypes.SCORE_MULTIPLIER:
+        this.player.scoreMultiplier = 2;
+        this.notify(
+          "2X SCORE",
+          this.player.x,
+          this.player.y - 20,
+          1,
+          [255, 255, 0]
+        );
+        break;
+      case this.powerUpTypes.SLOW_TIME:
+        this.timeFactor *= 0.5;
+        this.notify(
+          "SLOW TIME",
+          this.player.x,
+          this.player.y - 20,
+          1,
+          [0, 255, 0]
+        );
+        break;
+      case this.powerUpTypes.MAGNET:
+        this.player.magnetActive = true;
+        this.notify(
+          "MAGNET",
+          this.player.x,
+          this.player.y - 20,
+          1,
+          [255, 0, 255]
+        );
+        break;
+      case this.powerUpTypes.GRAVITY_REVERSE:
+        this.player.gravityReversed = true;
+        this.notify(
+          "ANTI-GRAVITY",
+          this.player.x,
+          this.player.y - 20,
+          1,
+          [255, 128, 0]
+        );
+        break;
+    }
+  }
+
+  private deactivatePowerUp(type: number): void {
+    switch (type) {
+      case this.powerUpTypes.SHIELD:
+        this.player.shielded = false;
+        break;
+      case this.powerUpTypes.SCORE_MULTIPLIER:
+        this.player.scoreMultiplier = 1;
+        break;
+      case this.powerUpTypes.SLOW_TIME:
+        this.timeFactor *= 2;
+        break;
+      case this.powerUpTypes.MAGNET:
+        this.player.magnetActive = false;
+        break;
+      case this.powerUpTypes.GRAVITY_REVERSE:
+        this.player.gravityReversed = false;
+        break;
+    }
+  }
+
+  private renderPowerUps(): void {
+    this.powerUps.forEach((powerUp) => {
+      this.context.save();
+
+      // Apply fade-in alpha
+      this.context.globalAlpha = powerUp.alpha * 0.8;
+
+      // Apply scale transform
+      this.context.translate(powerUp.x, powerUp.y);
+      this.context.scale(powerUp.scale, powerUp.scale);
+      this.context.rotate(powerUp.rotation);
+
+      // Create outer glow effect
+      this.context.shadowBlur = 20;
+      this.context.shadowColor = powerUp.getColor();
+
+      // Draw the main powerup circle
+      this.context.beginPath();
+      this.context.arc(0, 0, 12, 0, Math.PI * 2);
+      this.context.fillStyle = powerUp.getColor();
+      this.context.fill();
+
+      // Add inner ring for TRON identity disc look
+      this.context.beginPath();
+      this.context.arc(0, 0, 8, 0, Math.PI * 2);
+      this.context.strokeStyle = "rgba(255, 255, 255, 0.9)";
+      this.context.lineWidth = 2;
+      this.context.stroke();
+
+      // Add center dot
+      this.context.beginPath();
+      this.context.arc(0, 0, 3, 0, Math.PI * 2);
+      this.context.fillStyle = "rgba(255, 255, 255, 0.9)";
+      this.context.fill();
+
+      this.context.restore();
+    });
+  }
+
   private update(): void {
     // Get timing info
     const now = Date.now();
@@ -1474,6 +1652,7 @@ class OrbitGame {
 
       this.updatePlayer();
       this.updateEnemies();
+      this.updatePowerUps(); // Add this line
       this.updateThrustParticles();
 
       // Check for end conditions
@@ -1585,6 +1764,7 @@ class OrbitGame {
     this.renderOrbit();
     this.renderThrustParticles();
     this.renderEnemies();
+    this.renderPowerUps(); // Add this line
 
     if (this.player && this.player.alive) {
       this.renderPlayer();
@@ -1768,6 +1948,10 @@ class Player extends Entity {
   public spriteAngle: number = 0;
   public score: number = 0;
   public interactionDelta = -0.1;
+  public shielded: boolean = false;
+  public scoreMultiplier: number = 1;
+  public magnetActive: boolean = false;
+  public gravityReversed: boolean = false;
 
   constructor(x: number = 200, y: number = 200, radius: number) {
     super();
@@ -1930,6 +2114,49 @@ class ThrustParticle {
 
     // Gradually shrink
     this.size = Math.max(0.1, this.size - 0.05 * timeFactor);
+  }
+}
+
+class PowerUp extends Entity {
+  public type: number;
+  public rotation: number = 0;
+  public rotationSpeed: number = Math.random() * 0.1 - 0.05;
+  public alpha: number = 0;
+  public alphaTarget: number = 1;
+  public scale: number = 0.01;
+  public scaleTarget: number = 1;
+  public time: number = 0;
+
+  constructor(x: number, y: number, type: number) {
+    super();
+    this.x = x;
+    this.y = y;
+    this.type = type;
+    this.collisionRadius = 15;
+  }
+
+  public update(timeFactor: number): void {
+    this.rotation += this.rotationSpeed * timeFactor;
+    this.time = Math.min(this.time + 0.2 * timeFactor, 100);
+    this.scale += (this.scaleTarget - this.scale + 0.01) * 0.3;
+    this.alpha += (this.alphaTarget - this.alpha) * 0.01;
+  }
+
+  public getColor(): string {
+    switch (this.type) {
+      case 1: // Shield
+        return "rgba(20, 180, 255, 0.9)"; // Electric blue
+      case 2: // Score multiplier
+        return "rgba(255, 215, 20, 0.9)"; // Golden energy
+      case 3: // Slow time
+        return "rgba(0, 255, 180, 0.9)"; // Cyan green
+      case 4: // Magnet
+        return "rgba(255, 50, 255, 0.9)"; // Magenta energy
+      case 5: // Gravity reverse
+        return "rgba(255, 100, 50, 0.9)"; // Orange energy
+      default:
+        return "rgba(140, 240, 255, 0.9)";
+    }
   }
 }
 
