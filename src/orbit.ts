@@ -1,10 +1,6 @@
 import "./main.css";
 
-/**
- * Intro comment
- * to be done at another time.
- * don't forget to set license and contact info
- */
+// REMOVED Intro comment for brevity in this example
 
 interface Sprites {
   playerSprite: HTMLCanvasElement | null;
@@ -21,69 +17,87 @@ interface World {
   height: number;
 }
 
-interface RegionInterface {
-  left: number;
-  top: number;
-  right: number;
-  bottom: number;
-}
+// REMOVED RegionInterface
 
 class OrbitGame {
-  private FRAMERATE: number = 60;
-  private DEFAULT_WIDTH: number = 600;
-  private DEFAULT_HEIGHT: number = 600;
-  // private TOUCH_INPUT: boolean =
-  // navigator.userAgent.match(/(iPhone|iPad|iPod|Android)/i) !== null;
-  private ENEMY_SIZE: number = 10;
-  // Remove or use the ENEMY_COUNT variable
-  // private ENEMY_COUNT: number = 2;
-  private ENEMY_TYPE_NORMAL: number = 1;
-  private ENEMY_TYPE_SUN: number = 2;
-  private STATE_WELCOME: string = "start";
-  private STATE_PLAYING: string = "playing";
-  // Use these state constants for game end conditions
-  private STATE_LOSER: string = "loser";
-  private STATE_WINNER: string = "winner";
+  // --- Constants ---
+  private readonly FRAMERATE: number = 60;
+  private readonly DEFAULT_WIDTH: number = 600;
+  private readonly DEFAULT_HEIGHT: number = 600;
+  private readonly ENEMY_SIZE: number = 10;
+  private readonly SUN_SIZE_MULTIPLIER: number = 2; // Sun size relative to ENEMY_SIZE
+  private readonly ENEMY_TYPE_NORMAL: number = 1;
+  private readonly ENEMY_TYPE_SUN: number = 2;
+  private readonly STATE_WELCOME: string = "state-welcome"; // Match CSS classes
+  private readonly STATE_PLAYING: string = "state-playing";
+  private readonly STATE_LOSER: string = "state-loser";
+  private readonly STATE_WINNER: string = "state-winner";
+  private readonly PLAYER_START_RADIUS: number = 150;
+  private readonly PLAYER_COLLISION_RADIUS: number = 12;
+  private readonly PLAYER_SPRITE_SCALE: number = 0.5;
+  private readonly PLAYER_BASE_ACCELERATION = 0.03;
+  private readonly PLAYER_BASE_GRAVITY = 0.025;
+  private readonly PLAYER_MAX_INTERACTION_DELTA = 1.5;
+  private readonly PLAYER_MIN_INTERACTION_DELTA = -0.8;
+  private readonly PLAYER_ROTATION_SPEED_FACTOR = 5.5; // Lower is faster linear speed for given radius change rate
+  private readonly PLAYER_MIN_ORBIT_RADIUS = 50;
+  private readonly POWERUP_SPAWN_INTERVAL_MS: number = 5000; // 5 seconds
+  private readonly POWERUP_DURATION_MS: number = 10000; // 10 seconds
+  private readonly POWERUP_MAGNET_RANGE: number = 150;
+  private readonly POWERUP_MAGNET_STRENGTH: number = 2;
+  private readonly SUN_DANGER_RADIUS_FACTOR: number = 0.03; // % of world min dimension added to base radius
+  private readonly ENEMY_SPAWN_CHANCE: number = 0.01; // Replaces 1 - 0.99
+  private readonly ENEMY_MIN_SPAWN_RADIUS_OFFSET: number = 10; // min enemy radius = PLAYER_MIN_ORBIT_RADIUS + offset
+  private readonly ENEMY_MAX_SPAWN_RADIUS_OFFSET: number = 10; // max enemy radius = max player radius - offset
+  private readonly ENEMY_MIN_DISTANCE_FROM_PLAYER: number = 100;
+  private readonly THRUST_PARTICLE_COUNT_MIN = 1;
+  private readonly THRUST_PARTICLE_COUNT_MAX = 3;
+  private readonly THRUST_PARTICLE_SPREAD = 0.5; // Radians
+  private readonly THRUST_PARTICLE_OFFSET_MIN = 15;
+  private readonly THRUST_PARTICLE_OFFSET_MAX = 25;
+
+  // --- Properties ---
   private sprites: Sprites = {
     playerSprite: null,
     enemySun: null,
     enemy: null,
   };
-  // Remove theta if not used
-  // private theta: number = 0;
   private mouse: Mouse = {
     down: false,
   };
-  private canvas: HTMLCanvasElement;
-  private context: CanvasRenderingContext2D;
-  private container: HTMLElement;
-  // Keep references but mark them as potentially used in future
+  private canvas!: HTMLCanvasElement; // Assert non-null after init
+  private context!: CanvasRenderingContext2D; // Assert non-null after init
+  private container!: HTMLElement; // Assert non-null after init
+  private startButton!: HTMLButtonElement; // Assert non-null after init
+  private settingsButton!: HTMLButtonElement; // Assert non-null after init
+
   private playing: boolean = false;
-  private duration: number = 0; // Add back duration property for tracking game time
+  private duration: number = 0; // Game time in seconds
   private frameCount: number = 0;
-  private timeLastFrame: number = Date.now();
-  private timeLastSecond: number = Date.now();
-  private timeGameStart: number = Date.now(); // Now we'll use this for game duration tracking
+  private timeLastFrame: number = 0;
+  private timeLastSecond: number = 0;
+  private timeGameStart: number = 0;
   private timeDelta: number = 0;
-  private timeFactor: number = 0;
+  private timeFactor: number = 1; // Scales physics updates based on frame time delta
   private fps: number = 0;
   private fpsMin: number = 1000;
   private fpsMax: number = 0;
   private framesThisSecond: number = 0;
+
   private enemies: Enemy[] = [];
-  private player: Player;
-  private haveSun: boolean = false;
+  private player!: Player; // Assert non-null after init/reset
+  // private haveSun: boolean = false; // No longer needed
+  private sunEnemy: Enemy | null = null; // Direct reference to the sun
+
   private world: World = {
     width: this.DEFAULT_WIDTH,
     height: this.DEFAULT_HEIGHT,
   };
   private notifications: Notification[] = [];
-  private dirtyRegions: RegionInterface[] = [];
+  // private dirtyRegions: RegionInterface[] = []; // REMOVED
   private thrustParticles: ThrustParticle[] = [];
-  private debugging: boolean = false; // Now we'll add a way to toggle this
-  private startButton: HTMLButtonElement; // Add start button reference
-  private settingsButton: HTMLButtonElement; // Add settings button reference
-  private gameState: string = ""; // Track current game state
+  private debugging: boolean = false;
+  private gameState: string = this.STATE_WELCOME;
   private gameTimer: number = 60; // Game duration in seconds (default 60s)
   private gameMode: string = "survival"; // Default game mode
   private victoryScore: number = 30; // Score needed to win in score mode
@@ -96,23 +110,27 @@ class OrbitGame {
     GRAVITY_REVERSE: 5,
   };
   private activePowerUps: Map<number, number> = new Map(); // type -> endTime
-  private powerUpSpawnInterval: number = 5000; // 5 seconds
   private lastPowerUpSpawn: number = 0;
+
+  // Use getter for dynamic calculation based on world size
+  private get sunBaseRadius(): number {
+    return this.ENEMY_SIZE * this.SUN_SIZE_MULTIPLIER;
+  }
   private get sunDangerRadius(): number {
-    // Base the danger radius on the sun's size and world dimensions
-    const baseSunRadius = this.ENEMY_SIZE * 2; // Sun is twice the size of normal enemies
     const worldMinDimension = Math.min(this.world.width, this.world.height);
-    return baseSunRadius + worldMinDimension * 0.03;
+    return (
+      this.sunBaseRadius + worldMinDimension * this.SUN_DANGER_RADIUS_FACTOR
+    );
+  }
+  private get maxPlayerRadius(): number {
+    // Max radius player can reach without dying (slight buffer)
+    return Math.min(this.world.width, this.world.height) / 2 - 20;
   }
 
   constructor() {
-    this.canvas = null as any;
-    this.context = null as any;
-    this.container = null as any;
-    this.startButton = null as any;
-    this.settingsButton = null as any;
-    // Still initialize these but don't keep the properties
-    this.player = null as any;
+    // Initialize properties that need it before calling methods
+    this.timeLastFrame = Date.now();
+    this.timeLastSecond = Date.now();
     this.lastPowerUpSpawn = Date.now();
     this.initialize();
   }
@@ -121,37 +139,50 @@ class OrbitGame {
     this.container = document.getElementById("game") as HTMLElement;
     this.canvas = document.querySelector("#world") as HTMLCanvasElement;
 
-    if (!(this.canvas && this.canvas.getContext)) {
-      alert("Doesn't seem like you can play this :(");
+    if (!(this.container && this.canvas && this.canvas.getContext)) {
+      alert("Initialization failed: Cannot find required elements.");
+      return; // Stop initialization
     }
 
     this.context = this.canvas.getContext("2d") as CanvasRenderingContext2D;
 
     // Create start button
     this.startButton = document.createElement("button");
-    this.startButton.textContent = "Start Game";
     this.startButton.id = "start-button";
-    this.styleStartButton();
+    this.startButton.classList.add("start-button"); // Add base class
+    //this.startButton.classList.add('start-button--pulsing'); // Add initial animation
     this.container.appendChild(this.startButton);
+    // Text content set in reset/endGame
 
-    // Add click event listener - this will work for mouse clicks
+    // Add click event listener
     this.startButton.addEventListener(
       "click",
-      this.onStartButtonClick.bind(this),
-      { passive: false } // Add passive: false for consistency
+      this.onStartButtonClick.bind(this)
+    );
+    // Add touch listener that also triggers the start button logic
+    this.startButton.addEventListener(
+      "touchend",
+      (e) => {
+        e.preventDefault(); // Prevent potential double-triggering / zooming
+        this.onStartButtonClick(e);
+      },
+      { passive: false }
     );
 
     // Create settings button
     this.settingsButton = document.createElement("button");
     this.settingsButton.id = "settings-button";
-    this.styleSettingsButton();
+    this.settingsButton.classList.add("settings-button"); // Add base class
+    // Optional: Add inner elements for styling via CSS if needed
+    // const innerRing = document.createElement('div');
+    // innerRing.classList.add('settings-button__ring');
+    // this.settingsButton.appendChild(innerRing);
     this.container.appendChild(this.settingsButton);
 
-    // Add both click and touch event listeners for settings button
+    // Add click/touch listeners for settings
     this.settingsButton.addEventListener(
       "click",
-      this.onSettingsButtonClick.bind(this),
-      { passive: false }
+      this.onSettingsButtonClick.bind(this)
     );
     this.settingsButton.addEventListener(
       "touchstart",
@@ -159,13 +190,12 @@ class OrbitGame {
       { passive: false }
     );
 
-    // Add keyboard listener for debugging toggle
+    // --- Event Listeners ---
     document.addEventListener(
       "keydown",
       this.onKeyDownHandler.bind(this),
       false
     );
-
     document.addEventListener(
       "mousedown",
       this.onMouseDownHandler.bind(this),
@@ -175,14 +205,12 @@ class OrbitGame {
       "mousemove",
       this.onMouseMoveHandler.bind(this),
       false
-    );
+    ); // Keep for potential future use
     document.addEventListener(
       "mouseup",
       this.onMouseUpHandler.bind(this),
       false
     );
-
-    // Touch events need to be added to the document instead of canvas for iOS
     document.addEventListener(
       "touchstart",
       this.onTouchStartHandler.bind(this),
@@ -194,636 +222,248 @@ class OrbitGame {
     document.addEventListener("touchend", this.onTouchEndHandler.bind(this), {
       passive: false,
     });
-
     window.addEventListener(
       "resize",
       this.onWindowResizeHandler.bind(this),
       false
     );
 
-    this.onWindowResizeHandler();
+    // --- Initial Setup ---
+    this.onWindowResizeHandler(); // Set initial size
     this.createSprites();
-    document.body.setAttribute("class", this.STATE_WELCOME);
+    this.setGameState(this.STATE_WELCOME); // Set initial state and body class
 
-    // Initialize the game but don't start playing yet
-    this.reset();
-    this.update();
+    this.reset(); // Reset game variables
+    this.update(); // Start the game loop
   }
 
-  private styleStartButton(): void {
-    const button = this.startButton;
+  // REMOVED styleStartButton
+  // REMOVED styleSettingsButton
 
-    // Force clear any existing elements first
-    button.innerHTML = ""; // Clear any existing content
-
-    // Position in center
-    button.style.position = "absolute";
-    button.style.top = "50%";
-    button.style.left = "50%";
-    button.style.transform = "translate(-50%, -50%)";
-
-    // Set visible text content
-    button.textContent = "INITIALIZE";
-
-    // Ensure display is visible
-    button.style.display = "block";
-
-    // TRON-inspired styling with glowing edges and true TRON aesthetic
-    button.style.padding = "15px 40px";
-    button.style.fontSize = "22px";
-    button.style.fontFamily = "'Rajdhani', 'Arial', sans-serif"; // Futuristic font
-    button.style.fontWeight = "300";
-    button.style.letterSpacing = "6px";
-    button.style.textTransform = "uppercase";
-    button.style.backgroundColor = "rgba(0, 10, 20, 0.7)"; // Very dark blue, nearly black
-    button.style.color = "rgba(140, 240, 255, 1)"; // TRON blue
-
-    // Complex border with corner accents - authentic TRON UI design
-    button.style.border = "1px solid rgba(80, 220, 255, 0.8)";
-    button.style.borderRadius = "0"; // TRON interface is sharp-edged
-    button.style.boxShadow =
-      "0 0 15px rgba(80, 220, 255, 0.5), inset 0 0 8px rgba(80, 220, 255, 0.2)";
-    button.style.textShadow = "0 0 8px rgba(140, 240, 255, 0.8)";
-    button.style.cursor = "pointer";
-    button.style.zIndex = "100";
-    button.style.transition = "all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1.0)";
-    button.style.minWidth = "220px";
-    button.style.textAlign = "center";
-    button.style.overflow = "hidden"; // For the before/after effects
-
-    // Create pseudo-elements for geometric accent lines (using JavaScript since we can't use CSS ::before/::after)
-    const createCornerAccent = (
-      size: number,
-      position: string
-    ): HTMLDivElement => {
-      const accent = document.createElement("div");
-      accent.style.position = "absolute";
-      accent.style.width = `${size}px`;
-      accent.style.height = `${size}px`;
-      accent.style.borderTop = position.includes("top")
-        ? "2px solid rgba(80, 220, 255, 0.9)"
-        : "none";
-      accent.style.borderBottom = position.includes("bottom")
-        ? "2px solid rgba(80, 220, 255, 0.9)"
-        : "none";
-      accent.style.borderLeft = position.includes("left")
-        ? "2px solid rgba(80, 220, 255, 0.9)"
-        : "none";
-      accent.style.borderRight = position.includes("right")
-        ? "2px solid rgba(80, 220, 255, 0.9)"
-        : "none";
-
-      // Position the accent
-      if (position.includes("top")) accent.style.top = "-1px";
-      if (position.includes("bottom")) accent.style.bottom = "-1px";
-      if (position.includes("left")) accent.style.left = "-1px";
-      if (position.includes("right")) accent.style.right = "-1px";
-
-      return accent;
-    };
-
-    // Add corner accents - classic TRON UI feature
-    button.appendChild(createCornerAccent(15, "top-left"));
-    button.appendChild(createCornerAccent(15, "top-right"));
-    button.appendChild(createCornerAccent(15, "bottom-left"));
-    button.appendChild(createCornerAccent(15, "bottom-right"));
-
-    // Create background grid effect
-    const gridOverlay = document.createElement("div");
-    gridOverlay.style.position = "absolute";
-    gridOverlay.style.top = "0";
-    gridOverlay.style.left = "0";
-    gridOverlay.style.right = "0";
-    gridOverlay.style.bottom = "0";
-    gridOverlay.style.backgroundImage =
-      "linear-gradient(0deg, rgba(80, 220, 255, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(80, 220, 255, 0.1) 1px, transparent 1px)";
-    gridOverlay.style.backgroundSize = "10px 10px";
-    gridOverlay.style.opacity = "0.4";
-    gridOverlay.style.zIndex = "-1";
-    button.appendChild(gridOverlay);
-
-    // Make responsive for small screens
-    if (window.innerWidth < 450) {
-      button.style.fontSize = "18px";
-      button.style.padding = "12px 30px";
-      button.style.letterSpacing = "4px";
-      button.style.minWidth = "180px";
-    }
-
-    // Create TRON-style pulsing animation with circuit-like glow effect
-    let glowIntensity = 0.5;
-    let increasing = true;
-
-    // Store interval ID so it can be properly cleared
-    const startButtonPulseInterval = setInterval(() => {
-      if (this.playing) {
-        clearInterval(startButtonPulseInterval);
-        return;
-      }
-
-      if (increasing) {
-        glowIntensity += 0.025;
-        if (glowIntensity >= 1) {
-          increasing = false;
-        }
-      } else {
-        glowIntensity -= 0.025;
-        if (glowIntensity <= 0.5) {
-          increasing = true;
-        }
-      }
-
-      const glowColor = `rgba(80, 220, 255, ${0.5 + glowIntensity * 0.3})`;
-      const textGlowColor = `rgba(140, 240, 255, ${0.6 + glowIntensity * 0.4})`;
-
-      button.style.boxShadow = `0 0 ${
-        15 + 10 * glowIntensity
-      }px ${glowColor}, inset 0 0 8px ${glowColor}`;
-      button.style.textShadow = `0 0 ${
-        5 + 5 * glowIntensity
-      }px ${textGlowColor}`;
-      button.style.borderColor = `rgba(80, 220, 255, ${
-        0.7 + glowIntensity * 0.3
-      })`;
-
-      // Update grid overlay for pulse effect
-      gridOverlay.style.opacity = `${0.3 + glowIntensity * 0.2}`;
-    }, 40);
-
-    // Add hover states with TRON light cycle activation feel
-    button.addEventListener("mouseover", () => {
-      button.style.backgroundColor = "rgba(10, 30, 50, 0.8)";
-      button.style.color = "rgba(180, 255, 255, 1)";
-      button.style.boxShadow =
-        "0 0 30px rgba(80, 220, 255, 0.7), inset 0 0 15px rgba(80, 220, 255, 0.4)";
-      button.style.borderColor = "rgba(140, 240, 255, 1)";
-      gridOverlay.style.opacity = "0.6";
-    });
-
-    button.addEventListener("mouseout", () => {
-      button.style.backgroundColor = "rgba(0, 10, 20, 0.7)";
-      button.style.color = "rgba(140, 240, 255, 1)";
-      button.style.borderColor = `rgba(80, 220, 255, ${
-        0.7 + glowIntensity * 0.3
-      })`;
-      gridOverlay.style.opacity = `${0.3 + glowIntensity * 0.2}`;
-
-      // Restore the pulsing effect's current state
-      const glowColor = `rgba(80, 220, 255, ${0.5 + glowIntensity * 0.3})`;
-      button.style.boxShadow = `0 0 ${
-        15 + 10 * glowIntensity
-      }px ${glowColor}, inset 0 0 8px ${glowColor}`;
-    });
-
-    button.addEventListener("mousedown", () => {
-      button.style.transform = "translate(-50%, -48%)"; // Press down effect
-      button.style.boxShadow =
-        "0 0 20px rgba(80, 220, 255, 0.9), inset 0 0 12px rgba(80, 220, 255, 0.6)";
-      button.style.backgroundColor = "rgba(20, 40, 60, 0.9)";
-    });
-
-    button.addEventListener("mouseup", () => {
-      button.style.transform = "translate(-50%, -50%)";
-      button.style.boxShadow =
-        "0 0 30px rgba(80, 220, 255, 0.7), inset 0 0 15px rgba(80, 220, 255, 0.4)";
-      button.style.backgroundColor = "rgba(10, 30, 50, 0.8)";
-    });
-
-    // Touch event handling for mobile devices
-    button.addEventListener(
-      "touchstart",
-      (e) => {
-        e.preventDefault();
-        button.style.transform = "translate(-50%, -48%)";
-        button.style.boxShadow =
-          "0 0 20px rgba(80, 220, 255, 0.9), inset 0 0 12px rgba(80, 220, 255, 0.6)";
-        button.style.backgroundColor = "rgba(20, 40, 60, 0.9)";
-      },
-      { passive: false }
-    );
-
-    button.addEventListener(
-      "touchend",
-      (e) => {
-        e.preventDefault();
-        button.style.transform = "translate(-50%, -50%)";
-        button.style.boxShadow =
-          "0 0 15px rgba(80, 220, 255, 0.5), inset 0 0 8px rgba(80, 220, 255, 0.2)";
-        button.style.backgroundColor = "rgba(0, 10, 20, 0.7)";
-        this.onStartButtonClick(e);
-      },
-      { passive: false }
-    );
-  }
-
-  private styleSettingsButton(): void {
-    const button = this.settingsButton;
-
-    // Clear any existing content
-    button.innerHTML = "";
-
-    // TRON-style minimalist debug control inspired by Identity Disc design
-    const buttonSize = window.innerWidth < 450 ? "60px" : "48px"; // Increased size on mobile
-    const cornerSpacing = window.innerWidth < 450 ? "12px" : "16px";
-
-    // Position in top right corner
-    button.style.position = "absolute";
-    button.style.top = cornerSpacing;
-    button.style.right = cornerSpacing;
-    button.style.zIndex = "9999"; // Ensure it's on top of everything
-
-    // Create circular button with TRON Identity Disc appearance
-    button.style.width = buttonSize;
-    button.style.height = buttonSize;
-    button.style.padding = "0";
-    button.style.display = "flex";
-    button.style.alignItems = "center";
-    button.style.justifyContent = "center";
-    button.style.overflow = "hidden"; // For inner ring effect
-
-    // Modern TRON UI styling - cleaner, more minimal
-    button.style.backgroundColor = "rgba(0, 10, 20, 0.7)";
-    button.style.border = `2px solid ${
-      this.debugging ? "rgba(80, 220, 255, 0.8)" : "rgba(255, 100, 100, 0.8)"
-    }`; // Thicker border for better visibility
-    button.style.borderRadius = "50%"; // Identity Disc is circular
-
-    // Remove text, use only visual design elements for cleaner look
-    button.style.cursor = "pointer";
-    button.style.boxShadow = `0 0 15px ${
-      this.debugging ? "rgba(80, 220, 255, 0.5)" : "rgba(255, 100, 100, 0.5)"
-    }`;
-    button.style.transition = "all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1.0)";
-
-    // Create TRON-style inner ring, like the Identity Disc
-    const innerRing = document.createElement("div");
-    innerRing.style.position = "absolute";
-    innerRing.style.top = "50%";
-    innerRing.style.left = "50%";
-    innerRing.style.transform = "translate(-50%, -50%)";
-    innerRing.style.width = "60%";
-    innerRing.style.height = "60%";
-    innerRing.style.borderRadius = "50%";
-    innerRing.style.border = `2px solid ${
-      this.debugging ? "rgba(80, 220, 255, 0.9)" : "rgba(255, 100, 100, 0.9)"
-    }`; // Thicker border for visibility
-    button.appendChild(innerRing);
-
-    // Add center dot to indicate debug state
-    const centerDot = document.createElement("div");
-    centerDot.style.position = "absolute";
-    centerDot.style.top = "50%";
-    centerDot.style.left = "50%";
-    centerDot.style.transform = "translate(-50%, -50%)";
-    centerDot.style.width = "30%";
-    centerDot.style.height = "30%";
-    centerDot.style.borderRadius = "50%";
-    centerDot.style.backgroundColor = this.debugging
-      ? "rgba(80, 220, 255, 0.9)"
-      : "rgba(255, 100, 100, 0.9)";
-    button.appendChild(centerDot);
-
-    // Setup pulse animation for the debug button
-    let glowIntensity = 0.5;
-    let increasing = true;
-
-    // Store interval ID so it can be properly cleared
-    const settingsButtonPulseInterval = setInterval(() => {
-      if (this.playing) {
-        // Also clear this interval when the game starts
-        clearInterval(settingsButtonPulseInterval);
-        return;
-      }
-
-      if (increasing) {
-        glowIntensity += 0.03;
-        if (glowIntensity >= 1) {
-          increasing = false;
-        }
-      } else {
-        glowIntensity -= 0.03;
-        if (glowIntensity <= 0.5) {
-          increasing = true;
-        }
-      }
-
-      const glowColor = this.debugging
-        ? `rgba(80, 220, 255, ${0.3 + glowIntensity * 0.3})`
-        : `rgba(255, 100, 100, ${0.3 + glowIntensity * 0.3})`;
-
-      button.style.boxShadow = `0 0 ${10 + 8 * glowIntensity}px ${glowColor}`;
-      button.style.borderColor = this.debugging
-        ? `rgba(80, 220, 255, ${0.6 + glowIntensity * 0.3})`
-        : `rgba(255, 100, 100, ${0.6 + glowIntensity * 0.3})`;
-
-      innerRing.style.borderColor = this.debugging
-        ? `rgba(80, 220, 255, ${0.7 + glowIntensity * 0.3})`
-        : `rgba(255, 100, 100, ${0.7 + glowIntensity * 0.3})`;
-    }, 40);
-
-    // Add hover effect with TRON power-up feel
-    button.addEventListener("mouseover", () => {
-      button.style.backgroundColor = "rgba(10, 30, 50, 0.8)";
-      button.style.boxShadow = `0 0 25px ${
-        this.debugging ? "rgba(80, 220, 255, 0.7)" : "rgba(255, 100, 100, 0.7)"
-      }`;
-      innerRing.style.width = "70%";
-      innerRing.style.height = "70%";
-      centerDot.style.width = "35%";
-      centerDot.style.height = "35%";
-    });
-
-    button.addEventListener("mouseout", () => {
-      button.style.backgroundColor = "rgba(0, 10, 20, 0.7)";
-      innerRing.style.width = "60%";
-      innerRing.style.height = "60%";
-      centerDot.style.width = "30%";
-      centerDot.style.height = "30%";
-
-      // Restore pulsing state
-      const glowColor = this.debugging
-        ? `rgba(80, 220, 255, ${0.3 + glowIntensity * 0.3})`
-        : `rgba(255, 100, 100, ${0.3 + glowIntensity * 0.3})`;
-
-      button.style.boxShadow = `0 0 ${10 + 8 * glowIntensity}px ${glowColor}`;
-    });
-
-    // Add press effect that resembles TRON disc activation
-    button.addEventListener("mousedown", () => {
-      button.style.transform = "scale(0.92)";
-      innerRing.style.width = "50%";
-      innerRing.style.height = "50%";
-      button.style.boxShadow = `0 0 15px ${
-        this.debugging ? "rgba(80, 220, 255, 0.9)" : "rgba(255, 100, 100, 0.9)"
-      }`;
-    });
-
-    button.addEventListener("mouseup", () => {
-      button.style.transform = "scale(1)";
-      innerRing.style.width = "70%";
-      innerRing.style.height = "70%";
-      button.style.boxShadow = `0 0 25px ${
-        this.debugging ? "rgba(80, 220, 255, 0.7)" : "rgba(255, 100, 100, 0.7)"
-      }`;
-    });
-
-    // Improved touch handlers for mobile
-    button.addEventListener(
-      "touchstart",
-      (e) => {
-        e.preventDefault();
-        e.stopPropagation(); // Stop event from propagating
-        button.style.transform = "scale(0.92)";
-        innerRing.style.width = "50%";
-        innerRing.style.height = "50%";
-        button.style.boxShadow = `0 0 15px ${
-          this.debugging
-            ? "rgba(80, 220, 255, 0.9)"
-            : "rgba(255, 100, 100, 0.9)"
-        }`;
-      },
-      { passive: false }
-    );
-
-    button.addEventListener(
-      "touchend",
-      (e) => {
-        e.preventDefault();
-        e.stopPropagation(); // Stop event from propagating
-        button.style.transform = "scale(1)";
-
-        // Toggle debug mode
-        this.debugging = !this.debugging;
-
-        // Update button appearance with TRON theme
-        button.style.color = this.debugging
-          ? "rgba(140, 240, 255, 1)"
-          : "rgba(255, 100, 100, 1)";
-        button.style.textShadow = `0 0 6px ${
-          this.debugging
-            ? "rgba(80, 220, 255, 0.7)"
-            : "rgba(255, 100, 100, 0.7)"
-        }`;
-        button.style.borderColor = this.debugging
-          ? "rgba(80, 220, 255, 0.8)"
-          : "rgba(255, 100, 100, 0.8)";
-        button.style.boxShadow = `0 0 15px ${
-          this.debugging
-            ? "rgba(80, 220, 255, 0.5)"
-            : "rgba(255, 100, 100, 0.5)"
-        }`;
-
-        // Update inner ring color
-        innerRing.style.borderColor = this.debugging
-          ? "rgba(80, 220, 255, 0.9)"
-          : "rgba(255, 100, 100, 0.9)";
-
-        // Update center dot color
-        centerDot.style.backgroundColor = this.debugging
-          ? "rgba(80, 220, 255, 0.9)"
-          : "rgba(255, 100, 100, 0.9)";
-
-        console.log(`Debug mode: ${this.debugging ? "ON" : "OFF"}`);
-      },
-      { passive: false }
-    );
+  private setGameState(newState: string): void {
+    this.gameState = newState;
+    document.body.className = newState; // Apply class to body for CSS rules
   }
 
   private onSettingsButtonClick(e: Event): void {
     e.preventDefault();
-    e.stopPropagation(); // Stop event from propagating
+    e.stopPropagation();
 
-    // Toggle debugging state
     this.debugging = !this.debugging;
+    this.settingsButton.classList.toggle(
+      "settings-button--debugging",
+      this.debugging
+    );
 
-    this.styleSettingsButton();
+    console.log(`Debug mode: ${this.debugging ? "ON" : "OFF"}`);
   }
 
   private onKeyDownHandler(e: KeyboardEvent): void {
-    // Press 'R' to restart game after win/loss
+    // Restart game
     if (
       (e.key === "r" || e.key === "R") &&
       (this.gameState === this.STATE_WINNER ||
         this.gameState === this.STATE_LOSER)
     ) {
-      this.reset();
+      // Simulate a click/tap on the start button to restart
       this.onStartButtonClick(new MouseEvent("click"));
     }
 
-    // Press 'M' to toggle game mode when not playing
+    // Toggle game mode (only when not playing)
     if ((e.key === "m" || e.key === "M") && !this.playing) {
       this.gameMode = this.gameMode === "survival" ? "score" : "survival";
-
-      // Show notification about game mode change
-      if (this.gameMode === "survival") {
-        this.notify(
-          "SURVIVAL MODE",
-          this.world.width / 2,
-          this.world.height / 2.5,
-          1.5,
-          [50, 200, 255]
-        );
-      }
-
-      if (this.gameMode === "score") {
-        this.notify(
-          "SCORE MODE",
-          this.world.width / 2,
-          this.world.height / 2.5,
-          1.5,
-          [255, 200, 50]
-        );
-      }
+      this.notifyGameMode();
     }
 
-    // Press 'D' to toggle debugging
+    // Toggle debugging
     if (e.key === "d" || e.key === "D") {
-      this.onSettingsButtonClick(e);
+      this.onSettingsButtonClick(e); // Reuse existing toggle logic
+    }
+  }
+
+  private notifyGameMode(): void {
+    if (this.gameMode === "survival") {
+      this.notify(
+        `SURVIVAL MODE: ${this.gameTimer}s`,
+        this.world.width / 2,
+        this.world.height / 2.5,
+        1.5,
+        [50, 200, 255]
+      );
+    } else {
+      // score mode
+      this.notify(
+        `SCORE MODE: ${this.victoryScore} PTS`,
+        this.world.width / 2,
+        this.world.height / 2.5,
+        1.5,
+        [255, 200, 50] // Different color for score mode notification
+      );
     }
   }
 
   private createSprites(): void {
-    let canvasWidth: number = 64;
-    let canvasHeight: number = 64;
-    let cvs: HTMLCanvasElement;
-    let ctx: CanvasRenderingContext2D;
-    const ENEMY_SIZE = this.ENEMY_SIZE;
-
-    // Enemy Sprite
-    cvs = document.createElement("canvas");
-    canvasWidth = canvasHeight = 48;
-    cvs.setAttribute("width", canvasWidth.toString());
-    cvs.setAttribute("height", canvasHeight.toString());
-    ctx = cvs.getContext("2d") as CanvasRenderingContext2D;
-    ctx.beginPath();
-    ctx.arc(
-      canvasWidth * 0.5,
-      canvasHeight * 0.5,
-      ENEMY_SIZE,
+    // --- Enemy Sprite ---
+    let cvsEnemy = document.createElement("canvas");
+    let ctxEnemy: CanvasRenderingContext2D;
+    const enemySpriteSize = 48; // Use a variable
+    cvsEnemy.width = enemySpriteSize;
+    cvsEnemy.height = enemySpriteSize;
+    ctxEnemy = cvsEnemy.getContext("2d")!;
+    ctxEnemy.beginPath();
+    // Draw centered arc
+    ctxEnemy.arc(
+      enemySpriteSize * 0.5,
+      enemySpriteSize * 0.5,
+      this.ENEMY_SIZE,
       0,
       Math.PI * 2,
       true
     );
-    ctx.lineWidth = 0;
-    ctx.fillStyle = "rgba(0, 200, 220, 0.9)";
-    ctx.shadowColor = "rgba(0, 240, 255, 0.9)";
-    ctx.shadowOffsetX = 0;
-    ctx.shadowOffsetY = 0;
-    ctx.shadowBlur = 20;
-    ctx.fill();
+    ctxEnemy.fillStyle = "rgba(0, 200, 220, 0.9)";
+    ctxEnemy.shadowColor = "rgba(0, 240, 255, 0.9)";
+    ctxEnemy.shadowBlur = 15; // Adjusted blur
+    ctxEnemy.fill();
+    this.sprites.enemy = cvsEnemy;
 
-    this.sprites.enemy = cvs;
+    // --- Player Sprite ---
+    let cvsPlayer = document.createElement("canvas");
+    let ctxPlayer: CanvasRenderingContext2D;
+    const playerSpriteSize = 64; // Use a variable
+    cvsPlayer.width = playerSpriteSize;
+    cvsPlayer.height = playerSpriteSize;
+    ctxPlayer = cvsPlayer.getContext("2d")!;
+    ctxPlayer.translate(playerSpriteSize / 2, playerSpriteSize / 2); // Translate to center for easier drawing
+    ctxPlayer.beginPath();
+    ctxPlayer.fillStyle = "rgba(220, 50, 50, 0.9)";
+    ctxPlayer.shadowColor = "rgba(255,100,100,0.9)";
+    ctxPlayer.shadowBlur = 10;
+    // Draw centered ship shape (adjust coordinates relative to new 0,0 center)
+    const shipLength = 25 * this.PLAYER_SPRITE_SCALE * 2; // Adjust base size if needed
+    const shipWidth = 15 * this.PLAYER_SPRITE_SCALE * 2;
+    ctxPlayer.moveTo(shipLength / 2, 0); // Nose
+    ctxPlayer.lineTo(-shipLength / 2, shipWidth / 2); // Wing back
+    ctxPlayer.lineTo(-shipLength / 3, 0); // Engine middle
+    ctxPlayer.lineTo(-shipLength / 2, -shipWidth / 2); // Other wing back
+    ctxPlayer.closePath();
+    ctxPlayer.fill();
+    ctxPlayer.setTransform(1, 0, 0, 1, 0, 0); // Reset transform
+    this.sprites.playerSprite = cvsPlayer;
 
-    // Player - redefined to have a more centered appearance
-    cvs = document.createElement("canvas");
-    canvasWidth = canvasHeight = 64;
-    cvs.setAttribute("width", canvasWidth.toString());
-    cvs.setAttribute("height", canvasHeight.toString());
-    ctx = cvs.getContext("2d") as CanvasRenderingContext2D;
-
-    // Draw a ship that's more visibly centered
-    ctx.beginPath();
-    ctx.fillStyle = "rgba(220, 50, 50, 0.9)";
-    ctx.moveTo(0, 20);
-    ctx.lineTo(50, 35);
-    ctx.lineTo(0, 50);
-    ctx.lineTo(20, 35);
-    ctx.shadowColor = "rgba(255,100,100,0.9)";
-    ctx.shadowOffsetX = 0;
-    ctx.shadowOffsetY = 0;
-    ctx.shadowBlur = 10;
-    ctx.fill();
-
-    // Optional: Add visual indicator of center point for debugging
-    if (this.debugging) {
-      ctx.fillStyle = "rgba(255,255,0,0.5)";
-      ctx.fillRect(31, 31, 2, 2);
-    }
-
-    this.sprites.playerSprite = cvs;
-
-    // Sun enemy
-    cvs = document.createElement("canvas");
-    canvasWidth = canvasHeight = 64;
-    cvs.setAttribute("width", canvasWidth.toString());
-    cvs.setAttribute("height", canvasHeight.toString());
-    ctx = cvs.getContext("2d") as CanvasRenderingContext2D;
-    ctx.beginPath();
-    ctx.arc(
-      canvasWidth * 0.5,
-      canvasHeight * 0.5,
-      ENEMY_SIZE * 2,
+    // --- Sun Enemy Sprite ---
+    let cvsSun = document.createElement("canvas");
+    let ctxSun: CanvasRenderingContext2D;
+    const sunSpriteSize = 64; // Use a variable
+    cvsSun.width = sunSpriteSize;
+    cvsSun.height = sunSpriteSize;
+    ctxSun = cvsSun.getContext("2d")!;
+    ctxSun.beginPath();
+    // Draw centered arc
+    ctxSun.arc(
+      sunSpriteSize * 0.5,
+      sunSpriteSize * 0.5,
+      this.sunBaseRadius,
       0,
       Math.PI * 2,
       true
     );
-    ctx.fillStyle = "rgba(250, 50, 50, 1)";
-    ctx.shadowColor = "rgba(250, 20, 20, 0.9)";
-    ctx.shadowOffsetX = 0;
-    ctx.shadowOffsetY = 0;
-    ctx.shadowBlur = 20;
-    ctx.fill();
-
-    this.sprites.enemySun = cvs;
+    ctxSun.fillStyle = "rgba(250, 50, 50, 1)";
+    ctxSun.shadowColor = "rgba(250, 20, 20, 0.9)";
+    ctxSun.shadowBlur = 20;
+    ctxSun.fill();
+    this.sprites.enemySun = cvsSun;
   }
 
-  // Uncomment the onStartButtonClick method
   private onStartButtonClick(e: Event): void {
     e.preventDefault();
 
+    // If game ended, reset first before starting
+    if (
+      this.gameState === this.STATE_LOSER ||
+      this.gameState === this.STATE_WINNER
+    ) {
+      this.reset();
+    }
+
+    // Prevent starting if already playing
     if (this.playing) {
       return;
     }
 
-    this.reset();
+    // Reset necessary game state for a fresh start
+    this.resetGameStats(); // Separate reset for stats vs full reset
+
+    // Start the game
     this.player.alive = true;
     this.playing = true;
     this.timeGameStart = Date.now();
-    this.gameState = this.STATE_PLAYING;
-    document.body.setAttribute("class", this.STATE_PLAYING);
+    this.setGameState(this.STATE_PLAYING); // This hides the button via CSS
 
-    if (this.startButton) {
-      this.startButton.style.display = "none";
-    }
-
-    // Show game mode notification at start
-    if (this.gameMode === "survival") {
-      this.notify(
-        `SURVIVE ${this.gameTimer}s`,
-        this.world.width / 2,
-        this.world.height / 2.5,
-        1.5,
-        [50, 200, 255]
-      );
-    }
-
-    if (this.gameMode === "score") {
-      this.notify(
-        `SCORE ${this.victoryScore} TO WIN`,
-        this.world.width / 2,
-        this.world.height / 2.5,
-        1.5,
-        [50, 200, 255]
-      );
-    }
+    // Initial game mode notification
+    this.notifyGameMode();
   }
 
+  // Resets everything for a completely new game session (e.g., after page load or explicit full reset)
   private reset(): void {
     this.enemies = [];
     this.thrustParticles = [];
     this.notifications = [];
-    this.haveSun = false;
+    this.powerUps = [];
+    this.activePowerUps.clear();
+    // this.haveSun = false; // No longer needed
+
+    // Create the player centered
+    this.player = new Player(
+      this.world.width / 2 + this.PLAYER_START_RADIUS, // Start on orbit
+      this.world.height / 2,
+      this.PLAYER_START_RADIUS,
+      this.PLAYER_COLLISION_RADIUS
+    );
+    this.player.angle = 0; // Start at a predictable angle
+
+    // Create the sun reliably
+    this.sunEnemy = new Enemy();
+    this.sunEnemy.type = this.ENEMY_TYPE_SUN;
+    this.sunEnemy.x = this.world.width / 2;
+    this.sunEnemy.y = this.world.height / 2;
+    this.sunEnemy.collisionRadius = this.sunBaseRadius;
+    this.sunEnemy.scale = 1; // Sun starts at full size
+    this.sunEnemy.alpha = 1;
+    this.sunEnemy.scaleTarget = 1;
+    this.sunEnemy.alphaTarget = 1;
+    this.sunEnemy.alive = true; // Sun is always 'alive'
+    this.enemies.push(this.sunEnemy); // Add sun to enemies list
+
+    this.resetGameStats(); // Reset scores, timers etc.
+
+    this.setGameState(this.STATE_WELCOME); // Set initial state
+    this.startButton.textContent = "INITIALIZE"; // Set initial button text
+  }
+
+  // Resets only the elements needed for restarting a round (score, time, player state)
+  private resetGameStats(): void {
     this.playing = false;
     this.duration = 0;
+    this.player.score = 0;
+    this.player.alive = false; // Player starts dead until game starts
+    this.player.shielded = false;
+    this.player.scoreMultiplier = 1;
+    this.player.magnetActive = false;
+    this.player.gravityReversed = false;
+    this.player.slowTimeActive = false; // Reset powerup states
+    this.player.interactionDelta = -0.1; // Reset delta
+    this.player.radius = this.PLAYER_START_RADIUS; // Reset radius
 
-    this.player = new Player(this.world.width / 2, this.world.height / 2, 100);
+    this.powerUps = []; // Clear existing powerups
+    this.activePowerUps.clear();
+    this.lastPowerUpSpawn = Date.now(); // Reset spawn timer
+    this.timeFactor = 1; // Reset time factor
 
-    this.gameState = this.STATE_WELCOME;
-    document.body.setAttribute("class", this.STATE_WELCOME);
-
-    if (this.startButton) {
-      this.startButton.style.display = "block";
-    }
+    // Clear non-persistent notifications (like score popups)
+    this.notifications = this.notifications.filter(() => {
+      // Maybe keep certain notifications? For now, clear all on restart.
+      return false;
+    });
   }
 
   private notify(
@@ -836,117 +476,110 @@ class OrbitGame {
     this.notifications.push(new Notification(text, x, y, scale, rgb));
   }
 
-  private invalidate(
-    x: number,
-    y: number,
-    width: number,
-    height: number
-  ): void {
-    this.dirtyRegions.push({
-      left: x,
-      top: y,
-      right: x + width,
-      bottom: y + height,
-    });
-  }
+  // REMOVED invalidate method
 
-  // Fix event parameter warnings by prefixing with underscore
-  private onMouseDownHandler(_event: MouseEvent): void {
+  // --- Input Handlers ---
+  private onMouseDownHandler(event: MouseEvent): void {
+    // Prevent interaction if clicking on buttons
+    if ((event.target as HTMLElement).closest("button")) return;
     this.mouse.down = true;
   }
 
-  private onMouseMoveHandler(_event: MouseEvent): void {}
+  private onMouseMoveHandler(event: MouseEvent): void {
+    // Can be used for aiming or other features later
+    event.preventDefault();
+  }
 
-  private onMouseUpHandler(_event: MouseEvent): void {
+  private onMouseUpHandler(event: MouseEvent): void {
+    event.preventDefault();
     this.mouse.down = false;
   }
 
-  // Fix touch event handlers for the whole game
   private onTouchStartHandler(event: TouchEvent): void {
-    // Always prevent default to avoid scrolling/zooming
+    // Prevent interaction if touching buttons
+    if ((event.target as HTMLElement).closest("button")) return;
     event.preventDefault();
-
-    // Set mouse down to true on touch start
     this.mouse.down = true;
-
-    // Optional: log for debugging
-    if (this.debugging) {
+    if (this.debugging)
       console.log("Touch start detected, mouse.down =", this.mouse.down);
-    }
   }
 
   private onTouchMoveHandler(event: TouchEvent): void {
-    // Always prevent default to avoid scrolling
-    event.preventDefault();
-
-    // Keep mouse down state during move
-    this.mouse.down = true;
+    // Prevent scrolling during gameplay
+    if (this.playing) {
+      event.preventDefault();
+    }
+    // Ensure mouse.down stays true if touch moves off/on target
+    if (event.touches.length > 0) {
+      this.mouse.down = true;
+    }
   }
 
   private onTouchEndHandler(event: TouchEvent): void {
-    // Always prevent default
-    event.preventDefault();
-
-    // Set mouse down to false on touch end
-    this.mouse.down = false;
-
-    // Optional: log for debugging
-    if (this.debugging) {
-      console.log("Touch end detected, mouse.down =", this.mouse.down);
+    // Only set mouse.down to false if *all* touches are lifted
+    if (event.touches.length === 0) {
+      event.preventDefault(); // Prevent potential click event firing after touchend
+      this.mouse.down = false;
+      if (this.debugging)
+        console.log("Touch end detected, mouse.down =", this.mouse.down);
     }
   }
+
+  // --- Update Logic ---
 
   private updatePlayer(): void {
     const centerX: number = this.world.width / 2;
     const centerY: number = this.world.height / 2;
 
-    const maxRadius = Math.min(this.world.width, this.world.height) / 2 - 20;
-    const minRadius = 50;
-
-    const baseAcceleration = 0.03;
-    const baseGravity = 0.025;
+    // Apply time scale based on slow time power-up
     const timeScale = this.player.slowTimeActive ? 0.5 : 1;
+    const effectiveTimeFactor = this.timeFactor * timeScale;
+
     const gravityMult = this.player.gravityReversed ? -1 : 1;
+    const pushAcceleration =
+      this.PLAYER_BASE_ACCELERATION * effectiveTimeFactor;
+    const gravityStrength = this.PLAYER_BASE_GRAVITY * effectiveTimeFactor;
 
-    const pushAcceleration = baseAcceleration * timeScale;
-    const gravityStrength = baseGravity * timeScale;
-
-    // Allow pushing in either direction, but gravity is still reversed
     if (this.mouse.down) {
-      // When pushing, use regular acceleration but keep gravity's direction
+      // Push outwards (or inwards if reversed)
       this.player.interactionDelta = Math.min(
-        1.5,
-        this.player.interactionDelta +
-          pushAcceleration * this.timeFactor * gravityMult
+        this.PLAYER_MAX_INTERACTION_DELTA,
+        this.player.interactionDelta + pushAcceleration * gravityMult
       );
+      // Add thrust particles only when actively pushing
+      if (this.frameCount % 3 === 0) {
+        // Throttle particle creation
+        this.createThrustParticle();
+      }
     } else {
-      // When not pushing, use reversed gravity
+      // Drift inwards (or outwards if reversed) due to gravity
       this.player.interactionDelta = Math.max(
-        -0.8,
-        this.player.interactionDelta -
-          gravityStrength * this.timeFactor * gravityMult
+        this.PLAYER_MIN_INTERACTION_DELTA,
+        this.player.interactionDelta - gravityStrength * gravityMult
       );
     }
 
-    // Apply radius change with minimum/maximum constraints based on container size
+    // Update radius based on interaction delta
     this.player.radius = Math.max(
-      minRadius,
-      Math.min(maxRadius, this.player.radius + this.player.interactionDelta)
+      this.PLAYER_MIN_ORBIT_RADIUS,
+      Math.min(
+        this.maxPlayerRadius,
+        this.player.radius + this.player.interactionDelta * effectiveTimeFactor
+      ) // Apply time factor here too
     );
 
-    // Calculate rotational velocity inversely proportional to radius
-    // This makes the ship move at a more constant linear speed regardless of radius
-    const baseRotationSpeed = 5.5;
-    const rotationVel: number = baseRotationSpeed / this.player.radius;
+    // Rotational velocity inversely proportional to radius for constant linear speed feel
+    const rotationVel: number =
+      this.PLAYER_ROTATION_SPEED_FACTOR / Math.max(1, this.player.radius); // Avoid division by zero
 
-    // Update angle based on rotational velocity
-    this.player.angle += rotationVel * this.timeFactor;
+    // Update angle
+    this.player.angle += rotationVel * effectiveTimeFactor; // Apply time factor
 
-    // Calculate the player's new position based on the orbit
+    // Calculate position
     this.player.x = centerX + Math.cos(this.player.angle) * this.player.radius;
     this.player.y = centerY + Math.sin(this.player.angle) * this.player.radius;
 
-    // Calculate the tangential and radial components of velocity for proper ship orientation
+    // Calculate velocity components for orientation
     const dx =
       -Math.sin(this.player.angle) * rotationVel * this.player.radius +
       Math.cos(this.player.angle) * this.player.interactionDelta;
@@ -954,285 +587,274 @@ class OrbitGame {
       Math.cos(this.player.angle) * rotationVel * this.player.radius +
       Math.sin(this.player.angle) * this.player.interactionDelta;
 
-    // Set the ship's angle based on its motion direction
+    // Set sprite angle based on motion direction
     this.player.spriteAngle = Math.atan2(dy, dx);
 
-    // Add visual effect for thrust when pushing outward
-    if (this.mouse.down && this.frameCount % 3 === 0) {
-      this.createThrustParticle();
-    }
+    // Apply active power-up effects that modify player state continuously
+    // (Shield, score multiplier, magnet, gravity reverse are handled on collection/expiry/check)
+    this.player.slowTimeActive = this.activePowerUps.has(
+      this.powerUpTypes.SLOW_TIME
+    );
+    this.player.magnetActive = this.activePowerUps.has(
+      this.powerUpTypes.MAGNET
+    );
+    this.player.gravityReversed = this.activePowerUps.has(
+      this.powerUpTypes.GRAVITY_REVERSE
+    );
+    this.player.shielded = this.activePowerUps.has(this.powerUpTypes.SHIELD);
+    this.player.scoreMultiplier = this.activePowerUps.has(
+      this.powerUpTypes.SCORE_MULTIPLIER
+    )
+      ? 2
+      : 1;
   }
 
-  // Add visual indicator for orbit path
   private renderOrbit(): void {
     const centerX: number = this.world.width / 2;
     const centerY: number = this.world.height / 2;
-    const maxRadius = Math.min(this.world.width, this.world.height) / 2 - 20;
 
     this.context.save();
+    this.context.lineWidth = 1; // Thinner lines for orbit paths
 
-    // Draw current orbit path
+    // Current orbit path
     this.context.beginPath();
-    this.context.strokeStyle = "rgba(255, 255, 255, 0.2)";
-    this.context.setLineDash([5, 5]);
+    this.context.strokeStyle = "rgba(255, 255, 255, 0.15)"; // Slightly less visible
+    this.context.setLineDash([4, 4]);
     this.context.arc(centerX, centerY, this.player.radius, 0, Math.PI * 2);
     this.context.stroke();
 
-    // Draw max safe orbit
+    // Max safe orbit
     this.context.beginPath();
-    this.context.strokeStyle = "rgba(255, 255, 255, 0.2)";
-    this.context.setLineDash([2, 8]);
-    this.context.arc(centerX, centerY, maxRadius, 0, Math.PI * 2);
+    this.context.strokeStyle = "rgba(255, 255, 255, 0.1)"; // Even less visible
+    this.context.setLineDash([2, 6]);
+    this.context.arc(centerX, centerY, this.maxPlayerRadius, 0, Math.PI * 2);
     this.context.stroke();
 
-    // Draw danger zone near sun
+    // Danger zone near sun
     this.context.beginPath();
-    this.context.strokeStyle = "rgba(255, 100, 100, 0.3)";
-    this.context.setLineDash([]);
+    this.context.fillStyle = "rgba(255, 100, 100, 0.05)"; // Use a fill for the danger zone area
     this.context.arc(centerX, centerY, this.sunDangerRadius, 0, Math.PI * 2);
+    this.context.fill();
+    this.context.strokeStyle = "rgba(255, 100, 100, 0.25)"; // Keep a faint border
+    this.context.setLineDash([]);
     this.context.stroke();
 
     this.context.restore();
   }
 
   private updateEnemies(): void {
-    let enemy: Enemy;
-    let i: number = this.enemies.length;
+    // --- Sun Update (already handled in reset/positioning) ---
+    // The sun enemy (this.sunEnemy) is static or has minimal updates if needed.
+    // If sun had animations/pulsing, update it here.
+    // this.sunEnemy.update(this.timeFactor); // If Enemy class had an update method
 
-    // Check for sun enemy
-    while (i-- && !this.haveSun) {
-      if (this.enemies[i].type === this.ENEMY_TYPE_SUN) {
-        this.haveSun = true;
-        break;
-      } else {
-        this.haveSun = false;
-      }
-    }
-
-    // Create sun if needed
-    if (!this.haveSun) {
-      enemy = new Enemy();
-      enemy.type = this.ENEMY_TYPE_SUN;
-      enemy.x = this.world.width / 2;
-      enemy.y = this.world.height / 2;
-      enemy.collisionRadius = this.ENEMY_SIZE * 2;
-      enemy.scale = 1;
-      enemy.alpha = 1;
-      enemy.scaleTarget = 1;
-      enemy.alphaTarget = 1;
-      this.enemies.push(enemy);
-    }
-
-    // Spawn new enemies with improved placement logic
+    // --- Spawn New Enemies ---
     const centerX = this.world.width / 2;
     const centerY = this.world.height / 2;
+    const minSpawnRadius =
+      this.PLAYER_MIN_ORBIT_RADIUS + this.ENEMY_MIN_SPAWN_RADIUS_OFFSET;
+    const maxSpawnRadius =
+      this.maxPlayerRadius - this.ENEMY_MAX_SPAWN_RADIUS_OFFSET;
 
-    // Calculate spawn boundaries based on player's orbital constraints
-    const minRadius = 60; // Minimum safe distance from center (slightly more than player minimum)
-    const maxRadius = Math.min(this.world.width, this.world.height) / 2 - 30; // Maximum safe distance (less than player max)
-
-    // Randomly spawn enemies
-    while (Math.random() > 0.99) {
-      enemy = new Enemy();
+    if (Math.random() < this.ENEMY_SPAWN_CHANCE) {
+      // Use spawn chance constant
+      let enemy = new Enemy();
       enemy.alive = true;
       enemy.type = this.ENEMY_TYPE_NORMAL;
 
-      // Update enemy spawn logic to spawn within the orbital range
-      const minDistanceFromPlayer = 100; // Minimum distance from player
       let validPosition = false;
       let attempts = 0;
+      const maxAttempts = 10;
 
-      while (!validPosition && attempts < 10) {
-        // Choose a random radius between min and max
-        const spawnRadius = minRadius + Math.random() * (maxRadius - minRadius);
-
-        // Choose a random angle
+      while (!validPosition && attempts < maxAttempts) {
+        const spawnRadius =
+          minSpawnRadius + Math.random() * (maxSpawnRadius - minSpawnRadius);
         const spawnAngle = Math.random() * Math.PI * 2;
-
-        // Calculate position based on radius and angle
         enemy.x = centerX + Math.cos(spawnAngle) * spawnRadius;
         enemy.y = centerY + Math.sin(spawnAngle) * spawnRadius;
 
-        // Check distance from player to avoid spawning too close
         const dx = enemy.x - this.player.x;
         const dy = enemy.y - this.player.y;
-        const distSquared = dx * dx + dy * dy;
+        const distSq = dx * dx + dy * dy;
 
-        if (distSquared > minDistanceFromPlayer * minDistanceFromPlayer) {
+        if (
+          distSq >
+          this.ENEMY_MIN_DISTANCE_FROM_PLAYER *
+            this.ENEMY_MIN_DISTANCE_FROM_PLAYER
+        ) {
           validPosition = true;
         }
-
         attempts++;
       }
 
-      enemy.collisionRadius = this.ENEMY_SIZE;
-      this.enemies.push(enemy);
+      // Only add if a valid position was found
+      if (validPosition) {
+        enemy.collisionRadius = this.ENEMY_SIZE;
+        this.enemies.push(enemy);
+      }
     }
 
-    // Update existing enemies
-    i = this.enemies.length;
-    while (i--) {
-      enemy = this.enemies[i];
-      enemy.time = Math.min(enemy.time + 0.2 * this.timeFactor, 100);
-      enemy.scale += (enemy.scaleTarget - enemy.scale + 0.01) * 0.3;
-      enemy.alpha += (enemy.alphaTarget - enemy.alpha) * 0.01;
+    // --- Update Existing Enemies ---
+    for (let i = this.enemies.length - 1; i >= 0; i--) {
+      // Iterate downwards for safe removal
+      const enemy = this.enemies[i];
 
-      // Apply magnet effect if active
-      if (this.player.magnetActive && enemy.type === this.ENEMY_TYPE_NORMAL) {
+      // Skip the sun for most updates/checks
+      if (enemy.type === this.ENEMY_TYPE_SUN) continue;
+
+      // Update enemy animation/state (scale, alpha)
+      enemy.time = Math.min(enemy.time + 0.2 * this.timeFactor, 100); // Cap time value
+      enemy.scale += (enemy.scaleTarget - enemy.scale) * 0.3 * this.timeFactor; // Use timeFactor
+      enemy.alpha += (enemy.alphaTarget - enemy.alpha) * 0.1 * this.timeFactor; // Use timeFactor
+
+      // Apply magnet effect
+      if (this.player.magnetActive) {
         const dx = this.player.x - enemy.x;
         const dy = this.player.y - enemy.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist < 150) {
-          // Magnet range
-          enemy.x += (dx / dist) * 2 * this.timeFactor;
-          enemy.y += (dy / dist) * 2 * this.timeFactor;
+        const distSq = dx * dx + dy * dy;
+
+        if (distSq < this.POWERUP_MAGNET_RANGE * this.POWERUP_MAGNET_RANGE) {
+          const dist = Math.sqrt(distSq);
+          if (dist > 1) {
+            // Avoid division by zero if already on top
+            const moveX =
+              (dx / dist) * this.POWERUP_MAGNET_STRENGTH * this.timeFactor;
+            const moveY =
+              (dy / dist) * this.POWERUP_MAGNET_STRENGTH * this.timeFactor;
+            enemy.x += moveX;
+            enemy.y += moveY;
+          }
         }
       }
 
-      const collision = this.collides(this.player, enemy);
-      if (enemy.alive && enemy.type === this.ENEMY_TYPE_NORMAL && collision) {
-        this.enemies.splice(i, 1);
+      // Check collision with player
+      if (enemy.alive && this.collides(this.player, enemy)) {
+        this.enemies.splice(i, 1); // Remove enemy
         enemy.alive = false;
 
-        // Apply score multiplier
-        const points = this.player.scoreMultiplier;
+        const points = this.player.scoreMultiplier; // Use multiplier
         this.player.score += points;
 
-        // Show actual points gained
         this.notify(
-          points > 1 ? `+${points}!` : points.toString(),
-          this.player.x,
-          this.player.y - 10,
+          points > 1 ? `+${points}!` : `+${points}`, // Always show + sign
+          enemy.x, // Notify at enemy location
+          enemy.y,
           1,
           [250, 250, 100]
         );
       }
+      // Add logic here for enemies dying on their own, hitting walls, etc. if needed
+      // E.g., if (enemy.alpha <= 0) { this.enemies.splice(i, 1); }
     }
   }
 
   private renderPlayer(): void {
-    const bounds: Region = new Region();
-    const sprite: HTMLCanvasElement | null = this.sprites.playerSprite;
-
-    if (!sprite) {
-      console.error("Player sprite is null");
-      return;
+    const sprite = this.sprites.playerSprite;
+    if (!sprite || !this.player || !this.player.alive) {
+      return; // Don't render if sprite missing or player dead/not initialized
     }
 
-    this.player.width = sprite.width / 4;
-    this.player.height = sprite.height / 4;
-
-    // Update collision radius to match visual representation better
-    this.player.collisionRadius = 12;
-
-    // Draw player sprite - modified for better mobile compatibility
     this.context.save();
-
     try {
-      // First translate to the player's position
+      // Keep try-finally for restore, but error handling might be less needed now
       this.context.translate(
         Math.round(this.player.x),
         Math.round(this.player.y)
       );
-
-      // Apply scaling - using a scale that works well on all devices
-      const scaleFactor = 0.5;
-      this.context.scale(scaleFactor, scaleFactor);
-
-      // Rotate for direction
+      this.context.scale(this.PLAYER_SPRITE_SCALE, this.PLAYER_SPRITE_SCALE);
       this.context.rotate(this.player.spriteAngle);
 
-      // Center the sprite - use half of sprite dimensions for centering
+      // Offset to draw the sprite centered around the player's x/y
       const offsetX = sprite.width / 2;
       const offsetY = sprite.height / 2;
-      this.context.translate(-offsetX, -offsetY);
+      this.context.drawImage(
+        sprite,
+        -offsetX,
+        -offsetY,
+        sprite.width,
+        sprite.height
+      );
 
-      // Draw the sprite
-      this.context.drawImage(sprite, 0, 0, sprite.width, sprite.height);
-
-      if (this.debugging) {
-        // Draw indicator for sprite center in local coordinates
-        this.context.fillStyle = "rgba(0,255,255,0.9)";
-        this.context.fillRect(offsetX, offsetY, 5, 5);
+      // Draw shield effect if active - relative to player center (0,0 in translated space)
+      if (this.player.shielded) {
+        this.context.beginPath();
+        // Scale radius appropriately based on sprite scale
+        const shieldRadius =
+          (this.player.collisionRadius + 5) / this.PLAYER_SPRITE_SCALE;
+        this.context.arc(0, 0, shieldRadius, 0, Math.PI * 2);
+        this.context.strokeStyle = "rgba(0, 255, 255, 0.7)";
+        this.context.lineWidth = 3 / this.PLAYER_SPRITE_SCALE; // Maintain visual thickness
+        this.context.stroke();
       }
-    } catch (e) {
-      // If there's an error in the rendering process, try a simplified approach
-      console.error("Error rendering player sprite:", e);
 
-      // Fallback rendering if the normal method fails
-      this.context.beginPath();
-      this.context.fillStyle = "rgba(220, 50, 50, 0.9)";
-      this.context.arc(0, 0, 15, 0, Math.PI * 2);
-      this.context.fill();
+      // Debug: Draw center point
+      if (this.debugging) {
+        this.context.fillStyle = "yellow";
+        this.context.fillRect(
+          -1 / this.PLAYER_SPRITE_SCALE,
+          -1 / this.PLAYER_SPRITE_SCALE,
+          2 / this.PLAYER_SPRITE_SCALE,
+          2 / this.PLAYER_SPRITE_SCALE
+        );
+      }
+    } finally {
+      this.context.restore();
     }
 
-    // Draw shield effect if active
-    if (this.player.shielded) {
-      this.context.beginPath();
-      this.context.arc(0, 0, this.player.collisionRadius + 5, 0, Math.PI * 2);
-      this.context.strokeStyle = "rgba(0, 255, 255, 0.6)";
-      this.context.lineWidth = 2;
-      this.context.stroke();
-    }
-
-    this.context.restore();
-
-    bounds.inflate(this.player.x, this.player.y);
-    bounds.expand(4, 4);
-
-    const boundsRect = bounds.toRectangle();
-    this.invalidate(
-      boundsRect.x,
-      boundsRect.y,
-      boundsRect.width,
-      boundsRect.height
-    );
+    // REMOVED invalidate call
   }
 
   private renderEnemies(): void {
-    let i: number = this.enemies.length;
+    for (const enemy of this.enemies) {
+      // Use for...of for slightly cleaner iteration
+      if (!enemy.alive && enemy.type !== this.ENEMY_TYPE_SUN) continue; // Skip dead normal enemies
 
-    while (i--) {
-      const enemy: Enemy = this.enemies[i];
-      const sprite: HTMLCanvasElement | null =
+      const sprite =
         enemy.type === this.ENEMY_TYPE_NORMAL
           ? this.sprites.enemy
           : this.sprites.enemySun;
-
       if (!sprite) continue;
 
-      enemy.width = sprite.width;
-      enemy.height = sprite.height;
+      // Use enemy's current scale and alpha
+      const currentScale = enemy.scale;
+      const currentAlpha = enemy.alpha;
 
       this.context.save();
-      this.context.globalAlpha = enemy.alpha;
+      this.context.globalAlpha = currentAlpha;
       this.context.translate(Math.round(enemy.x), Math.round(enemy.y));
+      this.context.scale(currentScale, currentScale); // Apply enemy scale
 
-      this.context.drawImage(
-        sprite,
-        -Math.round(sprite.width / 2),
-        -Math.round(sprite.height / 2)
-      );
+      const offsetX = sprite.width / 2;
+      const offsetY = sprite.height / 2;
 
-      // Debug visualization for enemies
+      this.context.drawImage(sprite, -offsetX, -offsetY);
+
+      // Debug visualization
       if (this.debugging) {
-        // Draw a circle showing the enemy's collision boundary
         this.context.beginPath();
-        this.context.arc(0, 0, enemy.collisionRadius, 0, Math.PI * 2);
+        // Scale the collision radius visualization correctly
+        this.context.arc(
+          0,
+          0,
+          enemy.collisionRadius / currentScale,
+          0,
+          Math.PI * 2
+        );
         this.context.strokeStyle =
           enemy.type === this.ENEMY_TYPE_SUN
-            ? "rgba(255,100,100,0.5)"
-            : "rgba(100,255,255,0.5)";
-        this.context.lineWidth = 1;
+            ? "rgba(255,100,100,0.7)"
+            : "rgba(100,255,255,0.7)";
+        this.context.lineWidth = 1 / currentScale; // Adjust line width based on scale
         this.context.stroke();
 
-        // Draw crosshair at center for clarity
+        // Draw crosshair (scale line width and size)
+        const crosshairSize = 5 / currentScale;
         this.context.beginPath();
-        this.context.moveTo(-5, 0);
-        this.context.lineTo(5, 0);
-        this.context.moveTo(0, -5);
-        this.context.lineTo(0, 5);
-        this.context.strokeStyle = "rgba(255,255,255,0.5)";
+        this.context.moveTo(-crosshairSize, 0);
+        this.context.lineTo(crosshairSize, 0);
+        this.context.moveTo(0, -crosshairSize);
+        this.context.lineTo(0, crosshairSize);
+        this.context.strokeStyle = "rgba(255,255,255,0.7)";
         this.context.stroke();
       }
 
@@ -1241,157 +863,110 @@ class OrbitGame {
   }
 
   private renderNotifications(): void {
-    let i: number = this.notifications.length;
+    for (let i = this.notifications.length - 1; i >= 0; i--) {
+      // Iterate backwards for removal
+      const p = this.notifications[i];
 
-    while (i--) {
-      const p: Notification = this.notifications[i];
-      p.y -= 0.4;
+      p.y -= 0.4 * this.timeFactor; // Make movement frame-rate independent
+      p.alpha -= 0.015 * this.timeFactor; // Make fade frame-rate independent (adjust rate as needed)
 
-      const r: number = 14 * p.scale;
-
-      this.context.save();
-      this.context.font = `bold ${Math.round(12 * p.scale)}px Arial`;
-      this.context.beginPath();
-      this.context.fillStyle = `rgba(0,0,0,${0.7 * p.alpha})`;
-      this.context.arc(p.x, p.y, r, 0, Math.PI * 2, true);
-      this.context.fill();
-
-      this.context.fillStyle = `rgba( ${p.rgb[0]}, ${p.rgb[1]}, ${p.rgb[2]}, ${p.alpha} )`;
-      this.context.fillText(
-        p.text,
-        p.x - this.context.measureText(p.text).width * 0.5,
-        p.y + (4 + p.scale)
-      );
-      this.context.restore();
-
-      p.alpha *= 1 - 0.08 * (1 - (p.alpha - 0.08) / 1);
-
-      if (p.alpha < 0.05) {
+      if (p.alpha <= 0) {
         this.notifications.splice(i, 1);
-      }
-    }
-  }
-
-  private onWindowResizeHandler(): void {
-    // Get the smallest dimension of the viewport
-    const minDimension = Math.min(window.innerWidth, window.innerHeight);
-
-    // Apply a small margin to ensure it's not flush against the edge on small screens
-    const margin = 8;
-    const effectiveSize = minDimension - margin * 2;
-
-    // Set both width and height to this dimension to create a square
-    this.world.width = effectiveSize;
-    this.world.height = effectiveSize;
-
-    // Set container size
-    this.container.style.width = `${effectiveSize}px`;
-    this.container.style.height = `${effectiveSize}px`;
-
-    // Set canvas size
-    this.canvas.width = effectiveSize;
-    this.canvas.height = effectiveSize;
-
-    // Add a background color to the container to make it more visible
-    this.container.style.backgroundColor = "rgba(0, 0, 0, 0.3)";
-
-    // Ensure the container has proper box-sizing
-    this.container.style.boxSizing = "border-box";
-
-    // Update start button position if it exists
-    if (this.startButton) {
-      // Center the button
-      this.startButton.style.top = "50%";
-      this.startButton.style.left = "50%";
-    }
-
-    // Update settings button position to stay in top left
-    if (this.settingsButton) {
-      this.settingsButton.style.top = "10px";
-      this.settingsButton.style.right = "10px"; // Changed from right to left
-    }
-
-    // Update sun position if it exists
-    this.updateSunPosition();
-
-    // Update button styles on resize to ensure responsiveness
-    if (this.startButton) {
-      this.styleStartButton();
-    }
-
-    if (this.settingsButton) {
-      this.styleSettingsButton();
-    }
-  }
-
-  // Add a new method to update the sun position when needed
-  private updateSunPosition(): void {
-    // Find the sun enemy and update its position if it exists
-    const index = this.enemies.findIndex(
-      (enemy) => enemy.type === this.ENEMY_TYPE_SUN
-    );
-    if (index == -1) {
-      return; // Sun doesn't exist
-    }
-    // Make sure sun is exactly at center of the world
-    this.enemies[index].x = this.world.width / 2;
-    this.enemies[index].y = this.world.height / 2;
-  }
-
-  /**
-   * Improved circle-to-circle collision detection for circular game objects.
-   */
-  private collides(a: Player, b: Entity): boolean {
-    // Skip collision with the central sun - it's a special entity
-    if (b instanceof Enemy && b.type === this.ENEMY_TYPE_SUN) {
-      return false; // Sun isn't collectible or collidable
-    }
-
-    // Define collision radii sum
-    const maxDistance = a.collisionRadius + b.collisionRadius;
-
-    // Calculate the actual distance between centers
-    const dx = a.x - b.x;
-    const dy = a.y - b.y;
-    const distanceSquared = dx * dx + dy * dy;
-
-    // Collision occurs when distance is less than or equal to sum of radii
-    const maxDistanceSquared = maxDistance * maxDistance;
-    const isColliding = distanceSquared <= maxDistanceSquared;
-
-    return isColliding;
-  }
-
-  /**
-   * Enhanced visualization for collision boundaries - fixed to ensure visibility
-   */
-  private visualizeCollisions(): void {
-    for (let i = 0; i < this.enemies.length; i++) {
-      const enemy = this.enemies[i];
-      if (enemy.type === this.ENEMY_TYPE_SUN) {
-        continue; // Skip sun for visualization
-      }
-
-      // Display distance with better visibility
-      const dx = this.player.x - enemy.x;
-      const dy = this.player.y - enemy.y;
-      const distanceSquared = dx * dx + dy * dy;
-      const distance = Math.sqrt(distanceSquared);
-      const maxDistanceSquared = Math.pow(
-        this.player.collisionRadius + enemy.collisionRadius,
-        2
-      );
-      const requiredDistance =
-        this.player.collisionRadius + enemy.collisionRadius;
-      const isColliding = distanceSquared <= maxDistanceSquared;
-
-      if (!(distanceSquared <= maxDistanceSquared * 16)) {
         continue;
       }
 
       this.context.save();
+      this.context.globalAlpha = p.alpha; // Use particle's alpha
 
-      // Draw player collision circle with higher contrast
+      // Optional: Background circle (consider performance)
+      // const r: number = 14 * p.scale;
+      // this.context.beginPath();
+      // this.context.fillStyle = `rgba(0,0,0,${0.5 * p.alpha})`; // Less opaque background
+      // this.context.arc(p.x, p.y, r, 0, Math.PI * 2, true);
+      // this.context.fill();
+
+      // Text rendering
+      this.context.font = `bold ${Math.round(12 * p.scale)}px Rajdhani, Arial`; // Use game font
+      this.context.textAlign = "center"; // Center text
+      this.context.fillStyle = `rgba( ${p.rgb[0]}, ${p.rgb[1]}, ${p.rgb[2]}, ${p.alpha} )`; // Use particle alpha here too
+      this.context.shadowColor = "rgba(0, 0, 0, 0.7)"; // Text shadow for readability
+      this.context.shadowBlur = 3;
+      this.context.shadowOffsetX = 1;
+      this.context.shadowOffsetY = 1;
+      this.context.fillText(p.text, p.x, p.y + 4 * p.scale); // Adjust vertical alignment
+
+      this.context.restore();
+    }
+  }
+
+  private onWindowResizeHandler(): void {
+    const margin = 8;
+    // Calculate size based on smallest dimension to maintain square
+    const minDimension = Math.min(window.innerWidth, window.innerHeight);
+    const effectiveSize = Math.max(100, minDimension - margin * 2); // Ensure a minimum size
+
+    this.world.width = effectiveSize;
+    this.world.height = effectiveSize;
+
+    // Update container and canvas size
+    this.container.style.width = `${effectiveSize}px`;
+    this.container.style.height = `${effectiveSize}px`;
+    this.canvas.width = effectiveSize;
+    this.canvas.height = effectiveSize;
+
+    // Re-center the sun if it exists
+    this.updateSunPosition();
+
+    // Buttons position themselves via CSS (absolute, top/left/transform)
+    // No need to call styling functions here anymore.
+  }
+
+  // Ensure sun is always centered after resize or initialization
+  private updateSunPosition(): void {
+    if (this.sunEnemy) {
+      this.sunEnemy.x = this.world.width / 2;
+      this.sunEnemy.y = this.world.height / 2;
+    }
+  }
+
+  private collides(a: Entity, b: Entity): boolean {
+    // Basic circle collision check
+    const dx = a.x - b.x;
+    const dy = a.y - b.y;
+    const distanceSq = dx * dx + dy * dy;
+    const radiiSum = a.collisionRadius + b.collisionRadius;
+    const radiiSumSq = radiiSum * radiiSum;
+
+    return distanceSq <= radiiSumSq;
+  }
+
+  private visualizeCollisions(): void {
+    if (!this.player) return;
+
+    for (const enemy of this.enemies) {
+      if (enemy.type === this.ENEMY_TYPE_SUN) continue; // Don't visualize sun collision boundary this way
+
+      const dx = this.player.x - enemy.x;
+      const dy = this.player.y - enemy.y;
+      const distanceSq = dx * dx + dy * dy;
+      const requiredDistance =
+        this.player.collisionRadius + enemy.collisionRadius;
+      const isColliding = distanceSq <= requiredDistance * requiredDistance;
+
+      // Only draw visualization for enemies relatively close
+      if (distanceSq > requiredDistance * 4 * (requiredDistance * 4)) {
+        // Check if within 4x collision distance
+        continue;
+      }
+
+      const distance = Math.sqrt(distanceSq);
+
+      this.context.save();
+      const collisionColor = "rgba(255, 0, 0, 1.0)";
+      const safeColor = "rgba(0, 255, 0, 0.8)";
+      const enemySafeColor = "rgba(0, 150, 255, 0.8)";
+
+      // Player collision circle
       this.context.beginPath();
       this.context.arc(
         this.player.x,
@@ -1400,47 +975,41 @@ class OrbitGame {
         0,
         Math.PI * 2
       );
-      this.context.lineWidth = 2; // Thicker line
-      this.context.strokeStyle = isColliding
-        ? "rgba(255, 0, 0, 1.0)" // Fully opaque red when colliding
-        : "rgba(0, 255, 0, 1.0)"; // Fully opaque green when not colliding
+      this.context.strokeStyle = isColliding ? collisionColor : safeColor;
+      this.context.lineWidth = 1.5;
       this.context.stroke();
 
-      // Draw enemy collision circle with higher contrast
+      // Enemy collision circle
       this.context.beginPath();
       this.context.arc(enemy.x, enemy.y, enemy.collisionRadius, 0, Math.PI * 2);
-      this.context.lineWidth = 2; // Thicker line
-      this.context.strokeStyle = isColliding
-        ? "rgba(255, 0, 0, 1.0)" // Fully opaque red when colliding
-        : "rgba(0, 100, 255, 1.0)"; // Fully opaque blue when not colliding
+      this.context.strokeStyle = isColliding ? collisionColor : enemySafeColor;
+      this.context.lineWidth = 1.5;
       this.context.stroke();
 
-      // Draw line between centers with higher visibility
+      // Line between centers
       this.context.beginPath();
       this.context.moveTo(this.player.x, this.player.y);
       this.context.lineTo(enemy.x, enemy.y);
-      this.context.lineWidth = 2; // Thicker line
       this.context.strokeStyle = isColliding
-        ? "rgba(255, 0, 0, 1.0)" // Fully opaque red when colliding
-        : "rgba(255, 255, 255, 0.8)"; // More visible white when not colliding
+        ? collisionColor
+        : "rgba(255, 255, 255, 0.6)";
+      this.context.lineWidth = 1;
       this.context.stroke();
 
-      // Create a more visible background for text
+      // Distance text
       const midX = (this.player.x + enemy.x) / 2;
-      const midY = (this.player.y + enemy.y) / 2 - 15; // Moved up slightly
-      this.context.fillStyle = "rgba(0, 0, 0, 0.8)"; // More opaque background
-      this.context.fillRect(midX - 35, midY - 10, 70, 20); // Larger rectangle
-
-      // Draw text with higher contrast
+      const midY = (this.player.y + enemy.y) / 2 - 10; // Position above line
+      this.context.fillStyle = "rgba(0, 0, 0, 0.7)"; // Text background
+      this.context.fillRect(midX - 35, midY - 10, 70, 18);
       this.context.fillStyle = isColliding
-        ? "rgba(255, 100, 100, 1.0)" // Brighter red for colliding
-        : "rgba(255, 255, 255, 1.0)"; // White for not colliding
-      this.context.font = "bold 12px monospace"; // Bold font
-      this.context.textAlign = "center"; // Center align for cleaner look
+        ? "rgba(255, 150, 150, 1.0)"
+        : "rgba(255, 255, 255, 1.0)";
+      this.context.font = "bold 11px monospace";
+      this.context.textAlign = "center";
       this.context.fillText(
-        `${Math.round(distance)}/${Math.round(requiredDistance)}`,
+        `${distance.toFixed(0)}/${requiredDistance.toFixed(0)}`,
         midX,
-        midY + 4 // Adjusted position
+        midY + 3
       );
 
       this.context.restore();
@@ -1448,79 +1017,98 @@ class OrbitGame {
   }
 
   private createThrustParticle(): void {
+    if (!this.player) return;
+
     const centerX: number = this.world.width / 2;
     const centerY: number = this.world.height / 2;
 
-    // Calculate direction from player to center (interior of the orbit)
-    const towardsCenterAngle = Math.atan2(
+    // Angle towards center (or away if reversed) determines base direction
+    const directionAngle = Math.atan2(
       centerY - this.player.y,
       centerX - this.player.x
     );
+    const particleBaseAngle = this.player.gravityReversed
+      ? directionAngle + Math.PI
+      : directionAngle;
 
-    // Reverse the angle if gravity is reversed
-    const particleAngle = this.player.gravityReversed
-      ? towardsCenterAngle + Math.PI // Point away from center
-      : towardsCenterAngle; // Point toward center
-
-    const particleCount = 1 + Math.floor(Math.random() * 3);
-
-    for (let i = 0; i < particleCount; i++) {
-      const spreadAngle = particleAngle + (Math.random() - 0.5) * 0.5;
-      const distance = 15 + Math.random() * 10;
-
-      const particle = new ThrustParticle(
-        this.player.x + Math.cos(spreadAngle) * distance,
-        this.player.y + Math.sin(spreadAngle) * distance,
-        spreadAngle,
-        1 + Math.random() * 3,
-        0.6 + Math.random() * 0.4
+    const particleCount =
+      this.THRUST_PARTICLE_COUNT_MIN +
+      Math.floor(
+        Math.random() *
+          (this.THRUST_PARTICLE_COUNT_MAX - this.THRUST_PARTICLE_COUNT_MIN + 1)
       );
 
-      this.thrustParticles.push(particle);
+    for (let i = 0; i < particleCount; i++) {
+      const spread = (Math.random() - 0.5) * this.THRUST_PARTICLE_SPREAD;
+      const angle = particleBaseAngle + spread;
+      const offsetDistance =
+        this.THRUST_PARTICLE_OFFSET_MIN +
+        Math.random() *
+          (this.THRUST_PARTICLE_OFFSET_MAX - this.THRUST_PARTICLE_OFFSET_MIN);
+
+      // Position particle slightly behind the player relative to thrust direction
+      const startX = this.player.x + Math.cos(angle) * offsetDistance;
+      const startY = this.player.y + Math.sin(angle) * offsetDistance;
+
+      const size = 1 + Math.random() * 2; // Small variation in size
+      const alpha = 0.5 + Math.random() * 0.4; // Start fairly transparent
+      const speed = 0.5 + Math.random() * 1.5; // Slower particles
+      const decay = 0.02 + Math.random() * 0.03; // Faster decay
+
+      this.thrustParticles.push(
+        new ThrustParticle(startX, startY, angle, size, alpha, speed, decay)
+      );
     }
   }
 
   private updateThrustParticles(): void {
-    let i = this.thrustParticles.length;
-
-    while (i--) {
+    for (let i = this.thrustParticles.length - 1; i >= 0; i--) {
       const particle = this.thrustParticles[i];
       particle.update(this.timeFactor);
 
-      if (particle.alpha <= 0) {
+      if (particle.alpha <= 0 || particle.size <= 0.1) {
         this.thrustParticles.splice(i, 1);
       }
     }
   }
 
   private renderThrustParticles(): void {
-    this.thrustParticles.forEach((particle) => {
-      this.context.save();
-      this.context.globalAlpha = particle.alpha;
+    this.context.save();
+    this.context.fillStyle = "rgba(255, 120, 70, 0.8)"; // Consistent orange-red color
+    for (const particle of this.thrustParticles) {
+      this.context.globalAlpha = particle.alpha; // Use particle alpha
       this.context.beginPath();
       this.context.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
-      this.context.fillStyle = `rgba(255, 100, 50, ${particle.alpha})`;
       this.context.fill();
-      this.context.restore();
-    });
+    }
+    this.context.restore();
   }
 
+  // --- PowerUps ---
   private spawnPowerUp(): void {
     const now = Date.now();
-    if (now - this.lastPowerUpSpawn < this.powerUpSpawnInterval) return;
+    if (now - this.lastPowerUpSpawn < this.POWERUP_SPAWN_INTERVAL_MS) return;
 
-    // Calculate spawn position in orbit between min and max radius
-    const minRadius = 100;
-    const maxRadius = Math.min(this.world.width, this.world.height) / 2 - 50;
-    const radius = minRadius + Math.random() * (maxRadius - minRadius);
-    const angle = Math.random() * Math.PI * 2;
     const centerX = this.world.width / 2;
     const centerY = this.world.height / 2;
+    const minRadius = this.PLAYER_MIN_ORBIT_RADIUS + 30; // Spawn outside inner radius
+    const maxRadius = this.maxPlayerRadius - 30; // Spawn inside outer radius
+    if (maxRadius <= minRadius) return; // Avoid issues if world too small
+
+    const radius = minRadius + Math.random() * (maxRadius - minRadius);
+    const angle = Math.random() * Math.PI * 2;
+
+    // Choose a random type from available power-ups
+    const typeKeys = Object.keys(this.powerUpTypes);
+    const randomTypeKey = typeKeys[
+      Math.floor(Math.random() * typeKeys.length)
+    ] as keyof typeof this.powerUpTypes;
+    const randomType = this.powerUpTypes[randomTypeKey];
 
     const powerUp = new PowerUp(
       centerX + Math.cos(angle) * radius,
       centerY + Math.sin(angle) * radius,
-      Object.values(this.powerUpTypes)[Math.floor(Math.random() * 5)]
+      randomType
     );
 
     this.powerUps.push(powerUp);
@@ -1530,173 +1118,150 @@ class OrbitGame {
   private updatePowerUps(): void {
     const now = Date.now();
 
-    // Update active powerup timers
+    // Update active powerup timers and remove expired ones
+    const expiredKeys: number[] = [];
     for (const [type, endTime] of this.activePowerUps.entries()) {
       if (now >= endTime) {
-        this.activePowerUps.delete(type);
-        // Handle powerup end effects
-        this.deactivatePowerUp(type);
+        expiredKeys.push(type);
       }
     }
+    expiredKeys.forEach((type) => {
+      this.activePowerUps.delete(type);
+      // Deactivation effects are implicitly handled by updatePlayer checking activePowerUps map
+      if (type === this.powerUpTypes.SLOW_TIME) {
+        // Need to potentially readjust timeFactor if slow time ends
+        // This is complex if multiple time effects stack; simpler is just letting updatePlayer read map
+      }
+      console.log(`PowerUp ${type} expired`);
+    });
 
-    // Check collisions with powerups
+    // Check collisions with spawned powerups
     for (let i = this.powerUps.length - 1; i >= 0; i--) {
       const powerUp = this.powerUps[i];
       powerUp.update(this.timeFactor);
 
-      if (this.collides(this.player, powerUp)) {
+      // Add fade out or lifetime limit for powerups?
+      // if (powerUp.alpha <= 0) { this.powerUps.splice(i, 1); continue; }
+
+      if (this.player.alive && this.collides(this.player, powerUp)) {
         this.collectPowerUp(powerUp);
-        this.powerUps.splice(i, 1);
+        this.powerUps.splice(i, 1); // Remove collected powerup
       }
     }
 
-    // Spawn new powerups
+    // Spawn new powerups periodically
     this.spawnPowerUp();
   }
 
   private collectPowerUp(powerUp: PowerUp): void {
-    const duration = 10000; // 10 seconds
-    this.activePowerUps.set(powerUp.type, Date.now() + duration);
+    const endTime = Date.now() + this.POWERUP_DURATION_MS;
+    this.activePowerUps.set(powerUp.type, endTime);
+
+    let notificationText = "";
+    let notificationColor: number[] = [200, 200, 200];
 
     switch (powerUp.type) {
       case this.powerUpTypes.SHIELD:
-        this.player.shielded = true;
-        this.notify(
-          "SHIELD",
-          this.player.x,
-          this.player.y - 20,
-          1,
-          [0, 255, 255]
-        );
+        notificationText = "SHIELD ACTIVE";
+        notificationColor = [0, 255, 255];
+        // player.shielded = true is handled in updatePlayer
         break;
       case this.powerUpTypes.SCORE_MULTIPLIER:
-        this.player.scoreMultiplier = 2;
-        this.notify(
-          "2X SCORE",
-          this.player.x,
-          this.player.y - 20,
-          1,
-          [255, 255, 0]
-        );
+        notificationText = "2X SCORE";
+        notificationColor = [255, 255, 0];
+        // player.scoreMultiplier = 2 handled in updatePlayer
         break;
       case this.powerUpTypes.SLOW_TIME:
-        this.timeFactor *= 0.5;
-        this.notify(
-          "SLOW TIME",
-          this.player.x,
-          this.player.y - 20,
-          1,
-          [0, 255, 0]
-        );
+        notificationText = "TIME WARP";
+        notificationColor = [0, 255, 150];
+        // player.slowTimeActive = true handled in updatePlayer
         break;
       case this.powerUpTypes.MAGNET:
-        this.player.magnetActive = true;
-        this.notify(
-          "MAGNET",
-          this.player.x,
-          this.player.y - 20,
-          1,
-          [255, 0, 255]
-        );
+        notificationText = "MAGNETISM";
+        notificationColor = [255, 0, 255];
+        // player.magnetActive = true handled in updatePlayer
         break;
       case this.powerUpTypes.GRAVITY_REVERSE:
-        this.player.gravityReversed = true;
-        this.notify(
-          "ANTI-GRAVITY",
-          this.player.x,
-          this.player.y - 20,
-          1,
-          [255, 128, 0]
-        );
+        notificationText = "ANTI-GRAVITY";
+        notificationColor = [255, 128, 0];
+        // player.gravityReversed = true handled in updatePlayer
         break;
     }
+
+    if (notificationText) {
+      this.notify(
+        notificationText,
+        this.player.x,
+        this.player.y - 25,
+        1.2,
+        notificationColor
+      );
+    }
+    console.log(`PowerUp ${powerUp.type} collected`);
   }
 
-  private deactivatePowerUp(type: number): void {
-    switch (type) {
-      case this.powerUpTypes.SHIELD:
-        this.player.shielded = false;
-        break;
-      case this.powerUpTypes.SCORE_MULTIPLIER:
-        this.player.scoreMultiplier = 1;
-        break;
-      case this.powerUpTypes.SLOW_TIME:
-        this.timeFactor *= 2;
-        break;
-      case this.powerUpTypes.MAGNET:
-        this.player.magnetActive = false;
-        break;
-      case this.powerUpTypes.GRAVITY_REVERSE:
-        this.player.gravityReversed = false;
-        break;
-    }
-  }
+  // REMOVED deactivatePowerUp - logic moved to updatePlayer checking activePowerUps map
 
   private renderPowerUps(): void {
-    this.powerUps.forEach((powerUp) => {
-      this.context.save();
-
-      // Apply fade-in alpha
-      this.context.globalAlpha = powerUp.alpha * 0.8;
-
-      // Apply scale transform
+    this.context.save();
+    for (const powerUp of this.powerUps) {
+      this.context.globalAlpha = powerUp.alpha * 0.85; // Slightly transparent base
       this.context.translate(powerUp.x, powerUp.y);
       this.context.scale(powerUp.scale, powerUp.scale);
       this.context.rotate(powerUp.rotation);
 
-      // Create outer glow effect
-      this.context.shadowBlur = 20;
-      this.context.shadowColor = powerUp.getColor();
+      const color = powerUp.getColor();
+      this.context.shadowBlur = 15;
+      this.context.shadowColor = color;
 
-      // Draw the main powerup circle
+      // Main circle
       this.context.beginPath();
-      this.context.arc(0, 0, 12, 0, Math.PI * 2);
-      this.context.fillStyle = powerUp.getColor();
+      this.context.arc(0, 0, powerUp.collisionRadius * 0.8, 0, Math.PI * 2); // Base on collision radius
+      this.context.fillStyle = color;
       this.context.fill();
 
-      // Add inner ring for TRON identity disc look
+      // Inner ring
       this.context.beginPath();
-      this.context.arc(0, 0, 8, 0, Math.PI * 2);
-      this.context.strokeStyle = "rgba(255, 255, 255, 0.9)";
-      this.context.lineWidth = 2;
+      this.context.arc(0, 0, powerUp.collisionRadius * 0.5, 0, Math.PI * 2);
+      this.context.strokeStyle = "rgba(255, 255, 255, 0.8)";
+      this.context.lineWidth = 2 / powerUp.scale; // Keep line width consistent
       this.context.stroke();
 
-      // Add center dot
+      // Center dot
       this.context.beginPath();
-      this.context.arc(0, 0, 3, 0, Math.PI * 2);
-      this.context.fillStyle = "rgba(255, 255, 255, 0.9)";
+      this.context.arc(0, 0, powerUp.collisionRadius * 0.2, 0, Math.PI * 2);
+      this.context.fillStyle = "rgba(255, 255, 255, 0.8)";
       this.context.fill();
 
-      this.context.restore();
-    });
+      // Reset transform for next iteration
+      this.context.setTransform(1, 0, 0, 1, 0, 0); // Faster than multiple restores
+    }
+    this.context.restore(); // Restore initial save
   }
 
+  // --- Game Loop ---
+
   private update(): void {
-    // Get timing info
     const now = Date.now();
-    this.timeDelta = now - this.timeLastFrame;
-
-    // Handle excessive frame time (if tab was inactive)
-    this.timeDelta = Math.min(200, this.timeDelta);
-
-    this.timeFactor = this.timeDelta / (1000 / this.FRAMERATE);
+    this.timeDelta = Math.min(200, now - this.timeLastFrame); // Clamp delta time to avoid large jumps
+    this.timeFactor = this.timeDelta / (1000 / this.FRAMERATE); // Normalize based on target framerate
     this.timeLastFrame = now;
     this.framesThisSecond++;
+    this.frameCount++;
 
-    // Update game if playing
-    if (this.playing) {
-      this.duration = (now - this.timeGameStart) / 1000; // Track game duration in seconds
+    // --- Game Logic Update ---
+    if (this.playing && this.player.alive) {
+      this.duration = (now - this.timeGameStart) / 1000; // Keep track of game duration
 
       this.updatePlayer();
       this.updateEnemies();
-      this.updatePowerUps(); // Add this line
+      this.updatePowerUps();
       this.updateThrustParticles();
 
-      // Check for end conditions
       this.checkEndConditions();
     }
 
-    // Track FPS calculation
+    // --- FPS Calculation ---
     if (now > this.timeLastSecond + 1000) {
       this.fps = this.framesThisSecond;
       this.fpsMin = Math.min(this.fpsMin, this.fps);
@@ -1705,131 +1270,168 @@ class OrbitGame {
       this.framesThisSecond = 0;
     }
 
-    // Render the world
+    // --- Rendering ---
     this.render();
 
-    // Schedule next update
-    window.requestAnimationFrame(this.update.bind(this));
+    // --- Loop ---
+    requestAnimationFrame(this.update.bind(this));
   }
 
   private checkEndConditions(): void {
-    // Get player position relative to center (sun)
+    if (!this.player || !this.player.alive) return; // Should not happen if playing, but safe check
+
     const centerX = this.world.width / 2;
     const centerY = this.world.height / 2;
     const dx = this.player.x - centerX;
     const dy = this.player.y - centerY;
-    const distToSun = Math.sqrt(dx * dx + dy * dy);
+    const distToSunSq = dx * dx + dy * dy; // Use squared distance for comparison
 
-    // Check for collision with sun (game over)
-    if (distToSun < this.sunDangerRadius) {
+    // 1. Collision with Sun Danger Zone
+    if (distToSunSq < this.sunDangerRadius * this.sunDangerRadius) {
       if (this.player.shielded) {
-        this.player.shielded = false;
+        // Break shield, remove powerup, notify
+        this.activePowerUps.delete(this.powerUpTypes.SHIELD);
+        this.player.shielded = false; // Update immediately
         this.notify(
-          "SHIELD BROKEN!",
+          "SHIELD DESTROYED!",
           this.player.x,
           this.player.y - 20,
           1.5,
           [255, 100, 100]
         );
 
-        // Push player away from sun slightly
+        // Give a small outward nudge
+        this.player.interactionDelta = this.PLAYER_MAX_INTERACTION_DELTA * 0.5; // Moderate push
+        // Instantly move player just outside danger zone to prevent immediate re-collision
         const angle = Math.atan2(dy, dx);
-        this.player.radius = this.sunDangerRadius + 20;
+        this.player.radius = this.sunDangerRadius + 5; // Move just outside
         this.player.x = centerX + Math.cos(angle) * this.player.radius;
         this.player.y = centerY + Math.sin(angle) * this.player.radius;
       } else {
-        this.endGame(false, "CONSUMED BY THE SUN");
+        this.endGame(false, "CONSUMED BY STAR"); // Game Over
         return;
       }
     }
 
-    // Check for falling out of bounds (game over)
-    const maxRadius = Math.min(this.world.width, this.world.height) / 2 - 20;
-    if (distToSun > maxRadius) {
-      this.endGame(false, "LOST IN DEEP SPACE");
-      return;
+    // 2. Falling Out of Bounds
+    // Use radius directly which is already clamped in updatePlayer
+    if (this.player.radius >= this.maxPlayerRadius) {
+      // Check if shield protects from this? Design decision. Assume yes for now.
+      if (this.player.shielded) {
+        // Break shield, remove powerup, notify
+        this.activePowerUps.delete(this.powerUpTypes.SHIELD);
+        this.player.shielded = false;
+        this.notify(
+          "SHIELD OVERLOAD!",
+          this.player.x,
+          this.player.y - 20,
+          1.5,
+          [255, 100, 100]
+        );
+        // Give a small inward nudge
+        this.player.interactionDelta = this.PLAYER_MIN_INTERACTION_DELTA * 0.5;
+        this.player.radius = this.maxPlayerRadius - 5; // Move back inside slightly
+      } else {
+        this.endGame(false, "LOST IN THE VOID"); // Game Over
+        return;
+      }
     }
 
-    // Time-based end condition (survival mode)
+    // 3. Survival Mode Time Limit
     if (this.gameMode === "survival") {
-      // Check if time is up (victory)
-      const timeLeft = this.gameTimer - Math.floor(this.duration);
-
+      const timeLeft = this.gameTimer - this.duration;
       if (timeLeft <= 0) {
-        this.endGame(true, `SURVIVED! SCORE: ${this.player.score}`);
+        this.endGame(true, `SURVIVED! SCORE: ${this.player.score}`); // Victory
         return;
       }
-
-      // Show time warning when low
-      if (timeLeft <= 10 && timeLeft % 2 === 0) {
-        this.notify(`${timeLeft}s`, centerX, centerY - 100, 1, [255, 50, 50]);
+      // Time warning notification (throttled)
+      if (timeLeft <= 10.5 && Math.floor(timeLeft * 2) % 2 === 0) {
+        // Check every half second in last 10s
+        this.notify(
+          `${Math.ceil(timeLeft)}s`,
+          centerX,
+          centerY - 100,
+          1.2,
+          [255, 50, 50]
+        );
       }
     }
 
-    // Score-based end condition (score mode)
+    // 4. Score Mode Target Reached
     if (this.gameMode === "score" && this.player.score >= this.victoryScore) {
-      this.endGame(true, `VICTORY! TIME: ${Math.floor(this.duration)}s`);
+      this.endGame(true, `TARGET REACHED! TIME: ${this.duration.toFixed(1)}s`); // Victory
       return;
     }
   }
 
   private endGame(isVictory: boolean, message: string): void {
     this.playing = false;
-    this.gameState = isVictory ? this.STATE_WINNER : this.STATE_LOSER;
-    document.body.setAttribute("class", this.gameState);
+    this.player.alive = false; // Player is no longer active
+    const endState = isVictory ? this.STATE_WINNER : this.STATE_LOSER;
+    this.setGameState(endState); // Update body class (shows start button via CSS)
 
-    // Large notification for game over message
+    // Clear volatile game elements
+    this.thrustParticles = [];
+    // Maybe clear enemies except sun? Or let them fade?
+    // this.enemies = this.enemies.filter(e => e.type === this.ENEMY_TYPE_SUN);
+    // this.powerUps = []; // Clear remaining powerups
+
+    // Show end message
     this.notify(
       message,
       this.world.width / 2,
-      this.world.height / 2 - 40,
-      2,
+      this.world.height / 2 - 40, // Position higher
+      1.8, // Slightly smaller main message
       isVictory ? [100, 255, 100] : [255, 100, 100]
     );
 
-    // Add restart instruction
+    // Add restart instructions
+    const instructionX = this.world.width / 2 + 20;
+    const instructionY = this.world.height / 2 + 20;
     this.notify(
-      "PRESS 'R' TO RESTART",
-      this.world.width / 2,
-      this.world.height / 2 + 80,
-      1,
+      "TAP / PRESS 'R'",
+      instructionX,
+      instructionY,
+      1.0,
+      [200, 200, 200]
+    );
+    this.notify(
+      "TO PLAY AGAIN",
+      instructionX,
+      instructionY + 25,
+      1.0,
       [200, 200, 200]
     );
 
-    // Add touch instruction for mobile
-    this.notify(
-      "TAP TO PLAY AGAIN",
-      this.world.width / 2,
-      this.world.height / 2 + 110,
-      1,
-      [200, 200, 200]
-    );
-
-    // Show start button again
-    this.startButton.style.display = "block";
+    // Update button text for restart
     this.startButton.textContent = "PLAY AGAIN";
   }
 
   private render(): void {
-    // Clear canvas
+    // --- Clear Canvas ---
+    // Optimized clear: Use fillRect for solid backgrounds if no transparency needed underneath
+    // this.context.fillStyle = '#050a0f'; // Match body background
+    // this.context.fillRect(0, 0, this.world.width, this.world.height);
+    // Or keep clearRect if background elements (like a nebula) might be added later
     this.context.clearRect(0, 0, this.world.width, this.world.height);
 
-    // Render game elements
-    this.renderOrbit();
+    // --- Render Game Elements ---
+    this.renderOrbit(); // Render orbits first (background)
     this.renderThrustParticles();
     this.renderEnemies();
-    this.renderPowerUps(); // Add this line
+    this.renderPowerUps();
 
+    // Render player only if alive
     if (this.player && this.player.alive) {
       this.renderPlayer();
     }
 
     this.renderNotifications();
 
-    // Display game info (scores, target, etc)
+    // --- Render UI / Info ---
     this.renderGameInfo();
 
-    // Add debug info rendering if debugging is enabled
+    // --- Render Debug Info (if enabled) ---
     if (this.debugging) {
       this.renderDebugInfo();
       this.visualizeCollisions();
@@ -1837,113 +1439,139 @@ class OrbitGame {
   }
 
   private renderGameInfo(): void {
-    // Display game stats at the bottom instead of the top
     this.context.save();
-    this.context.fillStyle = "rgba(140, 240, 255, 0.8)";
-    this.context.font = "14px Rajdhani, Arial";
+    this.context.font = "bold 16px Rajdhani, Arial"; // Slightly larger UI font
+    this.context.fillStyle = "rgba(140, 240, 255, 0.9)";
+    this.context.shadowColor = "rgba(0, 0, 0, 0.5)";
+    this.context.shadowBlur = 2;
+    this.context.shadowOffsetY = 1;
 
-    // Left align score at the bottom
+    const bottomMargin = 25; // Position from bottom edge
+
+    // Score (bottom left)
     this.context.textAlign = "left";
     this.context.fillText(
-      `SCORE: ${this.player.score}`,
-      10,
-      this.world.height - 40
-    );
+      `SCORE: ${this.player?.score ?? 0}`,
+      15,
+      this.world.height - bottomMargin
+    ); // Use optional chaining for safety
 
-    // Right align time or goal at the bottom
+    // Mode-specific info (bottom right)
     this.context.textAlign = "right";
-    if (this.gameMode === "survival" && this.playing) {
-      const timeLeft = Math.max(0, Math.ceil(this.gameTimer - this.duration));
-      this.context.fillText(
-        `TIME: ${timeLeft}s`,
-        this.world.width - 10,
-        this.world.height - 40
-      );
-    } else if (this.gameMode === "score" && this.playing) {
-      this.context.fillText(
-        `TARGET: ${this.victoryScore}`,
-        this.world.width - 10,
-        this.world.height - 40
-      );
-    }
-
-    // Center align game mode when not playing
-    if (!this.playing && this.gameState === this.STATE_WELCOME) {
+    const rightEdge = this.world.width - 15;
+    if (this.playing) {
+      if (this.gameMode === "survival") {
+        const timeLeft = Math.max(0, Math.ceil(this.gameTimer - this.duration));
+        this.context.fillText(
+          `TIME: ${timeLeft}s`,
+          rightEdge,
+          this.world.height - bottomMargin
+        );
+      } else {
+        // score mode
+        this.context.fillText(
+          `TARGET: ${this.victoryScore}`,
+          rightEdge,
+          this.world.height - bottomMargin
+        );
+      }
+    } else if (this.gameState === this.STATE_WELCOME) {
+      // Mode info when waiting to start
       this.context.textAlign = "center";
+      this.context.font = "14px Rajdhani, Arial";
+      this.context.fillStyle = "rgba(140, 240, 255, 0.7)";
       this.context.fillText(
-        `MODE: ${this.gameMode.toUpperCase()}`,
+        `MODE: ${this.gameMode.toUpperCase()} (M to change)`,
         this.world.width / 2,
-        this.world.height - 20
-      );
-      this.context.fillText(
-        `PRESS 'M' TO CHANGE MODE`,
-        this.world.width / 2,
-        this.world.height - 40
+        this.world.height - bottomMargin - 20
       );
     }
 
     this.context.restore();
   }
 
-  /**
-   * Render debugging information
-   */
   private renderDebugInfo(): void {
+    if (!this.player) return; // Ensure player exists
+
     this.context.save();
-    this.context.fillStyle = "rgba(255,255,255,0.7)";
-    this.context.font = "12px monospace";
-    this.context.textAlign = "left"; // Ensure text is left-aligned
+    this.context.fillStyle = "rgba(220, 220, 220, 0.85)"; // Brighter debug text
+    this.context.font = "11px monospace";
+    this.context.textAlign = "left";
+    this.context.shadowColor = "rgba(0, 0, 0, 1)"; // Strong shadow for readability
+    this.context.shadowBlur = 1;
+    this.context.shadowOffsetX = 1;
+    this.context.shadowOffsetY = 1;
 
-    const lineHeight = 15; // Space between lines
-    let y = 40; // Starting Y position, adjusted to avoid overlap with buttons
-    const x = 10; // X position
+    const x = 10;
+    let y = 20; // Start lower to avoid settings button
+    const lineHeight = 13;
 
-    // Display some useful debug info in the top left corner
-    this.context.fillText(`FPS: ${this.fps}`, x, y);
-    y += lineHeight;
-    this.context.fillText(
-      `Player radius: ${this.player.radius.toFixed(1)}`,
-      x,
-      y
+    const print = (text: string) => {
+      this.context.fillText(text, x, y);
+      y += lineHeight;
+    };
+
+    print(`FPS: ${this.fps} (Min: ${this.fpsMin}, Max: ${this.fpsMax})`);
+    print(
+      `Delta/Factor: ${this.timeDelta.toFixed(1)}ms / ${this.timeFactor.toFixed(
+        2
+      )}`
     );
-    y += lineHeight;
-    this.context.fillText(
-      `Collision radius: ${this.player.collisionRadius.toFixed(1)}`,
-      x,
-      y
+    print(`State: ${this.gameState}, Playing: ${this.playing}`);
+    print(`Mode: ${this.gameMode}, Debug: ${this.debugging}`);
+    print(`---`);
+    print(
+      `Player Pos: ${this.player.x.toFixed(1)}, ${this.player.y.toFixed(1)}`
     );
-    y += lineHeight;
-    this.context.fillText(`Enemies: ${this.enemies.length}`, x, y);
-    y += lineHeight;
-    this.context.fillText(`Score: ${this.player.score}`, x, y);
-    y += lineHeight;
-    this.context.fillText(`Time: ${(this.duration / 1000).toFixed(1)}s`, x, y);
-    y += lineHeight;
-    this.context.fillText(`Touch/Mouse down: ${this.mouse.down}`, x, y);
-    y += lineHeight;
+    print(
+      `Player Radius: ${this.player.radius.toFixed(
+        1
+      )} / ${this.maxPlayerRadius.toFixed(1)}`
+    );
+    print(`Player Angle: ${((this.player.angle * 180) / Math.PI).toFixed(1)}°`);
+    print(`Player iDelta: ${this.player.interactionDelta.toFixed(3)}`);
+    print(
+      `Player Speed (rot): ${(
+        this.PLAYER_ROTATION_SPEED_FACTOR / Math.max(1, this.player.radius)
+      ).toFixed(3)}`
+    );
+    print(`---`);
+    print(`Enemies: ${this.enemies.length - 1}`); // Exclude sun
+    print(`Particles: ${this.thrustParticles.length}`);
+    print(
+      `Powerups: ${this.powerUps.length} (Active: ${this.activePowerUps.size})`
+    );
+    print(`Score: ${this.player.score} (x${this.player.scoreMultiplier})`);
+    print(`Duration: ${this.duration.toFixed(1)}s`);
+    print(`Input Down: ${this.mouse.down}`);
+    print(`---`);
+    const distToSun = Math.sqrt(
+      Math.pow(this.player.x - this.world.width / 2, 2) +
+        Math.pow(this.player.y - this.world.height / 2, 2)
+    );
+    print(`Dist to Sun: ${distToSun.toFixed(1)}px`);
+    print(`Sun Danger Rad: ${this.sunDangerRadius.toFixed(1)}px`);
+    print(`---`);
+    // Active Powerups List
+    if (this.activePowerUps.size > 0) {
+      print(`Active: [${Array.from(this.activePowerUps.keys()).join(", ")}]`);
+    }
 
-    // Add orbital distance
-    const centerX = this.world.width / 2;
-    const centerY = this.world.height / 2;
-    const dx = this.player.x - centerX;
-    const dy = this.player.y - centerY;
-    const distToSun = Math.sqrt(dx * dx + dy * dy).toFixed(1);
-    this.context.fillText(`Distance to sun: ${distToSun}px`, x, y);
-    y += lineHeight;
-
-    // Add danger zone info
-    this.context.fillText(`Danger radius: ${this.sunDangerRadius}px`, x, y);
-    y += lineHeight;
-    this.context.fillText(`Game mode: ${this.gameMode}`, x, y);
-    y += lineHeight;
+    // --- Visual Debug Elements ---
 
     // Draw center point
     this.context.beginPath();
-    this.context.arc(centerX, centerY, 5, 0, Math.PI * 2);
-    this.context.fillStyle = "rgba(255,255,0,0.7)";
+    this.context.arc(
+      this.world.width / 2,
+      this.world.height / 2,
+      4,
+      0,
+      Math.PI * 2
+    );
+    this.context.fillStyle = "rgba(255, 255, 0, 0.8)";
     this.context.fill();
 
-    // Always draw player collision circle in debug mode with extreme clarity
+    // Draw player collision circle
     this.context.beginPath();
     this.context.arc(
       this.player.x,
@@ -1952,78 +1580,89 @@ class OrbitGame {
       0,
       Math.PI * 2
     );
-    this.context.strokeStyle = "rgba(255,0,255,1.0)"; // Bright magenta for visibility
-    this.context.lineWidth = 2;
+    this.context.strokeStyle = "rgba(255, 0, 255, 0.9)";
+    this.context.lineWidth = 1;
     this.context.stroke();
 
-    // Draw a center point on the player
+    // Draw player center point
     this.context.beginPath();
-    this.context.arc(this.player.x, this.player.y, 3, 0, Math.PI * 2);
-    this.context.fillStyle = "rgba(255,255,0,1.0)"; // Bright yellow
+    this.context.arc(this.player.x, this.player.y, 2, 0, Math.PI * 2);
+    this.context.fillStyle = "rgba(255, 255, 0, 0.9)";
     this.context.fill();
 
-    // Draw axes for clarity
+    // Draw sun danger radius
     this.context.beginPath();
-    this.context.moveTo(this.player.x - 20, this.player.y);
-    this.context.lineTo(this.player.x + 20, this.player.y);
-    this.context.moveTo(this.player.x, this.player.y - 20);
-    this.context.lineTo(this.player.x, this.player.y + 20);
-    this.context.strokeStyle = "rgba(100,100,255,0.5)";
-    this.context.stroke();
-
-    // Draw sun danger radius for visualization
-    this.context.beginPath();
-    this.context.arc(centerX, centerY, this.sunDangerRadius, 0, Math.PI * 2);
-    this.context.strokeStyle = "rgba(255,50,50,0.5)";
-    this.context.setLineDash([5, 5]);
-    this.context.lineWidth = 2;
+    this.context.arc(
+      this.world.width / 2,
+      this.world.height / 2,
+      this.sunDangerRadius,
+      0,
+      Math.PI * 2
+    );
+    this.context.strokeStyle = "rgba(255, 50, 50, 0.6)";
+    this.context.setLineDash([4, 4]);
+    this.context.lineWidth = 1;
     this.context.stroke();
     this.context.setLineDash([]);
 
     this.context.restore();
   }
-}
+} // End of OrbitGame Class
 
-// Base class for all game entities
+// =============================================================================
+// Entity Classes
+// =============================================================================
+
 class Entity {
-  public alive: boolean = false;
-  public width: number = 0;
+  public alive: boolean = true; // Assume alive by default unless set otherwise
+  public width: number = 0; // Primarily for sprite reference, not physics
   public height: number = 0;
   public x: number = 0;
   public y: number = 0;
-  public collisionRadius: number = 0; // Rename to collisionRadius for clarity
+  public collisionRadius: number = 0; // Central physics property
 }
 
-// Player entity
 class Player extends Entity {
-  public radius: number = 200; // This is the orbital radius
-  public velocity: { x: number; y: number } = { x: 0, y: 0 };
-  public angle: number = -Math.PI / 4;
-  public spriteAngle: number = 0;
+  public radius: number; // Orbital radius from center
+  public angle: number = 0; // Orbital angle (radians)
+  public spriteAngle: number = 0; // Visual rotation angle
   public score: number = 0;
-  public interactionDelta = -0.1;
+  public interactionDelta: number = -0.1; // Rate of change for radius
+
+  // Power-up states (managed by OrbitGame checking activePowerUps map)
   public shielded: boolean = false;
   public scoreMultiplier: number = 1;
   public magnetActive: boolean = false;
   public gravityReversed: boolean = false;
   public slowTimeActive: boolean = false;
 
-  constructor(x: number = 200, y: number = 200, radius: number) {
+  constructor(x: number, y: number, radius: number, collisionRadius: number) {
     super();
     this.x = x;
     this.y = y;
     this.radius = radius;
-    this.collisionRadius = 8; // Default collision radius
+    this.collisionRadius = collisionRadius;
+    this.alive = false; // Player starts inactive until game starts
   }
 }
 
 class Enemy extends Entity {
   public type: number = 1;
-  public scale: number = 0.01;
+  public scale: number = 0.01; // Start small for spawn animation
   public scaleTarget: number = 1;
-  public alpha: number = 0;
+  public alpha: number = 0; // Start invisible
   public alphaTarget: number = 1;
-  public time: number = 0;
+  public time: number = 0; // Can be used for animation timing
+
+  constructor() {
+    super();
+    this.alive = true; // Enemies usually start alive
+  }
+
+  // Optional: Add an update method here if enemies have complex behavior
+  // public update(timeFactor: number): void {
+  //    // E.g. movement patterns, animations
+  // }
 }
 
 class Notification extends Entity {
@@ -2031,8 +1670,7 @@ class Notification extends Entity {
   public scale: number;
   public rgb: number[];
   public alpha: number;
-  public x: number;
-  public y: number;
+  // x, y inherited from Entity
 
   constructor(
     text: string,
@@ -2047,96 +1685,16 @@ class Notification extends Entity {
     this.y = y;
     this.scale = scale;
     this.rgb = rgb;
-    this.alpha = 1;
+    this.alpha = 1.0; // Start fully visible
+    this.alive = true; // Notifications are 'alive' while visible
+    this.collisionRadius = 0; // Not collidable
   }
 }
 
-class Point {
-  public x: number;
-  public y: number;
+// REMOVED Point class (not strictly necessary with simple x,y)
+// REMOVED Region class
 
-  constructor(x: number = 0, y: number = 0) {
-    this.x = x;
-    this.y = y;
-  }
-
-  public distanceTo(p: Point): number {
-    const dx: number = p.x - this.x;
-    const dy: number = p.y - this.y;
-    return Math.sqrt(dx * dx + dy * dy);
-  }
-
-  public clonePosition(): { x: number; y: number } {
-    return { x: this.x, y: this.y };
-  }
-
-  public interpolate(x: number, y: number, amp: number): void {
-    this.x += (x - this.x) * amp;
-    this.y += (y - this.y) * amp;
-  }
-}
-
-class Region {
-  public left: number = 999999;
-  public top: number = 999999;
-  public right: number = 0;
-  public bottom: number = 0;
-
-  public reset(): void {
-    this.left = 999999;
-    this.top = 999999;
-    this.right = 0;
-    this.bottom = 0;
-  }
-
-  public inflate(x: number, y: number): void {
-    this.left = Math.min(this.left, x);
-    this.top = Math.min(this.top, y);
-    this.right = Math.max(this.right, x);
-    this.bottom = Math.max(this.bottom, y);
-  }
-
-  public expand(x: number, y: number): void {
-    this.left -= x;
-    this.top -= y;
-    this.right += x;
-    this.bottom += y;
-  }
-
-  public contains(x: number, y: number): boolean {
-    return x > this.left && x < this.right && y > this.top && y < this.bottom;
-  }
-
-  public size(): number {
-    return (this.right - this.left + (this.bottom - this.top)) / 2;
-  }
-
-  public center(): Point {
-    return new Point(
-      this.left + (this.right - this.left) / 2,
-      this.top + (this.bottom - this.top) / 2
-    );
-  }
-
-  public toRectangle(): {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-  } {
-    return {
-      x: this.left,
-      y: this.top,
-      width: this.right - this.left,
-      height: this.bottom - this.top,
-    };
-  }
-}
-
-// Add ThrustParticle class
-class ThrustParticle {
-  public x: number;
-  public y: number;
+class ThrustParticle extends Entity {
   public angle: number;
   public size: number;
   public alpha: number;
@@ -2148,87 +1706,91 @@ class ThrustParticle {
     y: number,
     angle: number,
     size: number,
-    alpha: number
+    alpha: number,
+    speed: number,
+    decay: number
   ) {
+    super();
     this.x = x;
     this.y = y;
     this.angle = angle;
     this.size = size;
     this.alpha = alpha;
-    this.speed = 1 + Math.random() * 2;
-    this.decay = 0.01 + Math.random() * 0.03;
+    this.speed = speed;
+    this.decay = decay;
+    this.alive = true;
+    this.collisionRadius = 0;
   }
 
   public update(timeFactor: number): void {
-    // Move in the direction of the angle
     this.x += Math.cos(this.angle) * this.speed * timeFactor;
     this.y += Math.sin(this.angle) * this.speed * timeFactor;
-
-    // Gradually fade out
     this.alpha -= this.decay * timeFactor;
-
-    // Gradually shrink
-    this.size = Math.max(0.1, this.size - 0.05 * timeFactor);
+    this.size = Math.max(0.1, this.size - 0.03 * timeFactor); // Shrink slightly faster
   }
 }
 
 class PowerUp extends Entity {
   public type: number;
   public rotation: number = 0;
-  public rotationSpeed: number = Math.random() * 0.1 - 0.05;
-  public alpha: number = 0;
+  public rotationSpeed: number = (Math.random() - 0.5) * 0.1; // Random slow rotation
+  public alpha: number = 0; // Fade in
   public alphaTarget: number = 1;
-  public scale: number = 0.01;
+  public scale: number = 0.1; // Scale in
   public scaleTarget: number = 1;
-  public time: number = 0;
+  public time: number = 0; // For animation timing
 
   constructor(x: number, y: number, type: number) {
     super();
     this.x = x;
     this.y = y;
     this.type = type;
-    this.collisionRadius = 15;
+    this.collisionRadius = 15; // Set collision size
+    this.alive = true;
   }
 
   public update(timeFactor: number): void {
     this.rotation += this.rotationSpeed * timeFactor;
-    this.time = Math.min(this.time + 0.2 * timeFactor, 100);
-    this.scale += (this.scaleTarget - this.scale + 0.01) * 0.3;
-    this.alpha += (this.alphaTarget - this.alpha) * 0.01;
+    this.time = Math.min(this.time + 0.15 * timeFactor, 100); // Slower time accumulation for animation
+    this.scale += (this.scaleTarget - this.scale) * 0.1 * timeFactor; // Slower scale in
+    this.alpha += (this.alphaTarget - this.alpha) * 0.05 * timeFactor; // Slower fade in
   }
 
+  // Static method for colors, easier access
   public getColor(): string {
     switch (this.type) {
-      case 1: // Shield
-        return "rgba(20, 180, 255, 0.9)"; // Electric blue
-      case 2: // Score multiplier
-        return "rgba(255, 215, 20, 0.9)"; // Golden energy
-      case 3: // Slow time
-        return "rgba(0, 255, 180, 0.9)"; // Cyan green
-      case 4: // Magnet
-        return "rgba(255, 50, 255, 0.9)"; // Magenta energy
-      case 5: // Gravity reverse
-        return "rgba(255, 100, 50, 0.9)"; // Orange energy
+      case 1:
+        return "rgba(20, 180, 255, 0.9)"; // Shield - Electric blue
+      case 2:
+        return "rgba(255, 215, 20, 0.9)"; // Score - Golden energy
+      case 3:
+        return "rgba(0, 255, 180, 0.9)"; // Slow Time - Cyan green
+      case 4:
+        return "rgba(255, 50, 255, 0.9)"; // Magnet - Magenta energy
+      case 5:
+        return "rgba(255, 100, 50, 0.9)"; // Gravity Reverse - Orange energy
       default:
-        return "rgba(140, 240, 255, 0.9)";
+        return "rgba(200, 200, 200, 0.8)"; // Default grey
     }
   }
 }
 
-// shim layer with setTimeout fallback
-window.requestAnimationFrame = (function () {
-  return (
-    window.requestAnimationFrame ||
-    (window as any).webkitRequestAnimationFrame ||
-    (window as any).mozRequestAnimationFrame ||
-    (window as any).oRequestAnimationFrame ||
-    (window as any).msRequestAnimationFrame ||
-    function (callback) {
-      window.setTimeout(callback, 1000 / 60);
-    }
-  );
-})();
+// =============================================================================
+// Initialization
+// =============================================================================
 
-document.addEventListener("DOMContentLoaded", function () {
+// Shim layer remains the same
+window.requestAnimationFrame =
+  window.requestAnimationFrame ||
+  (window as any).webkitRequestAnimationFrame ||
+  (window as any).mozRequestAnimationFrame ||
+  (window as any).oRequestAnimationFrame ||
+  (window as any).msRequestAnimationFrame ||
+  function (callback) {
+    window.setTimeout(callback, 1000 / 60);
+  };
+
+// Start game when DOM is ready
+document.addEventListener("DOMContentLoaded", () => {
   new OrbitGame();
 });
