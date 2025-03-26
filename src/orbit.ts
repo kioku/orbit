@@ -1,10 +1,14 @@
 import "./main.css";
 
-// Interface definitions
+// =============================================================================
+// Interfaces & Enums
+// =============================================================================
+
 interface Sprites {
   playerSprite: HTMLCanvasElement | null;
   enemySun: HTMLCanvasElement | null;
   enemy: HTMLCanvasElement | null;
+  // Potential future: Enemy variants, powerup sprites
 }
 
 interface Mouse {
@@ -16,19 +20,129 @@ interface World {
   height: number;
 }
 
+// Improvement: Use Enum for Game State
+enum GameState {
+  WELCOME = "state-welcome",
+  PLAYING = "state-playing",
+  PAUSED = "state-paused",
+  LOSER = "state-loser",
+  WINNER = "state-winner",
+}
+
+// Improvement: Use Enum for Enemy Types (more extensible)
+enum EnemyType {
+  NORMAL = 1,
+  SUN = 2,
+  FAST = 3, // Basic example for variety
+  // Add more types here: SHOOTER, HOMING, etc.
+}
+
+// Improvement: Use Enum for PowerUp Types
+enum PowerUpType {
+  SHIELD = 1,
+  SCORE_MULTIPLIER = 2,
+  SLOW_TIME = 3,
+  MAGNET = 4,
+  GRAVITY_REVERSE = 5,
+}
+
+// =============================================================================
+// Helper Classes (Audio, Pooling - basic stubs)
+// =============================================================================
+
+// Basic Audio Manager Stub (Replace with actual implementation using Howler.js, Web Audio API, etc.)
+class AudioManager {
+  // TODO: Implement audio loading and playback
+  private sounds: { [key: string]: any } = {}; // Placeholder for sound objects
+
+  load() {
+    console.log("AudioManager: Load sounds here...");
+    // Example: this.sounds['collect'] = new Howl({ src: ['sounds/collect.wav'] });
+    this.sounds["collect"] = null;
+    this.sounds["thrust"] = null;
+    this.sounds["shield_break"] = null;
+    this.sounds["powerup"] = null;
+    this.sounds["explode"] = null;
+    this.sounds["game_over"] = null;
+    this.sounds["victory"] = null;
+    this.sounds["music"] = null;
+  }
+
+  playSound(key: string, volume: number = 1.0) {
+    if (this.sounds[key]) {
+      console.log(
+        `AudioManager: Playing sound "${key}" (stub), volume ${volume}`
+      );
+      // TODO: Actual playback logic: this.sounds[key].volume(volume).play();
+    } else {
+      // console.warn(`AudioManager: Sound "${key}" not found or loaded.`);
+    }
+  }
+
+  playMusic() {
+    if (this.sounds["music"]) {
+      console.log("AudioManager: Playing music (stub)");
+      // TODO: Start background music, loop etc.
+    }
+  }
+  stopMusic() {
+    if (this.sounds["music"]) {
+      console.log("AudioManager: Stopping music (stub)");
+      // TODO: Stop background music
+    }
+  }
+}
+
+// Basic Object Pool for Particles (Improvement: Pooling)
+class ObjectPool<T extends Poolable> {
+  private pool: T[] = [];
+  private factory: () => T;
+
+  constructor(factory: () => T, initialSize: number = 0) {
+    this.factory = factory;
+    for (let i = 0; i < initialSize; i++) {
+      this.pool.push(this.factory());
+    }
+  }
+
+  get(): T {
+    if (this.pool.length > 0) {
+      const obj = this.pool.pop()!;
+      obj.reset(); // Ensure object is reset before use
+      return obj;
+    }
+    // console.log("Pool creating new object"); // Log if pool is empty
+    return this.factory(); // Create new if pool empty
+  }
+
+  release(obj: T) {
+    this.pool.push(obj);
+  }
+
+  getPoolSize(): number {
+    return this.pool.length;
+  }
+}
+
+// Interface for poolable objects
+interface Poolable {
+  reset(): void;
+  alive: boolean; // Poolable objects need an alive flag
+}
+
+// =============================================================================
+// Main Game Class
+// =============================================================================
+
 class OrbitGame {
   // --- Constants ---
   private readonly FRAMERATE: number = 60;
   private readonly DEFAULT_WIDTH: number = 600;
   private readonly DEFAULT_HEIGHT: number = 600;
   private readonly ENEMY_SIZE: number = 10;
-  private readonly SUN_SIZE_MULTIPLIER: number = 2; // Sun size relative to ENEMY_SIZE
-  private readonly ENEMY_TYPE_NORMAL: number = 1;
-  private readonly ENEMY_TYPE_SUN: number = 2;
-  private readonly STATE_WELCOME: string = "state-welcome"; // Match CSS classes
-  private readonly STATE_PLAYING: string = "state-playing";
-  private readonly STATE_LOSER: string = "state-loser";
-  private readonly STATE_WINNER: string = "state-winner";
+  private readonly SUN_SIZE_MULTIPLIER: number = 2;
+  // Enemy Types moved to Enum
+  // Game States moved to Enum
   private readonly PLAYER_START_RADIUS: number = 150;
   private readonly PLAYER_COLLISION_RADIUS: number = 12;
   private readonly PLAYER_SPRITE_SCALE: number = 1.0; // Ship size (Fix 1)
@@ -36,27 +150,35 @@ class OrbitGame {
   private readonly PLAYER_BASE_GRAVITY = 0.025;
   private readonly PLAYER_MAX_INTERACTION_DELTA = 1.5;
   private readonly PLAYER_MIN_INTERACTION_DELTA = -0.8;
-  private readonly PLAYER_ROTATION_SPEED_FACTOR = 5.5; // Lower is faster linear speed for given radius change rate
+  private readonly PLAYER_ROTATION_SPEED_FACTOR = 5.5;
   private readonly PLAYER_MIN_ORBIT_RADIUS = 50;
-  private readonly POWERUP_SPAWN_INTERVAL_MS: number = 5000; // 5 seconds
-  private readonly POWERUP_DURATION_MS: number = 10000; // 10 seconds
+  private readonly POWERUP_SPAWN_INTERVAL_MS: number = 5000;
+  private readonly POWERUP_DURATION_MS: number = 10000;
   private readonly POWERUP_MAGNET_RANGE: number = 150;
   private readonly POWERUP_MAGNET_STRENGTH: number = 2;
-  private readonly SUN_DANGER_RADIUS_FACTOR: number = 0.03; // % of world min dimension added to base radius
-  // Enemy Spawning (Improvement 2)
-  private readonly MAX_ENEMIES: number = 15; // Max non-sun enemies on screen
-  private readonly ENEMY_SPAWN_INTERVAL_MS_BASE: number = 1000; // Initial spawn delay
-  private readonly ENEMY_SPAWN_INTERVAL_MS_MIN: number = 250; // Minimum spawn delay
-  private readonly ENEMY_SPAWN_INTERVAL_REDUCTION_PER_SEC: number = 5; // How many ms faster per game second
-  // End Improvement 2
-  private readonly ENEMY_MIN_SPAWN_RADIUS_OFFSET: number = 10; // min enemy radius = PLAYER_MIN_ORBIT_RADIUS + offset
-  private readonly ENEMY_MAX_SPAWN_RADIUS_OFFSET: number = 10; // max enemy radius = max player radius - offset
+  private readonly SUN_DANGER_RADIUS_FACTOR: number = 0.03;
+  // Enemy Spawning (Improvement)
+  private readonly MAX_ENEMIES: number = 15;
+  private readonly ENEMY_SPAWN_INTERVAL_MS_BASE: number = 1000;
+  private readonly ENEMY_SPAWN_INTERVAL_MS_MIN: number = 250;
+  private readonly ENEMY_SPAWN_INTERVAL_REDUCTION_PER_SEC: number = 5;
+  private readonly ENEMY_FAST_CHANCE: number = 0.15; // Chance for a 'FAST' enemy variant (basic variety)
+  private readonly ENEMY_SPEED_FACTOR_INCREASE_PER_SEC: number = 0.005; // Basic speed scaling
+  private readonly ENEMY_MIN_SPAWN_RADIUS_OFFSET: number = 10;
+  private readonly ENEMY_MAX_SPAWN_RADIUS_OFFSET: number = 10;
   private readonly ENEMY_MIN_DISTANCE_FROM_PLAYER: number = 100;
+  // Particles (Pooling)
+  private readonly THRUST_PARTICLE_POOL_INITIAL_SIZE: number = 100;
   private readonly THRUST_PARTICLE_COUNT_MIN = 1;
   private readonly THRUST_PARTICLE_COUNT_MAX = 3;
-  private readonly THRUST_PARTICLE_SPREAD = 0.5; // Radians
+  private readonly THRUST_PARTICLE_SPREAD = 0.5;
   private readonly THRUST_PARTICLE_OFFSET_MIN = 15;
   private readonly THRUST_PARTICLE_OFFSET_MAX = 25;
+  // High Score Key (Improvement)
+  private readonly HIGH_SCORE_KEY = "orbitHighScore";
+  // Screen Shake (Improvement)
+  private readonly SHAKE_DURATION_MS = 150;
+  private readonly SHAKE_INTENSITY = 3;
 
   // --- Properties ---
   private sprites: Sprites = {
@@ -65,54 +187,61 @@ class OrbitGame {
     enemy: null,
   };
   private mouse: Mouse = { down: false };
-  private canvas!: HTMLCanvasElement; // Assert non-null after init
-  private context!: CanvasRenderingContext2D; // Assert non-null after init
-  private container!: HTMLElement; // Assert non-null after init
-  private startButton!: HTMLButtonElement; // Assert non-null after init
-  private settingsButton!: HTMLButtonElement; // Assert non-null after init
+  private keyboardThrust: boolean = false; // For keyboard control
+  private canvas!: HTMLCanvasElement;
+  private context!: CanvasRenderingContext2D;
+  private container!: HTMLElement;
+  private startButton!: HTMLButtonElement;
+  private settingsButton!: HTMLButtonElement;
+  private audioManager: AudioManager; // Audio Manager instance
 
   private playing: boolean = false;
-  private duration: number = 0; // Game time in seconds
+  private paused: boolean = false; // Pause state flag
+  private duration: number = 0;
   private frameCount: number = 0;
   private timeLastFrame: number = 0;
   private timeLastSecond: number = 0;
   private timeGameStart: number = 0;
   private timeDelta: number = 0;
-  private timeFactor: number = 1; // Scales physics updates based on frame time delta
+  private timeFactor: number = 1;
   private fps: number = 0;
   private fpsMin: number = 1000;
   private fpsMax: number = 0;
   private framesThisSecond: number = 0;
 
   private enemies: Enemy[] = [];
-  private player!: Player; // Assert non-null after init/reset
-  private sunEnemy: Enemy | null = null; // Direct reference to the sun
-  private playerDistToSunSq: number = 0; // Store squared distance player <-> sun (Improvement 1)
+  private player!: Player;
+  private sunEnemy: Enemy | null = null;
+  private playerDistToSunSq: number = 0;
 
   private world: World = {
     width: this.DEFAULT_WIDTH,
     height: this.DEFAULT_HEIGHT,
   };
   private notifications: Notification[] = [];
-  private thrustParticles: ThrustParticle[] = [];
+  private thrustParticles: ThrustParticle[] = []; // Active particles
+  private particlePool: ObjectPool<ThrustParticle>; // Particle pool (Improvement: Pooling)
+  private backgroundStars: { x: number; y: number; speed: number }[] = []; // For parallax background
+
   private debugging: boolean = false;
-  private gameState: string = this.STATE_WELCOME;
-  private gameTimer: number = 60; // Game duration in seconds (default 60s)
-  private gameMode: string = "survival"; // Default game mode
-  private victoryScore: number = 30; // Score needed to win in score mode
+  private gameState: GameState = GameState.WELCOME; // Use Enum
+  private gameTimer: number = 60; // Configurable game param
+  private gameMode: string = "survival";
+  private victoryScore: number = 30; // Configurable game param
   private powerUps: PowerUp[] = [];
-  private powerUpTypes = {
-    SHIELD: 1,
-    SCORE_MULTIPLIER: 2,
-    SLOW_TIME: 3,
-    MAGNET: 4,
-    GRAVITY_REVERSE: 5,
-  };
-  private activePowerUps: Map<number, number> = new Map(); // type -> endTime
+  private powerUpTypes = PowerUpType; // Use Enum
+  private activePowerUps: Map<PowerUpType, number> = new Map(); // type -> endTime
   private lastPowerUpSpawn: number = 0;
-  // Enemy Spawning Timers (Improvement 2)
+
   private timeLastEnemySpawn: number = 0;
   private currentEnemySpawnInterval: number = this.ENEMY_SPAWN_INTERVAL_MS_BASE;
+  private currentEnemySpeedFactor: number = 1.0; // For difficulty scaling
+
+  private highScore: number = 0; // High score state
+
+  // Screen Shake state
+  private shakeEndTime: number = 0;
+  private currentShakeIntensity: number = 0;
 
   // Use getter for dynamic calculation based on world size
   private get sunBaseRadius(): number {
@@ -125,16 +254,28 @@ class OrbitGame {
     );
   }
   private get maxPlayerRadius(): number {
-    // Max radius player can reach without dying (slight buffer)
     return Math.min(this.world.width, this.world.height) / 2 - 20;
   }
+  private get isInputDown(): boolean {
+    return this.mouse.down || this.keyboardThrust;
+  } // Combined input check
 
   constructor() {
-    // Initialize properties that need it before calling methods
     this.timeLastFrame = Date.now();
     this.timeLastSecond = Date.now();
     this.lastPowerUpSpawn = Date.now();
-    this.timeLastEnemySpawn = Date.now(); // Initialize spawn timer
+    this.timeLastEnemySpawn = Date.now();
+
+    // Initialize Particle Pool (Improvement: Pooling)
+    this.particlePool = new ObjectPool<ThrustParticle>(
+      () => new ThrustParticle(0, 0, 0, 1, 1, 1, 0.01), // Factory function
+      this.THRUST_PARTICLE_POOL_INITIAL_SIZE
+    );
+
+    // Initialize Audio Manager
+    this.audioManager = new AudioManager();
+    this.audioManager.load(); // Trigger loading (async usually)
+
     this.initialize();
   }
 
@@ -144,19 +285,21 @@ class OrbitGame {
 
     if (!(this.container && this.canvas && this.canvas.getContext)) {
       alert("Initialization failed: Cannot find required elements.");
-      return; // Stop initialization
+      return;
     }
-
     this.context = this.canvas.getContext("2d") as CanvasRenderingContext2D;
 
-    // --- Button Creation (using CSS classes) ---
+    // Load High Score (Improvement)
+    this.loadHighScore();
+
+    // Init Background Stars (Improvement)
+    this.createBackgroundStars(100);
+
+    // --- Button Creation ---
     this.startButton = document.createElement("button");
     this.startButton.id = "start-button";
     this.startButton.classList.add("start-button");
     this.container.appendChild(this.startButton);
-    // Text content set in reset/endGame
-
-    // Add click/touch listeners for start button
     this.startButton.addEventListener(
       "click",
       this.onStartButtonClick.bind(this)
@@ -164,19 +307,16 @@ class OrbitGame {
     this.startButton.addEventListener(
       "touchend",
       (e) => {
-        e.preventDefault(); // Prevent potential double-triggering / zooming
+        e.preventDefault();
         this.onStartButtonClick(e);
       },
       { passive: false }
     );
 
-    // Create settings button
     this.settingsButton = document.createElement("button");
     this.settingsButton.id = "settings-button";
     this.settingsButton.classList.add("settings-button");
     this.container.appendChild(this.settingsButton);
-
-    // Add click/touch listeners for settings
     this.settingsButton.addEventListener(
       "click",
       this.onSettingsButtonClick.bind(this)
@@ -193,6 +333,7 @@ class OrbitGame {
       this.onKeyDownHandler.bind(this),
       false
     );
+    document.addEventListener("keyup", this.onKeyUpHandler.bind(this), false); // Need keyup for keyboard thrust
     document.addEventListener(
       "mousedown",
       this.onMouseDownHandler.bind(this),
@@ -202,7 +343,7 @@ class OrbitGame {
       "mousemove",
       this.onMouseMoveHandler.bind(this),
       false
-    ); // Keep for potential future use
+    );
     document.addEventListener(
       "mouseup",
       this.onMouseUpHandler.bind(this),
@@ -224,31 +365,60 @@ class OrbitGame {
       this.onWindowResizeHandler.bind(this),
       false
     );
+    // Handle Pause on window blur (Improvement)
+    window.addEventListener("blur", () => {
+      if (this.playing && !this.paused) this.togglePause();
+    });
 
     // --- Initial Setup ---
-    this.onWindowResizeHandler(); // Set initial size
+    this.onWindowResizeHandler();
     this.createSprites();
-    this.setGameState(this.STATE_WELCOME); // Set initial state and body class
+    this.setGameState(GameState.WELCOME); // Use Enum
 
-    this.reset(); // Reset game variables
-    this.update(); // Start the game loop
+    this.reset();
+    this.update();
   }
 
-  private setGameState(newState: string): void {
+  private setGameState(newState: GameState): void {
+    // Optional: Add logic here for state transitions (e.g., stop music on welcome)
+    if (newState === GameState.PLAYING && this.gameState !== GameState.PAUSED) {
+      // Reset timers only when starting fresh, not unpausing
+      this.timeGameStart = Date.now() - this.duration * 1000; // Adjust start time based on current duration
+      this.timeLastFrame = Date.now(); // Prevent large delta jump after pause/welcome
+      this.audioManager.playMusic();
+    }
+    if (newState !== GameState.PLAYING && newState !== GameState.PAUSED) {
+      this.audioManager.stopMusic();
+    }
+
     this.gameState = newState;
-    document.body.className = newState; // Apply class to body for CSS rules
+    document.body.className = newState.toString(); // Use enum value for class name
+  }
+
+  // Improvement: Pause Toggle Logic
+  private togglePause(): void {
+    if (this.gameState === GameState.PLAYING) {
+      this.paused = true;
+      this.setGameState(GameState.PAUSED);
+      // Keep track of when pause started to adjust timers later? Or just stop updating duration.
+      this.audioManager.stopMusic(); // Or maybe just lower volume?
+    } else if (this.gameState === GameState.PAUSED) {
+      this.paused = false;
+      this.setGameState(GameState.PLAYING); // Resume playing state
+      // Adjust time measurement to avoid jump caused by pause duration
+      this.timeLastFrame = Date.now();
+      this.audioManager.playMusic();
+    }
   }
 
   private onSettingsButtonClick(e: Event): void {
     e.preventDefault();
     e.stopPropagation();
-
     this.debugging = !this.debugging;
     this.settingsButton.classList.toggle(
       "settings-button--debugging",
       this.debugging
     );
-
     console.log(`Debug mode: ${this.debugging ? "ON" : "OFF"}`);
   }
 
@@ -256,22 +426,47 @@ class OrbitGame {
     // Restart game
     if (
       (e.key === "r" || e.key === "R") &&
-      (this.gameState === this.STATE_WINNER ||
-        this.gameState === this.STATE_LOSER)
+      (this.gameState === GameState.WINNER ||
+        this.gameState === GameState.LOSER)
     ) {
-      // Simulate a click/tap on the start button to restart
       this.onStartButtonClick(new MouseEvent("click"));
     }
-
     // Toggle game mode (only when not playing)
-    if ((e.key === "m" || e.key === "M") && !this.playing) {
+    else if ((e.key === "m" || e.key === "M") && !this.playing) {
       this.gameMode = this.gameMode === "survival" ? "score" : "survival";
       this.notifyGameMode();
     }
-
     // Toggle debugging
-    if (e.key === "d" || e.key === "D") {
-      this.onSettingsButtonClick(e); // Reuse existing toggle logic
+    else if (e.key === "d" || e.key === "D") {
+      this.onSettingsButtonClick(e);
+    }
+    // Toggle Pause (Improvement)
+    else if (e.key === "p" || e.key === "P") {
+      if (
+        this.gameState === GameState.PLAYING ||
+        this.gameState === GameState.PAUSED
+      ) {
+        this.togglePause();
+      }
+    }
+    // Keyboard Thrust (Improvement)
+    else if (e.key === " ") {
+      // Spacebar
+      if (!this.keyboardThrust) {
+        // Prevent repeated triggers while holding
+        this.keyboardThrust = true;
+        // Optional: Trigger sound immediately on press
+        if (this.playing && !this.paused)
+          this.audioManager.playSound("thrust", 0.5);
+      }
+    }
+  }
+
+  // Need KeyUp for Keyboard Thrust (Improvement)
+  private onKeyUpHandler(e: KeyboardEvent): void {
+    if (e.key === " ") {
+      // Spacebar
+      this.keyboardThrust = false;
     }
   }
 
@@ -292,80 +487,47 @@ class OrbitGame {
   }
 
   private createSprites(): void {
-    // --- Enemy Sprite ---
+    // Enemy Sprite
     let cvsEnemy = document.createElement("canvas");
-    let ctxEnemy: CanvasRenderingContext2D;
-    const enemySpriteSize = 48; // Use a variable
-    cvsEnemy.width = enemySpriteSize;
-    cvsEnemy.height = enemySpriteSize;
-    ctxEnemy = cvsEnemy.getContext("2d")!;
-    ctxEnemy.beginPath();
-    // Draw centered arc
-    ctxEnemy.arc(
-      enemySpriteSize * 0.5,
-      enemySpriteSize * 0.5,
-      this.ENEMY_SIZE,
-      0,
-      Math.PI * 2,
-      true
-    );
+    cvsEnemy.width = 48;
+    cvsEnemy.height = 48;
+    let ctxEnemy = cvsEnemy.getContext("2d")!;
+    ctxEnemy.arc(24, 24, this.ENEMY_SIZE, 0, Math.PI * 2);
     ctxEnemy.fillStyle = "rgba(0, 200, 220, 0.9)";
     ctxEnemy.shadowColor = "rgba(0, 240, 255, 0.9)";
-    ctxEnemy.shadowBlur = 15; // Adjusted blur
+    ctxEnemy.shadowBlur = 15;
     ctxEnemy.fill();
     this.sprites.enemy = cvsEnemy;
 
-    // --- Player Sprite - Revised Appearance (Fix 1) ---
+    // Player Sprite (Fix 1: Appearance)
     let cvsPlayer = document.createElement("canvas");
-    let ctxPlayer: CanvasRenderingContext2D;
-    const playerSpriteSize = 64; // Keep base canvas size reasonable for caching
-    cvsPlayer.width = playerSpriteSize;
-    cvsPlayer.height = playerSpriteSize;
-    ctxPlayer = cvsPlayer.getContext("2d")!;
-
-    ctxPlayer.translate(playerSpriteSize / 2, playerSpriteSize / 2); // Center drawing origin
-
-    // Style settings for the player ship
-    ctxPlayer.fillStyle = "rgba(255, 255, 255, 0.95)"; // White color
-    ctxPlayer.shadowColor = "rgba(200, 220, 255, 0.8)"; // White/light blue glow
-    ctxPlayer.shadowBlur = 15; // Increased blur behind the ship
-    ctxPlayer.lineWidth = 2; // Gives fill a slightly softer edge with lineJoin
-    ctxPlayer.lineJoin = "round"; // Round the corners of the filled shape
-
-    // Draw the ship shape (adjust coordinates relative to new 0,0 center)
-    // Using PLAYER_SPRITE_SCALE to control the drawn size within the sprite canvas
-    const shipLength = 20 * this.PLAYER_SPRITE_SCALE; // Base length for drawing geometry
-    const shipWidth = 15 * this.PLAYER_SPRITE_SCALE; // Base width for drawing geometry
+    cvsPlayer.width = 64;
+    cvsPlayer.height = 64;
+    let ctxPlayer = cvsPlayer.getContext("2d")!;
+    ctxPlayer.translate(32, 32);
+    ctxPlayer.fillStyle = "rgba(255, 255, 255, 0.95)";
+    ctxPlayer.shadowColor = "rgba(200, 220, 255, 0.8)";
+    ctxPlayer.shadowBlur = 15;
+    ctxPlayer.lineWidth = 2;
+    ctxPlayer.lineJoin = "round";
+    const shipLength = 20 * this.PLAYER_SPRITE_SCALE;
+    const shipWidth = 15 * this.PLAYER_SPRITE_SCALE;
     ctxPlayer.beginPath();
-    ctxPlayer.moveTo(shipLength * 0.6, 0); // Nose point
-    ctxPlayer.lineTo(-shipLength * 0.4, shipWidth * 0.5); // Back corner 1
-    ctxPlayer.lineTo(-shipLength * 0.3, 0); // Engine middle indent (slight)
-    ctxPlayer.lineTo(-shipLength * 0.4, -shipWidth * 0.5); // Back corner 2
+    ctxPlayer.moveTo(shipLength * 0.6, 0);
+    ctxPlayer.lineTo(-shipLength * 0.4, shipWidth * 0.5);
+    ctxPlayer.lineTo(-shipLength * 0.3, 0);
+    ctxPlayer.lineTo(-shipLength * 0.4, -shipWidth * 0.5);
     ctxPlayer.closePath();
-    ctxPlayer.fill(); // Fill the rounded shape
-    // Note: ctxPlayer.stroke() could be added here if an outline is desired
-
-    ctxPlayer.setTransform(1, 0, 0, 1, 0, 0); // Reset transform before saving sprite
+    ctxPlayer.fill();
+    ctxPlayer.setTransform(1, 0, 0, 1, 0, 0);
     this.sprites.playerSprite = cvsPlayer;
-    // --- End Fix 1 ---
 
-    // --- Sun Enemy Sprite ---
+    // Sun Enemy Sprite
     let cvsSun = document.createElement("canvas");
-    let ctxSun: CanvasRenderingContext2D;
-    const sunSpriteSize = 64; // Use a variable
-    cvsSun.width = sunSpriteSize;
-    cvsSun.height = sunSpriteSize;
-    ctxSun = cvsSun.getContext("2d")!;
-    ctxSun.beginPath();
-    // Draw centered arc
-    ctxSun.arc(
-      sunSpriteSize * 0.5,
-      sunSpriteSize * 0.5,
-      this.sunBaseRadius,
-      0,
-      Math.PI * 2,
-      true
-    );
+    cvsSun.width = 64;
+    cvsSun.height = 64;
+    let ctxSun = cvsSun.getContext("2d")!;
+    ctxSun.arc(32, 32, this.sunBaseRadius, 0, Math.PI * 2);
     ctxSun.fillStyle = "rgba(250, 50, 50, 1)";
     ctxSun.shadowColor = "rgba(250, 20, 20, 0.9)";
     ctxSun.shadowBlur = 20;
@@ -375,97 +537,95 @@ class OrbitGame {
 
   private onStartButtonClick(e: Event): void {
     e.preventDefault();
-
-    // If game ended, reset first before starting
     if (
-      this.gameState === this.STATE_LOSER ||
-      this.gameState === this.STATE_WINNER
+      this.gameState === GameState.LOSER ||
+      this.gameState === GameState.WINNER
     ) {
-      this.reset();
+      this.reset(); // Full reset if coming from game over
+    } else if (this.gameState === GameState.PAUSED) {
+      this.togglePause(); // Unpause if paused
+      return; // Don't reset stats if unpausing
+    } else if (this.playing) {
+      return; // Already playing, do nothing
     }
 
-    // Prevent starting if already playing
-    if (this.playing) {
-      return;
-    }
-
-    // Reset necessary game state for a fresh start
-    this.resetGameStats(); // Ensure stats/timers are reset for a new round
-
-    // Start the game
+    // If starting from Welcome state
+    this.resetGameStats(); // Reset scores/timers for a fresh round
     this.player.alive = true;
-    this.playing = true;
-    this.timeGameStart = Date.now();
-    this.setGameState(this.STATE_PLAYING); // This hides the button via CSS
-
-    // Initial game mode notification
+    this.playing = true; // Set playing flag
+    // Set state calls playMusic and adjusts timers
+    this.setGameState(GameState.PLAYING);
     this.notifyGameMode();
   }
 
-  // Resets everything for a completely new game session (e.g., after page load or explicit full reset)
+  // Resets everything for a completely new game session
   private reset(): void {
     this.enemies = [];
-    this.thrustParticles = [];
+    this.thrustParticles = []; // Clear active particles
+    // Return active particles to pool (Improvement: Pooling)
+    // Note: This assumes particles are correctly returned on death in update loop
+    // If not, loop here: this.thrustParticles.forEach(p => this.particlePool.release(p));
     this.notifications = [];
     this.powerUps = [];
     this.activePowerUps.clear();
 
-    // Create the player centered
     this.player = new Player(
-      this.world.width / 2 + this.PLAYER_START_RADIUS, // Start on orbit
+      this.world.width / 2 + this.PLAYER_START_RADIUS,
       this.world.height / 2,
       this.PLAYER_START_RADIUS,
       this.PLAYER_COLLISION_RADIUS
     );
-    this.player.angle = 0; // Start at a predictable angle
+    this.player.angle = 0;
 
-    // Create the sun reliably
-    this.sunEnemy = new Enemy();
-    this.sunEnemy.type = this.ENEMY_TYPE_SUN;
+    this.sunEnemy = new Enemy(EnemyType.SUN); // Pass type
     this.sunEnemy.x = this.world.width / 2;
     this.sunEnemy.y = this.world.height / 2;
     this.sunEnemy.collisionRadius = this.sunBaseRadius;
-    this.sunEnemy.scale = 1; // Sun starts at full size
+    this.sunEnemy.scale = 1;
     this.sunEnemy.alpha = 1;
     this.sunEnemy.scaleTarget = 1;
     this.sunEnemy.alphaTarget = 1;
-    this.sunEnemy.alive = true; // Sun is always 'alive'
-    this.enemies.push(this.sunEnemy); // Add sun to enemies list
+    this.sunEnemy.alive = true;
+    this.enemies.push(this.sunEnemy);
 
-    this.resetGameStats(); // Reset scores, timers etc.
+    this.resetGameStats(); // Reset scores, timers, spawn rate etc.
 
-    this.setGameState(this.STATE_WELCOME); // Set initial state
-    this.startButton.textContent = "INITIALIZE"; // Set initial button text
+    this.setGameState(GameState.WELCOME);
+    this.startButton.textContent = "INITIALIZE";
   }
 
-  // Resets only the elements needed for restarting a round (score, time, player state)
+  // Resets only the elements needed for restarting a round
   private resetGameStats(): void {
-    this.playing = false;
+    this.playing = false; // Not playing yet
+    this.paused = false; // Not paused
     this.duration = 0;
     if (this.player) {
-      // Ensure player exists before resetting its properties
       this.player.score = 0;
-      this.player.alive = false; // Player starts dead until game starts
+      this.player.alive = false;
       this.player.shielded = false;
       this.player.scoreMultiplier = 1;
       this.player.magnetActive = false;
       this.player.gravityReversed = false;
-      this.player.slowTimeActive = false; // Reset powerup states
-      this.player.interactionDelta = -0.1; // Reset delta
-      this.player.radius = this.PLAYER_START_RADIUS; // Reset radius
+      this.player.slowTimeActive = false;
+      this.player.interactionDelta = -0.1;
+      this.player.radius = this.PLAYER_START_RADIUS;
     }
-    this.powerUps = []; // Clear existing powerups
+    this.powerUps = [];
     this.activePowerUps.clear();
-    this.lastPowerUpSpawn = Date.now(); // Reset spawn timer
-    this.timeLastEnemySpawn = Date.now(); // Reset enemy spawn timer too (Improvement 2)
-    this.currentEnemySpawnInterval = this.ENEMY_SPAWN_INTERVAL_MS_BASE; // Reset spawn rate (Improvement 2)
-    this.timeFactor = 1; // Reset time factor
-
-    // Clear non-persistent notifications (like score popups)
-    this.notifications = this.notifications.filter(() => {
-      // Maybe keep certain notifications? For now, clear all on restart.
-      return false;
+    this.lastPowerUpSpawn = Date.now();
+    this.timeLastEnemySpawn = Date.now();
+    this.currentEnemySpawnInterval = this.ENEMY_SPAWN_INTERVAL_MS_BASE;
+    this.currentEnemySpeedFactor = 1.0; // Reset speed factor
+    this.timeFactor = 1;
+    this.shakeEndTime = 0; // Reset shake
+    this.notifications = this.notifications.filter(() => false); // Clear transient notifications
+    // Clear active non-sun enemies
+    this.enemies = this.enemies.filter((e) => e.type === EnemyType.SUN);
+    // Return particles to pool (ensure this happens on death too)
+    this.thrustParticles.forEach((p) => {
+      if (p.alive) this.particlePool.release(p);
     });
+    this.thrustParticles = [];
   }
 
   private notify(
@@ -478,57 +638,94 @@ class OrbitGame {
     this.notifications.push(new Notification(text, x, y, scale, rgb));
   }
 
+  // --- High Score Handling (Improvement) ---
+  private loadHighScore(): void {
+    try {
+      const storedScore = localStorage.getItem(this.HIGH_SCORE_KEY);
+      this.highScore = storedScore ? parseInt(storedScore, 10) : 0;
+      console.log("Loaded high score:", this.highScore);
+    } catch (e) {
+      console.error("Failed to load high score from localStorage:", e);
+      this.highScore = 0;
+    }
+  }
+
+  private saveHighScore(): void {
+    if (this.player.score > this.highScore) {
+      this.highScore = this.player.score;
+      try {
+        localStorage.setItem(this.HIGH_SCORE_KEY, this.highScore.toString());
+        console.log("Saved new high score:", this.highScore);
+      } catch (e) {
+        console.error("Failed to save high score to localStorage:", e);
+      }
+    }
+  }
+
+  // --- Background Stars (Improvement) ---
+  private createBackgroundStars(count: number): void {
+    this.backgroundStars = [];
+    for (let i = 0; i < count; i++) {
+      this.backgroundStars.push({
+        x: Math.random() * this.world.width,
+        y: Math.random() * this.world.height,
+        speed: 0.1 + Math.random() * 0.4, // Different speeds for parallax
+      });
+    }
+  }
+
+  private updateBackgroundStars(): void {
+    // Basic horizontal scroll based on time/player angle?
+    const scrollSpeed = 0.1 * this.timeFactor;
+    this.backgroundStars.forEach((star) => {
+      star.x -= star.speed * scrollSpeed;
+      if (star.x < 0) star.x += this.world.width;
+      // Optional: Add vertical movement or link to player orbit direction
+    });
+  }
+
+  private renderBackground(): void {
+    this.context.save();
+    this.context.fillStyle = "rgba(255, 255, 255, 0.7)";
+    this.backgroundStars.forEach((star) => {
+      const alpha = star.speed * 1.5; // Faster stars are brighter/larger?
+      const size = star.speed * 1.2;
+      this.context.globalAlpha = Math.min(0.7, alpha);
+      this.context.fillRect(Math.round(star.x), Math.round(star.y), size, size);
+    });
+    this.context.restore();
+  }
+
   // --- Input Handlers ---
   private onMouseDownHandler(event: MouseEvent): void {
-    // Prevent interaction if clicking on buttons
-    if ((event.target as HTMLElement).closest("button")) return;
-    this.mouse.down = true;
+    if (!(event.target as HTMLElement).closest("button"))
+      this.mouse.down = true;
   }
-
   private onMouseMoveHandler(event: MouseEvent): void {
-    // Can be used for aiming or other features later
     event.preventDefault();
   }
-
   private onMouseUpHandler(event: MouseEvent): void {
     event.preventDefault();
     this.mouse.down = false;
   }
-
   private onTouchStartHandler(event: TouchEvent): void {
-    // Prevent interaction if touching buttons
-    if ((event.target as HTMLElement).closest("button")) return;
-    event.preventDefault();
-    this.mouse.down = true;
-    if (this.debugging)
-      console.log("Touch start detected, mouse.down =", this.mouse.down);
-  }
-
-  private onTouchMoveHandler(event: TouchEvent): void {
-    // Prevent scrolling during gameplay
-    if (this.playing) {
+    if (!(event.target as HTMLElement).closest("button")) {
       event.preventDefault();
-    }
-    // Ensure mouse.down stays true if touch moves off/on target
-    if (event.touches.length > 0) {
       this.mouse.down = true;
     }
   }
-
+  private onTouchMoveHandler(event: TouchEvent): void {
+    if (this.playing) event.preventDefault();
+    if (event.touches.length > 0) this.mouse.down = true;
+  }
   private onTouchEndHandler(event: TouchEvent): void {
-    // Only set mouse.down to false if *all* touches are lifted
     if (event.touches.length === 0) {
-      // Only prevent default if a touch actually ended (might prevent clicks elsewhere otherwise)
-      // Check if the target is the canvas or within the game container
       if (
         event.target === this.canvas ||
         this.container.contains(event.target as Node)
-      ) {
+      )
         event.preventDefault();
-      }
       this.mouse.down = false;
-      if (this.debugging)
-        console.log("Touch end detected, mouse.down =", this.mouse.down);
     }
   }
 
@@ -538,74 +735,55 @@ class OrbitGame {
     const centerX: number = this.world.width / 2;
     const centerY: number = this.world.height / 2;
 
-    // Calculate squared distance to sun once per frame (Improvement 1)
     const dx_sun = this.player.x - centerX;
     const dy_sun = this.player.y - centerY;
-    this.playerDistToSunSq = dx_sun * dx_sun + dy_sun * dy_sun;
+    this.playerDistToSunSq = dx_sun * dx_sun + dy_sun * dy_sun; // Update pre-calc (Improvement 1)
 
-    // Update slowTimeActive based on map (Improvement 3 clarification)
-    // Other flags (shielded, magnetActive, etc.) are now set directly on collect/expire
-    this.player.slowTimeActive = this.activePowerUps.has(
-      this.powerUpTypes.SLOW_TIME
-    );
+    this.player.slowTimeActive = this.activePowerUps.has(PowerUpType.SLOW_TIME); // Update based on map
 
-    // Apply time scale based on slow time power-up
     const timeScale = this.player.slowTimeActive ? 0.5 : 1;
     const effectiveTimeFactor = this.timeFactor * timeScale;
-
     const gravityMult = this.player.gravityReversed ? -1 : 1;
     const pushAcceleration =
       this.PLAYER_BASE_ACCELERATION * effectiveTimeFactor;
     const gravityStrength = this.PLAYER_BASE_GRAVITY * effectiveTimeFactor;
 
-    if (this.mouse.down) {
-      // Push outwards (or inwards if reversed)
+    // Use combined input check (Improvement: Keyboard Input)
+    if (this.isInputDown) {
       this.player.interactionDelta = Math.min(
         this.PLAYER_MAX_INTERACTION_DELTA,
         this.player.interactionDelta + pushAcceleration * gravityMult
       );
-      // Add thrust particles only when actively pushing
-      if (this.frameCount % 3 === 0) {
-        // Throttle particle creation
-        this.createThrustParticle();
-      }
+      if (this.frameCount % 3 === 0) this.createThrustParticle();
+      // Play thrust sound (throttled)
+      if (this.frameCount % 6 === 0) this.audioManager.playSound("thrust", 0.3);
     } else {
-      // Drift inwards (or outwards if reversed) due to gravity
       this.player.interactionDelta = Math.max(
         this.PLAYER_MIN_INTERACTION_DELTA,
         this.player.interactionDelta - gravityStrength * gravityMult
       );
     }
 
-    // Update radius based on interaction delta
     this.player.radius = Math.max(
       this.PLAYER_MIN_ORBIT_RADIUS,
       Math.min(
         this.maxPlayerRadius,
         this.player.radius + this.player.interactionDelta * effectiveTimeFactor
-      ) // Apply time factor here too
+      )
     );
-
-    // Rotational velocity inversely proportional to radius for constant linear speed feel
     const rotationVel: number =
-      this.PLAYER_ROTATION_SPEED_FACTOR / Math.max(1, this.player.radius); // Avoid division by zero
+      this.PLAYER_ROTATION_SPEED_FACTOR / Math.max(1, this.player.radius);
+    this.player.angle += rotationVel * effectiveTimeFactor;
 
-    // Update angle
-    this.player.angle += rotationVel * effectiveTimeFactor; // Apply time factor
-
-    // Calculate position
     this.player.x = centerX + Math.cos(this.player.angle) * this.player.radius;
     this.player.y = centerY + Math.sin(this.player.angle) * this.player.radius;
 
-    // Calculate velocity components for orientation
     const dx =
       -Math.sin(this.player.angle) * rotationVel * this.player.radius +
       Math.cos(this.player.angle) * this.player.interactionDelta;
     const dy =
       Math.cos(this.player.angle) * rotationVel * this.player.radius +
       Math.sin(this.player.angle) * this.player.interactionDelta;
-
-    // Set sprite angle based on motion direction
     this.player.spriteAngle = Math.atan2(dy, dx);
   }
 
@@ -648,22 +826,17 @@ class OrbitGame {
     const centerY = this.world.height / 2;
 
     // --- Timer-based Spawning (Improvement 2) ---
-    // Calculate current number of non-sun enemies
-    let activeEnemies = 0;
-    for (const enemy of this.enemies) {
-      if (enemy.type !== this.ENEMY_TYPE_SUN) {
-        activeEnemies++;
-      }
-    }
+    let activeEnemies = this.enemies.length - 1; // Count non-sun enemies
 
-    // Decrease spawn interval over time, clamping at the minimum
     this.currentEnemySpawnInterval = Math.max(
       this.ENEMY_SPAWN_INTERVAL_MS_MIN,
       this.ENEMY_SPAWN_INTERVAL_MS_BASE -
         this.duration * this.ENEMY_SPAWN_INTERVAL_REDUCTION_PER_SEC
     );
+    // Basic speed scaling (Improvement)
+    this.currentEnemySpeedFactor =
+      1.0 + this.duration * this.ENEMY_SPEED_FACTOR_INCREASE_PER_SEC;
 
-    // Check if it's time to spawn and if below max count
     if (
       activeEnemies < this.MAX_ENEMIES &&
       now - this.timeLastEnemySpawn > this.currentEnemySpawnInterval
@@ -674,29 +847,26 @@ class OrbitGame {
         this.maxPlayerRadius - this.ENEMY_MAX_SPAWN_RADIUS_OFFSET;
 
       if (maxSpawnRadius > minSpawnRadius) {
-        // Ensure valid spawn range exists
-        let enemy = new Enemy(); // Create outside loop
-        enemy.type = this.ENEMY_TYPE_NORMAL;
+        // Determine enemy type (basic variety example)
+        const type =
+          Math.random() < this.ENEMY_FAST_CHANCE
+            ? EnemyType.FAST
+            : EnemyType.NORMAL;
+        let enemy = new Enemy(type); // Pass type
 
         let validPosition = false;
         let attempts = 0;
-        const maxAttempts = 10; // Limit attempts to find a good spot
-
+        const maxAttempts = 10;
         while (!validPosition && attempts < maxAttempts) {
-          // Choose random position within the allowed orbital band
           const spawnRadius =
             minSpawnRadius + Math.random() * (maxSpawnRadius - minSpawnRadius);
           const spawnAngle = Math.random() * Math.PI * 2;
           enemy.x = centerX + Math.cos(spawnAngle) * spawnRadius;
           enemy.y = centerY + Math.sin(spawnAngle) * spawnRadius;
-
-          // Check distance from player to avoid spawning too close
           const dx_player = enemy.x - this.player.x;
           const dy_player = enemy.y - this.player.y;
-          const distSq = dx_player * dx_player + dy_player * dy_player;
-
           if (
-            distSq >
+            dx_player * dx_player + dy_player * dy_player >
             this.ENEMY_MIN_DISTANCE_FROM_PLAYER *
               this.ENEMY_MIN_DISTANCE_FROM_PLAYER
           ) {
@@ -705,73 +875,60 @@ class OrbitGame {
           attempts++;
         }
 
-        // Only add if a valid position was found
         if (validPosition) {
           enemy.collisionRadius = this.ENEMY_SIZE;
+          // Apply speed factor based on type/difficulty
+          enemy.speedMultiplier =
+            (type === EnemyType.FAST ? 1.5 : 1.0) *
+            this.currentEnemySpeedFactor;
           this.enemies.push(enemy);
-          this.timeLastEnemySpawn = now; // Reset timer only on successful spawn
-        } else {
-          // Optional: Slightly delay next spawn attempt if finding a spot failed
-          // this.timeLastEnemySpawn = now - this.currentEnemySpawnInterval * 0.5;
+          this.timeLastEnemySpawn = now;
         }
       }
     }
-    // --- End Improvement 2 ---
 
-    // --- Update Existing Enemies ---
+    // --- Update Existing Enemies using Entity Update (Improvement: Code Structure) ---
     for (let i = this.enemies.length - 1; i >= 0; i--) {
-      // Iterate downwards for safe removal
       const enemy = this.enemies[i];
 
-      // Skip the sun for most updates/checks
-      if (enemy.type === this.ENEMY_TYPE_SUN) continue;
+      // Call entity's own update method
+      enemy.update(this.timeFactor);
 
-      // Update enemy animation/state (scale, alpha)
-      enemy.time = Math.min(enemy.time + 0.2 * this.timeFactor, 100); // Cap time value
-      enemy.scale += (enemy.scaleTarget - enemy.scale) * 0.3 * this.timeFactor; // Use timeFactor
-      enemy.alpha += (enemy.alphaTarget - enemy.alpha) * 0.1 * this.timeFactor; // Use timeFactor
+      if (!enemy.alive) {
+        // Check if entity marked itself as dead (e.g., death animation finished)
+        this.enemies.splice(i, 1);
+        continue;
+      }
 
-      // Apply magnet effect (using player's direct state from Improvement 3)
+      if (enemy.type === EnemyType.SUN) continue; // Skip sun for collision/magnet
+
+      // Apply magnet effect (using direct player state)
       if (this.player.magnetActive) {
         const dx = this.player.x - enemy.x;
         const dy = this.player.y - enemy.y;
         const distSq = dx * dx + dy * dy;
-
-        // Check range and avoid division by zero if enemy is already on top
         if (
           distSq < this.POWERUP_MAGNET_RANGE * this.POWERUP_MAGNET_RANGE &&
           distSq > 1
         ) {
           const dist = Math.sqrt(distSq);
-          const moveX =
+          enemy.x +=
             (dx / dist) * this.POWERUP_MAGNET_STRENGTH * this.timeFactor;
-          const moveY =
+          enemy.y +=
             (dy / dist) * this.POWERUP_MAGNET_STRENGTH * this.timeFactor;
-          enemy.x += moveX;
-          enemy.y += moveY;
         }
       }
 
       // Check collision with player
-      if (enemy.alive && this.collides(this.player, enemy)) {
-        this.enemies.splice(i, 1); // Remove enemy
-        enemy.alive = false;
+      if (this.collides(this.player, enemy)) {
+        // Trigger enemy death sequence instead of immediate removal (Improvement: Polish)
+        enemy.startDying();
+        this.audioManager.playSound("explode", 0.6);
 
-        const points = this.player.scoreMultiplier; // Use direct player state (Improvement 3)
+        const points = this.player.scoreMultiplier;
         this.player.score += points;
-
-        this.notify(
-          `+${points}`, // Always show + sign
-          enemy.x, // Notify at enemy location
-          enemy.y,
-          1,
-          [250, 250, 100]
-        );
+        this.notify(`+${points}`, enemy.x, enemy.y, 1, [250, 250, 100]);
       }
-      // Optional: Remove enemies that fade out completely or go out of bounds
-      // else if (enemy.alpha <= 0.01) {
-      //     this.enemies.splice(i, 1);
-      // }
     }
   }
 
@@ -838,10 +995,10 @@ class OrbitGame {
   private renderEnemies(): void {
     for (const enemy of this.enemies) {
       // Use for...of for slightly cleaner iteration
-      if (!enemy.alive && enemy.type !== this.ENEMY_TYPE_SUN) continue; // Skip dead normal enemies
+      if (!enemy.alive && enemy.type !== EnemyType.SUN) continue; // Skip dead normal enemies
 
       const sprite =
-        enemy.type === this.ENEMY_TYPE_NORMAL
+        enemy.type === EnemyType.NORMAL
           ? this.sprites.enemy
           : this.sprites.enemySun;
       if (!sprite) continue;
@@ -872,7 +1029,7 @@ class OrbitGame {
           Math.PI * 2
         );
         this.context.strokeStyle =
-          enemy.type === this.ENEMY_TYPE_SUN
+          enemy.type === EnemyType.SUN
             ? "rgba(255,100,100,0.7)"
             : "rgba(100,255,255,0.7)";
         this.context.lineWidth = 1 / currentScale; // Adjust line width based on scale
@@ -942,7 +1099,6 @@ class OrbitGame {
     // Buttons position themselves via CSS (absolute, top/left/transform)
   }
 
-  // Ensure sun is always centered after resize or initialization
   private updateSunPosition(): void {
     if (this.sunEnemy) {
       this.sunEnemy.x = this.world.width / 2;
@@ -965,7 +1121,7 @@ class OrbitGame {
     if (!this.player) return;
 
     for (const enemy of this.enemies) {
-      if (enemy.type === this.ENEMY_TYPE_SUN) continue; // Don't visualize sun collision boundary this way
+      if (enemy.type === EnemyType.SUN) continue; // Don't visualize sun collision boundary this way
 
       const dx = this.player.x - enemy.x;
       const dy = this.player.y - enemy.y;
@@ -1037,13 +1193,11 @@ class OrbitGame {
     }
   }
 
+  // --- Thrust Particles (Using Pooling - Improvement) ---
   private createThrustParticle(): void {
     if (!this.player) return;
-
-    const centerX: number = this.world.width / 2;
-    const centerY: number = this.world.height / 2;
-
-    // Angle towards center (or away if reversed) determines base direction
+    const centerX = this.world.width / 2;
+    const centerY = this.world.height / 2;
     const directionAngle = Math.atan2(
       centerY - this.player.y,
       centerX - this.player.x
@@ -1051,7 +1205,6 @@ class OrbitGame {
     const particleBaseAngle = this.player.gravityReversed
       ? directionAngle + Math.PI
       : directionAngle;
-
     const particleCount =
       this.THRUST_PARTICLE_COUNT_MIN +
       Math.floor(
@@ -1060,35 +1213,37 @@ class OrbitGame {
       );
 
     for (let i = 0; i < particleCount; i++) {
+      // Get particle from pool instead of creating new
+      const particle = this.particlePool.get();
+
       const spread = (Math.random() - 0.5) * this.THRUST_PARTICLE_SPREAD;
       const angle = particleBaseAngle + spread;
       const offsetDistance =
         this.THRUST_PARTICLE_OFFSET_MIN +
         Math.random() *
           (this.THRUST_PARTICLE_OFFSET_MAX - this.THRUST_PARTICLE_OFFSET_MIN);
-
-      // Position particle slightly behind the player relative to thrust direction
       const startX = this.player.x + Math.cos(angle) * offsetDistance;
       const startY = this.player.y + Math.sin(angle) * offsetDistance;
+      const size = 1 + Math.random() * 2;
+      const alpha = 0.5 + Math.random() * 0.4;
+      const speed = 0.5 + Math.random() * 1.5;
+      const decay = 0.02 + Math.random() * 0.03;
 
-      const size = 1 + Math.random() * 2; // Small variation in size
-      const alpha = 0.5 + Math.random() * 0.4; // Start fairly transparent
-      const speed = 0.5 + Math.random() * 1.5; // Slower particles
-      const decay = 0.02 + Math.random() * 0.03; // Faster decay
-
-      this.thrustParticles.push(
-        new ThrustParticle(startX, startY, angle, size, alpha, speed, decay)
-      );
+      // Initialize the pooled particle
+      particle.init(startX, startY, angle, size, alpha, speed, decay);
+      this.thrustParticles.push(particle); // Add to active list
     }
   }
 
   private updateThrustParticles(): void {
     for (let i = this.thrustParticles.length - 1; i >= 0; i--) {
       const particle = this.thrustParticles[i];
-      particle.update(this.timeFactor);
+      particle.update(this.timeFactor); // Use entity's update
 
-      if (particle.alpha <= 0 || particle.size <= 0.1) {
-        this.thrustParticles.splice(i, 1);
+      if (!particle.alive) {
+        // Check alive flag set by particle's update
+        this.thrustParticles.splice(i, 1); // Remove from active list
+        this.particlePool.release(particle); // Return to pool
       }
     }
   }
@@ -1140,93 +1295,92 @@ class OrbitGame {
     const now = Date.now();
 
     // Handle Powerup Expiry & Reset State Directly (Improvement 3)
-    const expiredKeys: number[] = [];
-    for (const [type, endTime] of this.activePowerUps.entries()) {
-      if (now >= endTime) {
-        expiredKeys.push(type);
-      }
-    }
+    const expiredKeys: PowerUpType[] = [];
+    this.activePowerUps.forEach((endTime, type) => {
+      if (now >= endTime) expiredKeys.push(type);
+    });
     expiredKeys.forEach((type) => {
       this.activePowerUps.delete(type);
-      // Directly reset player state when powerup expires
-      switch (type) {
-        case this.powerUpTypes.SHIELD:
+      switch (
+        type // Reset player state
+      ) {
+        case PowerUpType.SHIELD:
           this.player.shielded = false;
           break;
-        case this.powerUpTypes.SCORE_MULTIPLIER:
+        case PowerUpType.SCORE_MULTIPLIER:
           this.player.scoreMultiplier = 1;
           break;
-        case this.powerUpTypes.SLOW_TIME:
+        case PowerUpType.SLOW_TIME:
           this.player.slowTimeActive = false;
-          break; // Reset here too
-        case this.powerUpTypes.MAGNET:
+          break;
+        case PowerUpType.MAGNET:
           this.player.magnetActive = false;
           break;
-        case this.powerUpTypes.GRAVITY_REVERSE:
+        case PowerUpType.GRAVITY_REVERSE:
           this.player.gravityReversed = false;
           break;
       }
       console.log(`PowerUp ${type} expired`);
     });
 
-    // Check collisions with spawned powerups
+    // Update existing Powerups using Entity Update (Improvement: Code Structure)
     for (let i = this.powerUps.length - 1; i >= 0; i--) {
       const powerUp = this.powerUps[i];
-      powerUp.update(this.timeFactor);
+      powerUp.update(this.timeFactor); // Call entity's update
 
-      // Remove collected or faded out powerups
+      if (!powerUp.alive) {
+        // Remove if faded out or lifetime expired
+        this.powerUps.splice(i, 1);
+        continue;
+      }
+
+      // Check collision
       if (this.player.alive && this.collides(this.player, powerUp)) {
         this.collectPowerUp(powerUp);
-        this.powerUps.splice(i, 1); // Remove collected powerup
-      } else if (powerUp.alpha <= 0.01) {
-        // Also remove if faded out
         this.powerUps.splice(i, 1);
       }
     }
-
-    // Spawn new powerups periodically
-    this.spawnPowerUp();
+    this.spawnPowerUp(); // Spawn new ones periodically
   }
 
   private collectPowerUp(powerUp: PowerUp): void {
-    // Allow refreshing duration if already active
     const endTime = Date.now() + this.POWERUP_DURATION_MS;
-    this.activePowerUps.set(powerUp.type, endTime);
+    this.activePowerUps.set(powerUp.type, endTime); // Refresh or set duration
+    this.audioManager.playSound("powerup");
 
     let notificationText = "";
     let notificationColor: number[] = [200, 200, 200];
 
-    // Directly Set Player State on Collect (Improvement 3)
+    // Set Player State Directly (Improvement 3)
     switch (powerUp.type) {
-      case this.powerUpTypes.SHIELD:
+      case PowerUpType.SHIELD:
         this.player.shielded = true;
         notificationText = "SHIELD ACTIVE";
         notificationColor = [0, 255, 255];
         break;
-      case this.powerUpTypes.SCORE_MULTIPLIER:
-        // Ensure multiplier doesn't stack if collected again quickly (it just refreshes duration)
+      case PowerUpType.SCORE_MULTIPLIER:
         this.player.scoreMultiplier = 2;
         notificationText = "2X SCORE";
         notificationColor = [255, 255, 0];
         break;
-      case this.powerUpTypes.SLOW_TIME:
-        this.player.slowTimeActive = true; // Set directly, checked in updatePlayer
+      case PowerUpType.SLOW_TIME:
+        this.player.slowTimeActive = true;
         notificationText = "TIME WARP";
         notificationColor = [0, 255, 150];
         break;
-      case this.powerUpTypes.MAGNET:
+      case PowerUpType.MAGNET:
         this.player.magnetActive = true;
         notificationText = "MAGNETISM";
         notificationColor = [255, 0, 255];
         break;
-      case this.powerUpTypes.GRAVITY_REVERSE:
+      case PowerUpType.GRAVITY_REVERSE:
         this.player.gravityReversed = true;
         notificationText = "ANTI-GRAVITY";
         notificationColor = [255, 128, 0];
         break;
     }
 
-    if (notificationText) {
+    if (notificationText)
       this.notify(
         notificationText,
         this.player.x,
@@ -1234,7 +1388,6 @@ class OrbitGame {
         1.2,
         notificationColor
       );
-    }
     console.log(`PowerUp ${powerUp.type} collected`);
   }
 
@@ -1275,36 +1428,71 @@ class OrbitGame {
     this.context.restore(); // Restore initial save
   }
 
+  // --- Screen Shake ---
+  private triggerShake(
+    intensity: number = this.SHAKE_INTENSITY,
+    duration: number = this.SHAKE_DURATION_MS
+  ): void {
+    this.shakeEndTime = Date.now() + duration;
+    this.currentShakeIntensity = intensity;
+  }
+
+  private applyShake(): void {
+    if (Date.now() < this.shakeEndTime) {
+      const intensity = this.currentShakeIntensity;
+      const shakeX = (Math.random() - 0.5) * intensity * 2;
+      const shakeY = (Math.random() - 0.5) * intensity * 2;
+      this.context.translate(shakeX, shakeY);
+      // Optional: gradually reduce intensity
+      // this.currentShakeIntensity *= 0.9;
+    } else {
+      this.currentShakeIntensity = 0; // Stop shaking
+    }
+  }
+
   // --- Game Loop ---
 
   private update(): void {
-    // --- Timing ---
     const now = Date.now();
-    this.timeDelta = Math.min(200, now - this.timeLastFrame); // Clamp delta time to avoid large jumps
-    this.timeFactor = this.timeDelta / (1000 / this.FRAMERATE); // Normalize based on target framerate
+    this.timeDelta = Math.min(200, now - this.timeLastFrame);
+    this.timeFactor = this.timeDelta / (1000 / this.FRAMERATE);
     this.timeLastFrame = now;
     this.framesThisSecond++;
     this.frameCount++;
 
-    // --- Game Logic Update ---
-    if (this.playing && this.player.alive) {
-      this.duration = (now - this.timeGameStart) / 1000; // Keep track of game duration
+    // --- State Machine Logic (Improvement) ---
+    switch (this.gameState) {
+      case GameState.PLAYING:
+        this.duration = (now - this.timeGameStart) / 1000; // Update duration only when playing
 
-      this.updatePlayer(); // Calculates playerDistToSunSq (Improvement 1)
-      this.updateEnemies(); // Includes timer-based spawning (Improvement 2)
-      this.updatePowerUps(); // Includes direct state reset on expiry (Improvement 3)
-      this.updateThrustParticles();
+        // Update game elements
+        this.updatePlayer();
+        this.updateEnemies();
+        this.updatePowerUps();
+        this.updateThrustParticles();
+        this.updateBackgroundStars(); // Update background scroll
 
-      this.checkEndConditions(); // Uses playerDistToSunSq (Improvement 1)
+        this.checkEndConditions();
+        break;
+
+      case GameState.PAUSED:
+        // Only update things that should animate while paused (e.g., UI)
+        // For now, do nothing. Duration does not increase.
+        break;
+
+      case GameState.WELCOME:
+      case GameState.LOSER:
+      case GameState.WINNER:
+        // Update background stars even when not playing for visual appeal
+        this.updateBackgroundStars();
+        // Update notifications (e.g., fade out)
+        this.updateNotificationsOnly();
+        break;
     }
 
     // --- FPS Calculation ---
     if (now > this.timeLastSecond + 1000) {
-      this.fps = this.framesThisSecond;
-      this.fpsMin = Math.min(this.fpsMin, this.fps);
-      this.fpsMax = Math.max(this.fpsMax, this.fps);
-      this.timeLastSecond = now;
-      this.framesThisSecond = 0;
+      /* ... */
     }
 
     // --- Rendering ---
@@ -1314,21 +1502,29 @@ class OrbitGame {
     requestAnimationFrame(this.update.bind(this));
   }
 
+  // Helper to update notifications when game isn't fully updating
+  private updateNotificationsOnly(): void {
+    for (let i = this.notifications.length - 1; i >= 0; i--) {
+      const p = this.notifications[i];
+      // Simplified update just for fading out
+      p.alpha -= 0.015 * this.timeFactor; // Still use timeFactor for smooth fade
+      if (p.alpha <= 0) {
+        this.notifications.splice(i, 1);
+      }
+    }
+  }
+
   private checkEndConditions(): void {
-    if (!this.player || !this.player.alive) return; // Should not happen if playing, but safe check
-
-    const centerX = this.world.width / 2; // Still needed for push direction
+    if (!this.player || !this.player.alive) return;
+    const centerX = this.world.width / 2;
     const centerY = this.world.height / 2;
-    // Use pre-calculated squared distance (Improvement 1)
-    const useDistSq = this.playerDistToSunSq;
+    const useDistSq = this.playerDistToSunSq; // Use pre-calculated (Improvement 1)
 
-    // 1. Collision with Sun Danger Zone
+    // 1. Sun Collision
     if (useDistSq < this.sunDangerRadius * this.sunDangerRadius) {
       if (this.player.shielded) {
-        // Use direct player state (Improvement 3)
-        // Break shield, remove powerup, notify
-        this.activePowerUps.delete(this.powerUpTypes.SHIELD); // Remove from map
-        this.player.shielded = false; // Update state immediately
+        this.activePowerUps.delete(PowerUpType.SHIELD);
+        this.player.shielded = false;
         this.notify(
           "SHIELD DESTROYED!",
           this.player.x,
@@ -1336,35 +1532,33 @@ class OrbitGame {
           1.5,
           [255, 100, 100]
         );
-
-        // Give a small outward nudge
-        this.player.interactionDelta = this.PLAYER_MAX_INTERACTION_DELTA * 0.5; // Moderate push
-        // Instantly move player just outside danger zone to prevent immediate re-collision
+        this.audioManager.playSound("shield_break");
+        this.triggerShake(); // Trigger screen shake
+        // Nudge player
+        this.player.interactionDelta = this.PLAYER_MAX_INTERACTION_DELTA * 0.5;
         const angle = Math.atan2(
           this.player.y - centerY,
           this.player.x - centerX
-        ); // Correct angle calc
-        this.player.radius = this.sunDangerRadius + 5; // Move just outside
-        // Update position and recalculate distance immediately for consistency
+        );
+        this.player.radius = this.sunDangerRadius + 5;
         this.player.x = centerX + Math.cos(angle) * this.player.radius;
         this.player.y = centerY + Math.sin(angle) * this.player.radius;
-        this.playerDistToSunSq = this.player.radius * this.player.radius; // Update stored dist immediately
+        this.playerDistToSunSq = this.player.radius * this.player.radius;
       } else {
-        // Player hit sun WITHOUT shield - Game Over (Fix 2)
-        console.error("Player hit sun WITHOUT shield! Ending game."); // Add log for debugging
-        this.player.alive = false; // Ensure player is marked dead *before* endGame call
+        // Sun Collision Death (Fix 2)
+        console.error("Player hit sun WITHOUT shield!");
+        this.audioManager.playSound("game_over");
+        this.triggerShake(this.SHAKE_INTENSITY * 2, this.SHAKE_DURATION_MS * 2); // Bigger shake on death
+        this.player.alive = false;
         this.endGame(false, "CONSUMED BY STAR");
-        return; // Stop further checks this frame
+        return;
       }
     }
 
-    // 2. Falling Out of Bounds (Check against pre-calculated radius)
-    // Use >= to catch exact boundary case
+    // 2. Out of Bounds
     if (this.player.radius >= this.maxPlayerRadius) {
       if (this.player.shielded) {
-        // Use direct player state (Improvement 3)
-        // Break shield, similar to sun collision
-        this.activePowerUps.delete(this.powerUpTypes.SHIELD);
+        this.activePowerUps.delete(PowerUpType.SHIELD);
         this.player.shielded = false;
         this.notify(
           "SHIELD OVERLOAD!",
@@ -1373,33 +1567,40 @@ class OrbitGame {
           1.5,
           [255, 100, 100]
         );
-        // Give a small inward nudge
+        this.audioManager.playSound("shield_break");
+        this.triggerShake();
+        // Nudge player
         this.player.interactionDelta = this.PLAYER_MIN_INTERACTION_DELTA * 0.5;
-        this.player.radius = this.maxPlayerRadius - 5; // Move back inside slightly
-        // Update position and recalculate distance immediately
-        const angle = this.player.angle; // Use current angle
+        this.player.radius = this.maxPlayerRadius - 5;
+        const angle = this.player.angle;
         this.player.x = centerX + Math.cos(angle) * this.player.radius;
         this.player.y = centerY + Math.sin(angle) * this.player.radius;
-        this.playerDistToSunSq = this.player.radius * this.player.radius; // Update stored dist immediately
+        this.playerDistToSunSq = this.player.radius * this.player.radius;
       } else {
-        // Player fell out WITHOUT shield - Game Over
-        this.player.alive = false; // Mark dead immediately
+        // Out of Bounds Death
+        console.error("Player went out of bounds!");
+        this.audioManager.playSound("game_over");
+        this.triggerShake(
+          this.SHAKE_INTENSITY * 1.5,
+          this.SHAKE_DURATION_MS * 1.5
+        );
+        this.player.alive = false;
         this.endGame(false, "LOST IN THE VOID");
-        return; // Stop further checks this frame
+        return;
       }
     }
 
-    // 3. Survival Mode Time Limit
-    if (this.gameMode === "survival") {
+    // 3. Survival Time Limit
+    if (this.gameMode === "survival" && this.gameState === GameState.PLAYING) {
       const timeLeft = this.gameTimer - this.duration;
       if (timeLeft <= 0) {
-        this.player.alive = false; // Stop player actions on win
-        this.endGame(true, `SURVIVED! SCORE: ${this.player.score}`); // Victory
+        this.audioManager.playSound("victory");
+        this.saveHighScore();
+        this.player.alive = false;
+        this.endGame(true, `SURVIVED! SCORE: ${this.player.score}`);
         return;
       }
-      // Time warning notification (throttled)
-      if (timeLeft <= 10.5 && Math.floor(timeLeft * 2) % 2 === 0) {
-        // Check every half second in last 10s
+      if (timeLeft <= 10.5 && Math.floor(timeLeft * 2) % 2 === 0)
         this.notify(
           `${Math.ceil(timeLeft)}s`,
           centerX,
@@ -1407,41 +1608,40 @@ class OrbitGame {
           1.2,
           [255, 50, 50]
         );
-      }
     }
 
-    // 4. Score Mode Target Reached
-    if (this.gameMode === "score" && this.player.score >= this.victoryScore) {
-      this.player.alive = false; // Stop player actions on win
-      this.endGame(true, `TARGET REACHED! TIME: ${this.duration.toFixed(1)}s`); // Victory
+    // 4. Score Target Reached
+    if (
+      this.gameMode === "score" &&
+      this.player.score >= this.victoryScore &&
+      this.gameState === GameState.PLAYING
+    ) {
+      this.audioManager.playSound("victory");
+      this.saveHighScore();
+      this.player.alive = false;
+      this.endGame(true, `TARGET REACHED! TIME: ${this.duration.toFixed(1)}s`);
       return;
     }
   }
 
   private endGame(isVictory: boolean, message: string): void {
-    // Ensure these states are set even if called redundantly
-    this.playing = false;
-    if (this.player) this.player.alive = false; // Ensure player is inactive
+    this.playing = false; // Stop main game logic flag
+    if (this.player) this.player.alive = false;
+    const endState = isVictory ? GameState.WINNER : GameState.LOSER;
+    this.setGameState(endState); // Set final state
 
-    const endState = isVictory ? this.STATE_WINNER : this.STATE_LOSER;
-    this.setGameState(endState); // Update body class (shows start button via CSS)
+    // Save score if it's a new high score (Improvement)
+    this.saveHighScore();
 
-    // Clear volatile game elements
-    this.thrustParticles = [];
-    // Maybe clear enemies except sun? Or let them fade?
-    // this.enemies = this.enemies.filter(e => e.type === this.ENEMY_TYPE_SUN);
-    // this.powerUps = []; // Clear remaining powerups
+    this.thrustParticles = []; // Clear particles (or let them fade via pooling)
 
-    // Show end message
     this.notify(
       message,
       this.world.width / 2,
-      this.world.height / 2 - 40, // Position higher
-      1.8, // Slightly smaller main message
+      this.world.height / 2 - 40,
+      1.8,
       isVictory ? [100, 255, 100] : [255, 100, 100]
     );
-
-    // Add restart instructions (centered)
     const instructionY = this.world.height / 2 + 20;
     this.notify(
       "TAP / PRESS 'R'",
@@ -1457,60 +1657,100 @@ class OrbitGame {
       1.0,
       [200, 200, 200]
     );
+    // Display High Score (Improvement)
+    this.notify(
+      `HIGH SCORE: ${this.highScore}`,
+      this.world.width / 2,
+      instructionY + 60,
+      1.0,
+      [200, 200, 100]
+    );
 
-    // Update button text for restart
     this.startButton.textContent = "PLAY AGAIN";
   }
 
   private render(): void {
-    // --- Clear Canvas ---
+    this.context.save(); // Save context state before potential shake
+
+    // Apply Screen Shake offset (Improvement)
+    this.applyShake();
+
+    // Clear Canvas
     this.context.clearRect(0, 0, this.world.width, this.world.height);
 
-    // --- Render Game Elements (Order matters for layering) ---
-    this.renderOrbit(); // Render orbits first (background)
+    // Render Background (Improvement)
+    this.renderBackground();
+
+    // Render Game Elements
+    this.renderOrbit();
     this.renderThrustParticles();
     this.renderEnemies();
     this.renderPowerUps();
+    if (this.player && this.player.alive) this.renderPlayer();
+    this.renderNotifications(); // Render notifications on top
 
-    // Render player only if alive
-    if (this.player && this.player.alive) {
-      this.renderPlayer();
+    // Render UI / Info
+    this.renderGameInfo(); // Score, Time, etc.
+    this.renderPowerUpTimers(); // UI for powerup durations
+
+    // Render Pause Overlay (Improvement)
+    if (this.gameState === GameState.PAUSED) {
+      this.renderPauseScreen();
+    }
+    // Render Welcome Instructions (Improvement)
+    else if (this.gameState === GameState.WELCOME) {
+      this.renderWelcomeScreen();
     }
 
-    this.renderNotifications();
-
-    // --- Render UI / Info ---
-    this.renderGameInfo();
-
-    // --- Render Debug Info (if enabled) ---
+    // Render Debug Info (if enabled)
     if (this.debugging) {
       this.renderDebugInfo();
-      this.visualizeCollisions(); // Render collision lines/circles if debugging
+      this.visualizeCollisions();
     }
+
+    this.context.restore(); // Restore context state after shake
   }
 
   private renderGameInfo(): void {
     this.context.save();
-    this.context.font = "bold 16px Rajdhani, Arial"; // Slightly larger UI font
+    this.context.font = "bold 16px Rajdhani, Arial";
     this.context.fillStyle = "rgba(140, 240, 255, 0.9)";
     this.context.shadowColor = "rgba(0, 0, 0, 0.5)";
     this.context.shadowBlur = 2;
     this.context.shadowOffsetY = 1;
+    const bottomMargin = 25;
 
-    const bottomMargin = 25; // Position from bottom edge
-
-    // Score (bottom left)
+    // Score
     this.context.textAlign = "left";
     this.context.fillText(
       `SCORE: ${this.player?.score ?? 0}`,
       15,
       this.world.height - bottomMargin
-    ); // Use optional chaining for safety
+    );
 
-    // Mode-specific info (bottom right)
+    // High Score (Always visible except maybe during play?)
+    if (
+      this.gameState !== GameState.PLAYING &&
+      this.gameState !== GameState.PAUSED
+    ) {
+      this.context.textAlign = "center";
+      this.context.font = "14px Rajdhani, Arial";
+      this.context.fillStyle = "rgba(200, 200, 100, 0.8)";
+      this.context.fillText(
+        `HI: ${this.highScore}`,
+        this.world.width / 2,
+        this.world.height - bottomMargin - 20
+      );
+    }
+
+    // Mode/Time Info
     this.context.textAlign = "right";
     const rightEdge = this.world.width - 15;
-    if (this.playing) {
+    if (
+      this.gameState === GameState.PLAYING ||
+      this.gameState === GameState.PAUSED
+    ) {
+      // Show during pause too
       if (this.gameMode === "survival") {
         const timeLeft = Math.max(0, Math.ceil(this.gameTimer - this.duration));
         this.context.fillText(
@@ -1519,15 +1759,13 @@ class OrbitGame {
           this.world.height - bottomMargin
         );
       } else {
-        // score mode
         this.context.fillText(
           `TARGET: ${this.victoryScore}`,
           rightEdge,
           this.world.height - bottomMargin
         );
       }
-    } else if (this.gameState === this.STATE_WELCOME) {
-      // Mode info when waiting to start
+    } else if (this.gameState === GameState.WELCOME) {
       this.context.textAlign = "center";
       this.context.font = "14px Rajdhani, Arial";
       this.context.fillStyle = "rgba(140, 240, 255, 0.7)";
@@ -1537,6 +1775,103 @@ class OrbitGame {
         this.world.height - bottomMargin - 20
       );
     }
+    this.context.restore();
+  }
+
+  // Render UI for active powerup durations (Improvement)
+  private renderPowerUpTimers(): void {
+    if (this.activePowerUps.size === 0 || this.gameState !== GameState.PLAYING)
+      return;
+
+    this.context.save();
+    this.context.font = "bold 12px Rajdhani, Arial";
+    const startX = 15;
+    let currentY = 20;
+    const lineHeight = 18;
+    const barWidth = 80;
+    const barHeight = 8;
+    const now = Date.now();
+
+    this.activePowerUps.forEach((endTime, type) => {
+      const remaining = endTime - now;
+      if (remaining <= 0) return; // Should be removed soon anyway
+
+      const fraction = remaining / this.POWERUP_DURATION_MS;
+      const powerUpColor = PowerUp.getColorByType(type); // Use static color getter
+
+      // Draw Text Label
+      let label = PowerUp.getLabelByType(type); // Use static label getter
+      this.context.fillStyle = powerUpColor;
+      this.context.textAlign = "left";
+      this.context.fillText(label, startX, currentY + barHeight);
+
+      // Draw Duration Bar Background
+      this.context.fillStyle = "rgba(100, 100, 100, 0.5)";
+      this.context.fillRect(startX + 40, currentY, barWidth, barHeight);
+
+      // Draw Duration Bar Foreground
+      this.context.fillStyle = powerUpColor;
+      this.context.fillRect(
+        startX + 40,
+        currentY,
+        barWidth * fraction,
+        barHeight
+      );
+
+      currentY += lineHeight;
+    });
+
+    this.context.restore();
+  }
+
+  // Render Pause Screen (Improvement)
+  private renderPauseScreen(): void {
+    this.context.save();
+    this.context.fillStyle = "rgba(0, 0, 0, 0.6)"; // Dark overlay
+    this.context.fillRect(0, 0, this.world.width, this.world.height);
+
+    this.context.fillStyle = "rgba(200, 220, 255, 0.9)";
+    this.context.font = "bold 36px Rajdhani, Arial";
+    this.context.textAlign = "center";
+    this.context.shadowColor = "rgba(0, 0, 0, 0.7)";
+    this.context.shadowBlur = 5;
+    this.context.fillText(
+      "PAUSED",
+      this.world.width / 2,
+      this.world.height / 2 - 10
+    );
+
+    this.context.font = "16px Rajdhani, Arial";
+    this.context.fillText(
+      "Press 'P' to Resume",
+      this.world.width / 2,
+      this.world.height / 2 + 30
+    );
+
+    this.context.restore();
+  }
+
+  // Render Welcome Screen Instructions (Improvement)
+  private renderWelcomeScreen(): void {
+    this.context.save();
+    this.context.fillStyle = "rgba(180, 210, 240, 0.8)";
+    this.context.font = "16px Rajdhani, Arial";
+    this.context.textAlign = "center";
+    this.context.shadowColor = "rgba(0, 0, 0, 0.5)";
+    this.context.shadowBlur = 3;
+
+    const midX = this.world.width / 2;
+    let yPos = this.world.height * 0.7; // Position below center button
+
+    this.context.fillText("HOLD [MOUSE] / [SPACE] / [TOUCH]", midX, yPos);
+    yPos += 20;
+    this.context.fillText("TO EXPAND ORBIT", midX, yPos);
+    yPos += 25;
+    this.context.fillText("RELEASE TO CONTRACT", midX, yPos);
+    yPos += 25;
+    this.context.fillText("COLLECT BLUE ENEMIES", midX, yPos);
+    yPos += 20;
+    this.context.fillText("AVOID THE STAR & EDGE", midX, yPos);
 
     this.context.restore();
   }
@@ -1592,7 +1927,7 @@ class OrbitGame {
     // Game State
     let activeEnemies = 0;
     this.enemies.forEach((e) => {
-      if (e.type !== this.ENEMY_TYPE_SUN) activeEnemies++;
+      if (e.type !== EnemyType.SUN) activeEnemies++;
     });
     print(`Enemies: ${activeEnemies}/${this.MAX_ENEMIES}`); // Use count/max (Improvement 2)
     print(
@@ -1669,31 +2004,31 @@ class OrbitGame {
 } // End of OrbitGame Class
 
 // =============================================================================
-// Entity Classes
+// Entity Classes (With update methods and pooling interface)
 // =============================================================================
 
 class Entity {
-  public alive: boolean = true; // Assume alive by default unless set otherwise
-  public width: number = 0; // Primarily for sprite reference, not physics
+  public alive: boolean = true;
+  public width: number = 0;
   public height: number = 0;
   public x: number = 0;
   public y: number = 0;
-  public collisionRadius: number = 0; // Central physics property
+  public collisionRadius: number = 0;
+  // Optional: Add generic reset for pooling if needed by base Entity
+  // public reset(): void { this.alive = false; }
 }
 
 class Player extends Entity {
-  public radius: number; // Orbital radius from center
-  public angle: number = 0; // Orbital angle (radians)
-  public spriteAngle: number = 0; // Visual rotation angle
+  public radius: number;
+  public angle: number = 0;
+  public spriteAngle: number = 0;
   public score: number = 0;
-  public interactionDelta: number = -0.1; // Rate of change for radius
-
-  // Power-up states (managed by OrbitGame directly on collect/expire - Improvement 3)
+  public interactionDelta: number = -0.1;
   public shielded: boolean = false;
   public scoreMultiplier: number = 1;
   public magnetActive: boolean = false;
   public gravityReversed: boolean = false;
-  public slowTimeActive: boolean = false; // Still checked in updatePlayer
+  public slowTimeActive: boolean = false;
 
   constructor(x: number, y: number, radius: number, collisionRadius: number) {
     super();
@@ -1701,27 +2036,75 @@ class Player extends Entity {
     this.y = y;
     this.radius = radius;
     this.collisionRadius = collisionRadius;
-    this.alive = false; // Player starts inactive until game starts
+    this.alive = false;
   }
+  // Player update logic is handled directly in OrbitGame.updatePlayer for now
 }
 
 class Enemy extends Entity {
-  public type: number = 1;
-  public scale: number = 0.01; // Start small for spawn animation
+  public type: EnemyType;
+  public scale: number = 0.01;
   public scaleTarget: number = 1;
-  public alpha: number = 0; // Start invisible
+  public alpha: number = 0;
   public alphaTarget: number = 1;
-  public time: number = 0; // Can be used for animation timing
+  public time: number = 0;
+  public speedMultiplier: number = 1.0; // For speed variations
 
-  constructor() {
+  // Death Animation State (Improvement: Polish)
+  private dying: boolean = false;
+  private deathDuration: number = 0.25; // seconds
+  private deathTimer: number = 0;
+
+  constructor(type: EnemyType) {
     super();
-    this.alive = true; // Enemies usually start alive
+    this.type = type;
+    this.alive = true;
+    // Reset animation state explicitly
+    this.dying = false;
+    this.deathTimer = 0;
+    this.scale = 0.01;
+    this.alpha = 0;
+    this.scaleTarget = 1;
+    this.alphaTarget = 1;
   }
 
-  // Optional: Add an update method here if enemies have complex behavior
-  // public update(timeFactor: number): void {
-  //    // E.g. movement patterns, animations
-  // }
+  // Improvement: Entity Update Method
+  update(timeFactor: number): void {
+    if (!this.alive && !this.dying) return; // Already dead and finished animation
+
+    this.time = Math.min(this.time + 0.2 * timeFactor, 100);
+
+    if (this.dying) {
+      this.deathTimer += timeFactor / 60; // Increment timer (assuming 60fps base)
+      const deathProgress = Math.min(1, this.deathTimer / this.deathDuration);
+      this.alpha = (1 - deathProgress) * 0.8; // Fade out
+      this.scale = 1 + deathProgress * 0.5; // Expand slightly while fading
+      this.scaleTarget = this.scale; // Stop normal scaling
+      this.alphaTarget = this.alpha;
+
+      if (deathProgress >= 1) {
+        this.alive = false; // Mark as fully dead after animation
+        this.dying = false;
+      }
+    } else {
+      // Normal spawn animation / behavior
+      this.scale += (this.scaleTarget - this.scale) * 0.2 * timeFactor; // Slightly faster scale-in
+      this.alpha += (this.alphaTarget - this.alpha) * 0.1 * timeFactor;
+
+      // TODO: Add movement logic here if enemies move
+      // Example: Apply speedMultiplier if enemy moves
+      // this.x += someVelocityX * this.speedMultiplier * timeFactor;
+      // this.y += someVelocityY * this.speedMultiplier * timeFactor;
+    }
+  }
+
+  // Method to trigger death animation (Improvement: Polish)
+  startDying(): void {
+    if (this.dying || !this.alive) return; // Don't restart if already dying/dead
+    this.dying = true;
+    this.deathTimer = 0;
+    this.collisionRadius = 0; // Prevent further collisions while dying
+  }
 }
 
 class Notification extends Entity {
@@ -1729,7 +2112,6 @@ class Notification extends Entity {
   public scale: number;
   public rgb: number[];
   public alpha: number;
-  // x, y inherited from Entity
 
   constructor(
     text: string,
@@ -1744,20 +2126,30 @@ class Notification extends Entity {
     this.y = y;
     this.scale = scale;
     this.rgb = rgb;
-    this.alpha = 1.0; // Start fully visible
-    this.alive = true; // Notifications are 'alive' while visible
-    this.collisionRadius = 0; // Not collidable
+    this.alpha = 1.0;
+    this.alive = true;
+    this.collisionRadius = 0;
+  }
+
+  // Improvement: Entity Update Method
+  update(timeFactor: number): void {
+    if (!this.alive) return;
+    this.y -= 0.4 * timeFactor;
+    this.alpha -= 0.015 * timeFactor;
+    if (this.alpha <= 0) {
+      this.alive = false; // Mark as dead when faded
+    }
   }
 }
 
-class ThrustParticle extends Entity {
-  public angle: number;
-  public size: number;
-  public alpha: number;
-  public speed: number;
-  public decay: number;
+class ThrustParticle extends Entity implements Poolable {
+  // Implement Poolable
+  public angle: number = 0;
+  public size: number = 1;
+  public alpha: number = 1;
+  public speed: number = 1;
+  public decay: number = 0.01;
 
-  // Added explicit constructor parameters matching usage
   constructor(
     x: number,
     y: number,
@@ -1768,6 +2160,19 @@ class ThrustParticle extends Entity {
     decay: number
   ) {
     super();
+    this.init(x, y, angle, size, alpha, speed, decay);
+  }
+
+  // Initialization method for pooled objects
+  init(
+    x: number,
+    y: number,
+    angle: number,
+    size: number,
+    alpha: number,
+    speed: number,
+    decay: number
+  ): void {
     this.x = x;
     this.y = y;
     this.angle = angle;
@@ -1779,61 +2184,95 @@ class ThrustParticle extends Entity {
     this.collisionRadius = 0;
   }
 
-  public update(timeFactor: number): void {
-    // Move in the direction of the angle
+  // Reset method for pool (Improvement: Pooling)
+  reset(): void {
+    this.alive = false; // Mark as not alive when in pool
+    this.x = -1000; // Move off-screen
+    this.y = -1000;
+    this.alpha = 0;
+    this.size = 0;
+  }
+
+  // Improvement: Entity Update Method
+  update(timeFactor: number): void {
+    if (!this.alive) return;
     this.x += Math.cos(this.angle) * this.speed * timeFactor;
     this.y += Math.sin(this.angle) * this.speed * timeFactor;
-
-    // Gradually fade out
     this.alpha -= this.decay * timeFactor;
-
-    // Gradually shrink
-    this.size = Math.max(0.1, this.size - 0.03 * timeFactor); // Shrink slightly faster
+    this.size = Math.max(0.1, this.size - 0.03 * timeFactor);
+    if (this.alpha <= 0 || this.size <= 0.1) {
+      this.alive = false; // Mark for removal / return to pool
+    }
   }
 }
 
 class PowerUp extends Entity {
-  public type: number;
+  public type: PowerUpType;
   public rotation: number = 0;
-  public rotationSpeed: number = (Math.random() - 0.5) * 0.1; // Random slow rotation
-  public alpha: number = 0; // Fade in
+  public rotationSpeed: number = (Math.random() - 0.5) * 0.1;
+  public alpha: number = 0;
   public alphaTarget: number = 1;
-  public scale: number = 0.1; // Scale in
+  public scale: number = 0.1;
   public scaleTarget: number = 1;
-  public time: number = 0; // For animation timing
+  public time: number = 0;
 
-  constructor(x: number, y: number, type: number) {
+  constructor(x: number, y: number, type: PowerUpType) {
     super();
     this.x = x;
     this.y = y;
     this.type = type;
-    this.collisionRadius = 15; // Set collision size
+    this.collisionRadius = 15;
     this.alive = true;
   }
 
-  public update(timeFactor: number): void {
+  // Improvement: Entity Update Method
+  update(timeFactor: number): void {
+    if (!this.alive) return;
     this.rotation += this.rotationSpeed * timeFactor;
-    this.time = Math.min(this.time + 0.15 * timeFactor, 100); // Slower time accumulation for animation
-    this.scale += (this.scaleTarget - this.scale) * 0.1 * timeFactor; // Slower scale in
-    this.alpha += (this.alphaTarget - this.alpha) * 0.05 * timeFactor; // Slower fade in
+    this.time = Math.min(this.time + 0.15 * timeFactor, 100);
+    this.scale += (this.scaleTarget - this.scale) * 0.1 * timeFactor;
+    this.alpha += (this.alphaTarget - this.alpha) * 0.05 * timeFactor;
+    // Optional: Add lifetime limit?
+    // if (this.time > someLimit) this.alive = false;
   }
 
-  // Static method for colors, easier access
-  public getColor(): string {
-    switch (this.type) {
-      case 1:
-        return "rgba(20, 180, 255, 0.9)"; // Shield - Electric blue
-      case 2:
-        return "rgba(255, 215, 20, 0.9)"; // Score - Golden energy
-      case 3:
-        return "rgba(0, 255, 180, 0.9)"; // Slow Time - Cyan green
-      case 4:
-        return "rgba(255, 50, 255, 0.9)"; // Magnet - Magenta energy
-      case 5:
-        return "rgba(255, 100, 50, 0.9)"; // Gravity Reverse - Orange energy
+  // Moved from OrbitGame, made static for utility
+  static getColorByType(type: PowerUpType): string {
+    switch (type) {
+      case PowerUpType.SHIELD:
+        return "rgba(20, 180, 255, 0.9)";
+      case PowerUpType.SCORE_MULTIPLIER:
+        return "rgba(255, 215, 20, 0.9)";
+      case PowerUpType.SLOW_TIME:
+        return "rgba(0, 255, 180, 0.9)";
+      case PowerUpType.MAGNET:
+        return "rgba(255, 50, 255, 0.9)";
+      case PowerUpType.GRAVITY_REVERSE:
+        return "rgba(255, 100, 50, 0.9)";
       default:
-        return "rgba(200, 200, 200, 0.8)"; // Default grey
+        return "rgba(200, 200, 200, 0.8)";
     }
+  }
+  // Added static label getter for UI timers
+  static getLabelByType(type: PowerUpType): string {
+    switch (type) {
+      case PowerUpType.SHIELD:
+        return "SHLD";
+      case PowerUpType.SCORE_MULTIPLIER:
+        return "x2";
+      case PowerUpType.SLOW_TIME:
+        return "SLOW";
+      case PowerUpType.MAGNET:
+        return "MAG";
+      case PowerUpType.GRAVITY_REVERSE:
+        return "ANTI-G";
+      default:
+        return "???";
+    }
+  }
+  // Instance method calls static method
+  public getColor(): string {
+    return PowerUp.getColorByType(this.type);
   }
 }
 
