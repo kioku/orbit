@@ -170,12 +170,14 @@ class OrbitGame {
   private readonly ENEMY_MAX_SPAWN_RADIUS_OFFSET: number = 10;
   private readonly ENEMY_MIN_DISTANCE_FROM_PLAYER: number = 100;
   private readonly ENEMY_SHOOTER_CHANCE: number = 0.18; // Less frequent shooters initially
-  public readonly SHOOTER_COOLDOWN_MS: number = 1800; // More time between shots
+  // Change SHOOTER_COOLDOWN_MS
+  public readonly SHOOTER_COOLDOWN_MS: number = 2500; // Slower firing rate (was 1800)
   // Projectiles
   private readonly PROJECTILE_POOL_INITIAL_SIZE: number = 50;
   private readonly PROJECTILE_SPEED: number = 3.5;
   private readonly PROJECTILE_SIZE: number = 4;
-  private readonly PROJECTILE_LIFETIME_MS: number = 3000; // How long projectiles live
+  // Change PROJECTILE_LIFETIME_MS
+  private readonly PROJECTILE_LIFETIME_MS: number = 2200; // Shorter lifetime (was 3000)
   private readonly PROJECTILE_COLLISION_RADIUS: number = 5;
   // Particles (Pooling)
   private readonly THRUST_PARTICLE_POOL_INITIAL_SIZE: number = 100;
@@ -1070,9 +1072,16 @@ class OrbitGame {
       if (!enemy.alive && enemy.type !== EnemyType.SUN) continue; // Skip dead normal enemies
 
       let sprite: HTMLCanvasElement | null;
+      let tintColor: string | null = null; // Add this line
+
       switch (enemy.type) {
           case EnemyType.NORMAL: sprite = this.sprites.enemy; break;
-          case EnemyType.FAST: sprite = this.sprites.enemy; break; // Use normal sprite for fast for now
+          // Change this block for FAST enemy
+          case EnemyType.FAST:
+              sprite = this.sprites.enemy;
+              tintColor = "rgba(255, 255, 0, 0.15)"; // Yellow tint
+              break;
+          // End of change block
           case EnemyType.SHOOTER: sprite = this.sprites.shooterSprite; break;
           case EnemyType.SUN: sprite = this.sprites.enemySun; break;
           default: sprite = null;
@@ -1092,6 +1101,15 @@ class OrbitGame {
       const offsetY = sprite.height / 2;
 
       this.context.drawImage(sprite, -offsetX, -offsetY);
+
+      // Add this block to apply tint if needed
+      if (tintColor) {
+          this.context.globalCompositeOperation = 'source-atop'; // Apply tint over the sprite
+          this.context.fillStyle = tintColor;
+          this.context.fillRect(-offsetX, -offsetY, sprite.width, sprite.height);
+          this.context.globalCompositeOperation = 'source-over'; // Reset composite operation
+      }
+      // End of tint block
 
       // Debug visualization
       if (this.debugging) {
@@ -2319,6 +2337,33 @@ class Enemy extends Entity {
       this.alpha += (this.alphaTarget - this.alpha) * 0.1 * timeFactor;
 
       // TODO: Add movement logic here if enemies move
+      // --- Add FAST enemy movement logic ---
+      if (this.type === EnemyType.FAST) {
+          const centerX = game.world.width / 2;
+          const centerY = game.world.height / 2;
+          const dx_sun = this.x - centerX;
+          const dy_sun = this.y - centerY;
+          const currentRadius = Math.sqrt(dx_sun * dx_sun + dy_sun * dy_sun);
+          if (currentRadius > 0) {
+              // Calculate tangential angle (perpendicular to radius vector)
+              const angleToCenter = Math.atan2(dy_sun, dx_sun);
+              const tangentialAngle = angleToCenter + Math.PI / 2; // 90 degrees offset
+
+              // Base speed, scaled by multiplier and timeFactor
+              const baseSpeed = 0.8; // Adjust base speed as needed
+              const moveSpeed = baseSpeed * this.speedMultiplier * timeFactor;
+
+              this.x += Math.cos(tangentialAngle) * moveSpeed;
+              this.y += Math.sin(tangentialAngle) * moveSpeed;
+
+              // Optional: Add slight drift inwards/outwards?
+              // const driftFactor = 0.01;
+              // this.x -= Math.cos(angleToCenter) * driftFactor * timeFactor;
+              // this.y -= Math.sin(angleToCenter) * driftFactor * timeFactor;
+          }
+      }
+      // --- End of FAST enemy movement logic ---
+
       // --- Shooting Logic (for SHOOTER type) ---
       if (this.type === EnemyType.SHOOTER && game.player.alive) {
           // Calculate distance to player first
