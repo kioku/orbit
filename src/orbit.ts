@@ -170,7 +170,7 @@ class OrbitGame {
   private readonly ENEMY_MAX_SPAWN_RADIUS_OFFSET: number = 10;
   private readonly ENEMY_MIN_DISTANCE_FROM_PLAYER: number = 100;
   private readonly ENEMY_SHOOTER_CHANCE: number = 0.25; // Chance for a SHOOTER enemy
-  private readonly SHOOTER_COOLDOWN_MS: number = 1500; // Time between shots
+  public readonly SHOOTER_COOLDOWN_MS: number = 1500; // CHANGE private to public // Time between shots
   // Projectiles
   private readonly PROJECTILE_POOL_INITIAL_SIZE: number = 50;
   private readonly PROJECTILE_SPEED: number = 3.5;
@@ -224,7 +224,7 @@ class OrbitGame {
   private framesThisSecond: number = 0;
 
   private enemies: Enemy[] = [];
-  private player!: Player;
+  public player!: Player; // CHANGE private to public
   private sunEnemy: Enemy | null = null;
   private playerDistToSunSq: number = 0;
 
@@ -2264,7 +2264,6 @@ class Enemy extends Entity {
   public speedMultiplier: number = 1.0; // For speed variations
 
   // Shooter State
-  private shootCooldown: number = 0; // Time until next shot is ready (ms)
   private timeSinceLastShot: number = 0; // Time since last shot fired (ms)
 
   // Death Animation State (Improvement: Polish)
@@ -2292,7 +2291,10 @@ class Enemy extends Entity {
   update(timeFactor: number, game: OrbitGame): void { // Accept OrbitGame instance
     if (!this.alive && !this.dying) return; // Already dead and finished animation
 
-    const deltaMs = timeFactor * (1000 / game.FRAMERATE); // Approximate ms passed
+    // Calculate deltaMs based on timeFactor and a fixed reference rate (e.g., 60fps)
+    // Avoids needing direct access to game.FRAMERATE
+    const deltaMs = timeFactor * (1000 / 60); // Approximate ms passed based on 60fps reference
+
     this.time = Math.min(this.time + 0.2 * timeFactor, 100);
 
     if (this.dying) {
