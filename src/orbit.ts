@@ -8,6 +8,7 @@ interface Sprites {
   playerSprite: HTMLCanvasElement | null;
   enemySun: HTMLCanvasElement | null;
   enemy: HTMLCanvasElement | null;
+  shooterSprite: HTMLCanvasElement | null; // Sprite for shooter enemy
   // Potential future: Enemy variants, powerup sprites
 }
 
@@ -34,7 +35,8 @@ enum EnemyType {
   NORMAL = 1,
   SUN = 2,
   FAST = 3, // Basic example for variety
-  // Add more types here: SHOOTER, HOMING, etc.
+  SHOOTER = 4, // Fires projectiles
+  // Add more types here: HOMING, etc.
 }
 
 // Improvement: Use Enum for PowerUp Types
@@ -167,6 +169,14 @@ class OrbitGame {
   private readonly ENEMY_MIN_SPAWN_RADIUS_OFFSET: number = 10;
   private readonly ENEMY_MAX_SPAWN_RADIUS_OFFSET: number = 10;
   private readonly ENEMY_MIN_DISTANCE_FROM_PLAYER: number = 100;
+  private readonly ENEMY_SHOOTER_CHANCE: number = 0.25; // Chance for a SHOOTER enemy
+  private readonly SHOOTER_COOLDOWN_MS: number = 1500; // Time between shots
+  // Projectiles
+  private readonly PROJECTILE_POOL_INITIAL_SIZE: number = 50;
+  private readonly PROJECTILE_SPEED: number = 3.5;
+  private readonly PROJECTILE_SIZE: number = 4;
+  private readonly PROJECTILE_LIFETIME_MS: number = 3000; // How long projectiles live
+  private readonly PROJECTILE_COLLISION_RADIUS: number = 5;
   // Particles (Pooling)
   private readonly THRUST_PARTICLE_POOL_INITIAL_SIZE: number = 100;
   private readonly THRUST_PARTICLE_COUNT_MIN = 1;
@@ -176,6 +186,9 @@ class OrbitGame {
   private readonly THRUST_PARTICLE_OFFSET_MAX = 25;
   // High Score Key (Improvement)
   private readonly HIGH_SCORE_KEY = "orbitHighScore";
+  // Projectiles
+  private projectiles: Projectile[] = [];
+  private projectilePool!: ObjectPool<Projectile>; // Initialize in constructor
   // Screen Shake (Improvement)
   private readonly SHAKE_DURATION_MS = 150;
   private readonly SHAKE_INTENSITY = 3;
@@ -185,6 +198,7 @@ class OrbitGame {
     playerSprite: null,
     enemySun: null,
     enemy: null,
+    shooterSprite: null,
   };
   private mouse: Mouse = { down: false };
   private keyboardThrust: boolean = false; // For keyboard control
@@ -550,6 +564,28 @@ class OrbitGame {
     ctxSun.shadowBlur = 20;
     ctxSun.fill();
     this.sprites.enemySun = cvsSun;
+
+    // Shooter Enemy Sprite (Example: Diamond shape)
+    let cvsShooter = document.createElement("canvas");
+    cvsShooter.width = 48;
+    cvsShooter.height = 48;
+    let ctxShooter = cvsShooter.getContext("2d")!;
+    ctxShooter.translate(24, 24);
+    ctxShooter.fillStyle = "rgba(255, 100, 0, 0.9)"; // Orange color
+    ctxShooter.shadowColor = "rgba(255, 150, 50, 0.9)";
+    ctxShooter.shadowBlur = 15;
+    ctxShooter.lineWidth = 1.5;
+    ctxShooter.lineJoin = "miter";
+    const shooterSize = this.ENEMY_SIZE * 1.2; // Slightly larger
+    ctxShooter.beginPath();
+    ctxShooter.moveTo(0, -shooterSize); // Top point
+    ctxShooter.lineTo(shooterSize * 0.8, 0); // Right point
+    ctxShooter.lineTo(0, shooterSize * 0.6); // Bottom point (blunter)
+    ctxShooter.lineTo(-shooterSize * 0.8, 0); // Left point
+    ctxShooter.closePath();
+    ctxShooter.fill();
+    ctxShooter.setTransform(1, 0, 0, 1, 0, 0);
+    this.sprites.shooterSprite = cvsShooter;
   }
 
   private onStartButtonClick(e: Event): void {
@@ -585,6 +621,8 @@ class OrbitGame {
     this.notifications = [];
     this.powerUps = [];
     this.activePowerUps.clear();
+    this.projectiles.forEach(p => this.projectilePool.release(p));
+    this.projectiles = [];
 
     this.player = new Player(
       this.world.width / 2 + this.PLAYER_START_RADIUS,
@@ -643,6 +681,10 @@ class OrbitGame {
       if (p.alive) this.particlePool.release(p);
     });
     this.thrustParticles = [];
+    this.projectiles.forEach(p => {
+        if (p.alive) this.projectilePool.release(p);
+    });
+    this.projectiles = [];
   }
 
   private notify(
@@ -864,11 +906,17 @@ class OrbitGame {
         this.maxPlayerRadius - this.ENEMY_MAX_SPAWN_RADIUS_OFFSET;
 
       if (maxSpawnRadius > minSpawnRadius) {
-        // Determine enemy type (basic variety example)
-        const type =
-          Math.random() < this.ENEMY_FAST_CHANCE
-            ? EnemyType.FAST
-            : EnemyType.NORMAL;
+        // Determine enemy type
+        let type: EnemyType;
+        const rand = Math.random();
+        if (rand < this.ENEMY_FAST_CHANCE) {
+            type = EnemyType.FAST;
+        } else if (rand < this.ENEMY_FAST_CHANCE + this.ENEMY_SHOOTER_CHANCE) {
+            type = EnemyType.SHOOTER;
+        } else {
+            type = EnemyType.NORMAL;
+        }
+
         let enemy = new Enemy(type); // Pass type
 
         let validPosition = false;
@@ -908,8 +956,8 @@ class OrbitGame {
     for (let i = this.enemies.length - 1; i >= 0; i--) {
       const enemy = this.enemies[i];
 
-      // Call entity's own update method
-      enemy.update(this.timeFactor);
+      // Call entity's own update method, passing game context for actions like shooting
+      enemy.update(this.timeFactor, this);
 
       if (!enemy.alive) {
         // Check if entity marked itself as dead (e.g., death animation finished)
@@ -1015,10 +1063,14 @@ class OrbitGame {
       // Use for...of for slightly cleaner iteration
       if (!enemy.alive && enemy.type !== EnemyType.SUN) continue; // Skip dead normal enemies
 
-      const sprite =
-        enemy.type === EnemyType.NORMAL
-          ? this.sprites.enemy
-          : this.sprites.enemySun;
+      let sprite: HTMLCanvasElement | null;
+      switch (enemy.type) {
+          case EnemyType.NORMAL: sprite = this.sprites.enemy; break;
+          case EnemyType.FAST: sprite = this.sprites.enemy; break; // Use normal sprite for fast for now
+          case EnemyType.SHOOTER: sprite = this.sprites.shooterSprite; break;
+          case EnemyType.SUN: sprite = this.sprites.enemySun; break;
+          default: sprite = null;
+      }
       if (!sprite) continue;
 
       // Use enemy's current scale and alpha
@@ -1539,6 +1591,7 @@ class OrbitGame {
         this.updatePlayer();
         this.updateEnemies();
         this.updatePowerUps();
+        this.updateProjectiles(); // Update projectiles
         this.updateThrustParticles();
         this.updateExplosionParticles();
         this.updateBackgroundStars(); // Update background scroll
@@ -1757,6 +1810,7 @@ class OrbitGame {
     this.renderThrustParticles();
     this.renderEnemies();
     this.renderPowerUps();
+    this.renderProjectiles(); // Render projectiles
     this.renderExplosionParticles();
     if (this.player && this.player.alive) this.renderPlayer();
     this.renderNotifications(); // Render notifications on top
@@ -2005,7 +2059,9 @@ class OrbitGame {
     print(
       `Enemy Spawn Interval: ${this.currentEnemySpawnInterval.toFixed(0)}ms`
     ); // Show current rate (Improvement 2)
-    print(`Particles: ${this.thrustParticles.length}`);
+    print(`Thrust Particles: ${this.thrustParticles.length} (Pool: ${this.particlePool.getPoolSize()})`);
+    print(`Explosion Particles: ${this.explosionParticles.length} (Pool: ${this.explosionParticlePool.getPoolSize()})`);
+    print(`Projectiles: ${this.projectiles.length} (Pool: ${this.projectilePool.getPoolSize()})`);
     print(
       `Powerups: ${this.powerUps.length} (Active: ${this.activePowerUps.size})`
     );
@@ -2122,6 +2178,10 @@ class Enemy extends Entity {
   public time: number = 0;
   public speedMultiplier: number = 1.0; // For speed variations
 
+  // Shooter State
+  private shootCooldown: number = 0; // Time until next shot is ready (ms)
+  private timeSinceLastShot: number = 0; // Time since last shot fired (ms)
+
   // Death Animation State (Improvement: Polish)
   private dying: boolean = false;
   private deathDuration: number = 0.15; // seconds (Shortened)
@@ -2138,12 +2198,16 @@ class Enemy extends Entity {
     this.alpha = 0;
     this.scaleTarget = 1;
     this.alphaTarget = 1;
+    this.alphaTarget = 1;
+    this.shootCooldown = 0; // Reset cooldown timer on spawn/reset
+    this.timeSinceLastShot = Math.random() * game.SHOOTER_COOLDOWN_MS; // Stagger initial shots
   }
 
   // Improvement: Entity Update Method
-  update(timeFactor: number): void {
+  update(timeFactor: number, game: OrbitGame): void { // Accept OrbitGame instance
     if (!this.alive && !this.dying) return; // Already dead and finished animation
 
+    const deltaMs = timeFactor * (1000 / game.FRAMERATE); // Approximate ms passed
     this.time = Math.min(this.time + 0.2 * timeFactor, 100);
 
     if (this.dying) {
@@ -2164,6 +2228,22 @@ class Enemy extends Entity {
       this.scale += (this.scaleTarget - this.scale) * 0.2 * timeFactor; // Slightly faster scale-in
       this.alpha += (this.alphaTarget - this.alpha) * 0.1 * timeFactor;
 
+      // TODO: Add movement logic here if enemies move
+      // --- Shooting Logic (for SHOOTER type) ---
+      if (this.type === EnemyType.SHOOTER && game.player.alive) {
+          this.timeSinceLastShot += deltaMs;
+          if (this.timeSinceLastShot >= game.SHOOTER_COOLDOWN_MS) {
+              // Calculate angle towards player
+              const dx = game.player.x - this.x;
+              const dy = game.player.y - this.y;
+              const angleToPlayer = Math.atan2(dy, dx);
+
+              // Spawn projectile
+              game.spawnProjectile(this.x, this.y, angleToPlayer);
+
+              this.timeSinceLastShot = 0; // Reset timer
+          }
+      }
       // TODO: Add movement logic here if enemies move
       // Example: Apply speedMultiplier if enemy moves
       // this.x += someVelocityX * this.speedMultiplier * timeFactor;
@@ -2325,6 +2405,55 @@ class ExplosionParticle extends Entity implements Poolable {
         }
     }
 }
+
+// --- Projectile Class ---
+class Projectile extends Entity implements Poolable {
+    public angle: number = 0;
+    public speed: number = 0;
+    public size: number = 0;
+    public lifetimeMs: number = 0;
+    private timeAlive: number = 0;
+
+    constructor() {
+        super();
+        this.alive = false; // Start inactive
+    }
+
+    init(x: number, y: number, angle: number, speed: number, size: number, collisionRadius: number, lifetimeMs: number): void {
+        this.x = x;
+        this.y = y;
+        this.angle = angle;
+        this.speed = speed;
+        this.size = size;
+        this.collisionRadius = collisionRadius;
+        this.lifetimeMs = lifetimeMs;
+        this.timeAlive = 0;
+        this.alive = true;
+    }
+
+    reset(): void {
+        this.alive = false;
+        this.x = -1000;
+        this.y = -1000;
+        this.timeAlive = 0;
+    }
+
+    update(timeFactor: number): void {
+        if (!this.alive) return;
+
+        this.x += Math.cos(this.angle) * this.speed * timeFactor;
+        this.y += Math.sin(this.angle) * this.speed * timeFactor;
+
+        // Use constant framerate assumption for lifetime calculation
+        const deltaMs = timeFactor * (1000 / 60); // Approx ms
+        this.timeAlive += deltaMs;
+
+        if (this.timeAlive >= this.lifetimeMs) {
+            this.alive = false; // Mark for removal
+        }
+    }
+}
+
 
 class PowerUp extends Entity {
   public type: PowerUpType;
