@@ -155,13 +155,13 @@ class OrbitGame {
   private readonly PLAYER_ROTATION_SPEED_FACTOR = 5.5;
   private readonly PLAYER_MIN_ORBIT_RADIUS = 50;
   private readonly POWERUP_SPAWN_INTERVAL_MS: number = 5000;
-  private readonly POWERUP_DURATION_MS: number = 10000;
+  private readonly POWERUP_DURATION_MS: number = 12000; // Powerups last slightly longer
   private readonly POWERUP_MAGNET_RANGE: number = 150;
   private readonly POWERUP_MAGNET_STRENGTH: number = 2;
   private readonly SUN_DANGER_RADIUS_FACTOR: number = 0.03;
   // Enemy Spawning (Improvement)
   private readonly MAX_ENEMIES: number = 15;
-  private readonly ENEMY_SPAWN_INTERVAL_MS_BASE: number = 1000;
+  private readonly ENEMY_SPAWN_INTERVAL_MS_BASE: number = 1200; // Slightly slower start
   private readonly ENEMY_SPAWN_INTERVAL_MS_MIN: number = 250;
   private readonly ENEMY_SPAWN_INTERVAL_REDUCTION_PER_SEC: number = 5;
   private readonly ENEMY_FAST_CHANCE: number = 0.15; // Chance for a 'FAST' enemy variant (basic variety)
@@ -169,8 +169,8 @@ class OrbitGame {
   private readonly ENEMY_MIN_SPAWN_RADIUS_OFFSET: number = 10;
   private readonly ENEMY_MAX_SPAWN_RADIUS_OFFSET: number = 10;
   private readonly ENEMY_MIN_DISTANCE_FROM_PLAYER: number = 100;
-  private readonly ENEMY_SHOOTER_CHANCE: number = 0.25; // Chance for a SHOOTER enemy
-  public readonly SHOOTER_COOLDOWN_MS: number = 1500; // CHANGE private to public // Time between shots
+  private readonly ENEMY_SHOOTER_CHANCE: number = 0.18; // Less frequent shooters initially
+  public readonly SHOOTER_COOLDOWN_MS: number = 1800; // More time between shots
   // Projectiles
   private readonly PROJECTILE_POOL_INITIAL_SIZE: number = 50;
   private readonly PROJECTILE_SPEED: number = 3.5;
