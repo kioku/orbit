@@ -763,11 +763,13 @@ class OrbitGame {
 
   private renderBackground(): void {
     this.context.save();
-    this.context.fillStyle = "rgba(255, 255, 255, 0.7)";
+    // Change: Use fully opaque white as the base color
+    this.context.fillStyle = "rgba(255, 255, 255, 1)";
     this.backgroundStars.forEach((star) => {
-      const alpha = star.speed * 1.5; // Faster stars are brighter/larger?
-      const size = star.speed * 1.2;
-      this.context.globalAlpha = Math.min(0.7, alpha);
+      const alpha = star.speed * 1.5; // Alpha based on speed (keep this calculation)
+      const size = star.speed * 1.2;  // Size based on speed (keep this calculation for now)
+      // Change: Increase the maximum alpha slightly
+      this.context.globalAlpha = Math.min(0.8, alpha); // Increased cap from 0.7 to 0.8
       this.context.fillRect(Math.round(star.x), Math.round(star.y), size, size);
     });
     this.context.restore();
