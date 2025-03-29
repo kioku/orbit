@@ -303,6 +303,12 @@ class OrbitGame {
         this.EXPLOSION_PARTICLE_POOL_INITIAL_SIZE
     );
 
+    // Initialize Projectile Pool
+    this.projectilePool = new ObjectPool<Projectile>(
+        () => new Projectile(), // Factory function
+        this.PROJECTILE_POOL_INITIAL_SIZE
+    );
+
     // Initialize Audio Manager
     this.audioManager = new AudioManager();
     this.audioManager.load(); // Trigger loading (async usually)
@@ -2129,6 +2135,85 @@ class OrbitGame {
 
     this.context.restore();
   }
+
+  // --- Projectile Management ---
+  spawnProjectile(x: number, y: number, angle: number): void {
+      const projectile = this.projectilePool.get();
+      projectile.init(
+          x,
+          y,
+          angle,
+          this.PROJECTILE_SPEED,
+          this.PROJECTILE_SIZE,
+          this.PROJECTILE_COLLISION_RADIUS,
+          this.PROJECTILE_LIFETIME_MS
+      );
+      this.projectiles.push(projectile);
+      // Optional: Play shoot sound
+      // this.audioManager.playSound("shoot", 0.2);
+  }
+
+  updateProjectiles(): void {
+      for (let i = this.projectiles.length - 1; i >= 0; i--) {
+          const projectile = this.projectiles[i];
+          projectile.update(this.timeFactor);
+
+          if (!projectile.alive) {
+              this.projectiles.splice(i, 1);
+              this.projectilePool.release(projectile);
+              continue;
+          }
+
+          // Check collision with player
+          if (this.player.alive && this.collides(this.player, projectile)) {
+              projectile.alive = false; // Mark projectile for removal
+              this.projectiles.splice(i, 1);
+              this.projectilePool.release(projectile);
+
+              if (this.player.shielded) {
+                  this.activePowerUps.delete(PowerUpType.SHIELD);
+                  this.player.shielded = false;
+                  this.notify("SHIELD HIT!", this.player.x, this.player.y - 20, 1.2, [255, 180, 100]);
+                  this.audioManager.playSound("shield_break");
+                  this.triggerShake(this.SHAKE_INTENSITY * 0.8); // Smaller shake for projectile hit
+              } else {
+                  console.error("Player hit by projectile!");
+                  this.audioManager.playSound("game_over"); // Or a specific hit sound
+                  this.triggerShake(this.SHAKE_INTENSITY * 1.5, this.SHAKE_DURATION_MS * 1.5);
+                  this.player.alive = false;
+                  this.endGame(false, "SHOT DOWN");
+              }
+              // No need to continue checking other projectiles once player is hit in a frame?
+              // Or let multiple hits happen if applicable. For now, just handle one hit.
+              // break; // Optional: Stop checking after first hit this frame
+          }
+          // Optional: Check collision with other enemies?
+      }
+  }
+
+  renderProjectiles(): void {
+      this.context.save();
+      this.context.fillStyle = "rgba(255, 80, 80, 0.9)"; // Red color for projectiles
+      this.context.shadowColor = "rgba(255, 0, 0, 0.8)";
+      this.context.shadowBlur = 8;
+
+      for (const projectile of this.projectiles) {
+          this.context.beginPath();
+          this.context.arc(projectile.x, projectile.y, projectile.size, 0, Math.PI * 2);
+          this.context.fill();
+
+          // Debug projectile collision radius
+          if (this.debugging) {
+              this.context.beginPath();
+              this.context.arc(projectile.x, projectile.y, projectile.collisionRadius, 0, Math.PI * 2);
+              this.context.strokeStyle = "rgba(255, 255, 0, 0.5)";
+              this.context.lineWidth = 1;
+              this.context.stroke();
+          }
+      }
+      this.context.restore();
+  }
+
 } // End of OrbitGame Class
 
 // =============================================================================
