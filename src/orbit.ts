@@ -1927,22 +1927,30 @@ class OrbitGame {
     );
 
     // High Score (Always visible except maybe during play?)
+    // Change: Use the primary info color and adjust position if needed
+    this.context.fillStyle = "rgba(140, 240, 255, 0.9)"; // Use same color as score/time
+    this.context.textAlign = "center";
+    this.context.font = "14px Rajdhani, Arial"; // Keep slightly smaller font
+    // Adjust Y position if in Welcome state to avoid overlap with Mode text
+    const highScoreY = (this.gameState === GameState.WELCOME)
+        ? this.world.height - bottomMargin - 35 // Move higher in Welcome state
+        : this.world.height - bottomMargin - 20; // Original position otherwise
+
     if (
       this.gameState !== GameState.PLAYING &&
       this.gameState !== GameState.PAUSED
     ) {
-      this.context.textAlign = "center";
-      this.context.font = "14px Rajdhani, Arial";
-      this.context.fillStyle = "rgba(200, 200, 100, 0.8)";
       this.context.fillText(
         `HI: ${this.highScore}`,
         this.world.width / 2,
-        this.world.height - bottomMargin - 20
+        highScoreY // Use calculated Y position
       );
     }
 
     // Mode/Time Info
     this.context.textAlign = "right";
+    this.context.font = "bold 16px Rajdhani, Arial"; // Reset font for time/target
+    this.context.fillStyle = "rgba(140, 240, 255, 0.9)"; // Ensure color is reset
     const rightEdge = this.world.width - 15;
     if (
       this.gameState === GameState.PLAYING ||
