@@ -221,6 +221,17 @@ class OrbitGame {
   private notifications: Notification[] = [];
   private thrustParticles: ThrustParticle[] = []; // Active particles
   private particlePool: ObjectPool<ThrustParticle>; // Particle pool (Improvement: Pooling)
+  private explosionParticles: ExplosionParticle[] = []; // Active explosion particles
+  private explosionParticlePool: ObjectPool<ExplosionParticle>; // Pool for explosions
+  private readonly EXPLOSION_PARTICLE_POOL_INITIAL_SIZE: number = 150;
+  private readonly EXPLOSION_PARTICLE_COUNT_MIN = 8;
+  private readonly EXPLOSION_PARTICLE_COUNT_MAX = 15;
+  private readonly EXPLOSION_PARTICLE_SPEED_MIN = 1.5;
+  private readonly EXPLOSION_PARTICLE_SPEED_MAX = 4.0;
+  private readonly EXPLOSION_PARTICLE_SIZE_MIN = 2;
+  private readonly EXPLOSION_PARTICLE_SIZE_MAX = 5;
+  private readonly EXPLOSION_PARTICLE_DECAY_MIN = 0.03;
+  private readonly EXPLOSION_PARTICLE_DECAY_MAX = 0.06;
   private backgroundStars: { x: number; y: number; speed: number }[] = []; // For parallax background
 
   private debugging: boolean = false;
@@ -270,6 +281,12 @@ class OrbitGame {
     this.particlePool = new ObjectPool<ThrustParticle>(
       () => new ThrustParticle(0, 0, 0, 1, 1, 1, 0.01), // Factory function
       this.THRUST_PARTICLE_POOL_INITIAL_SIZE
+    );
+
+    // Initialize Explosion Particle Pool
+    this.explosionParticlePool = new ObjectPool<ExplosionParticle>(
+        () => new ExplosionParticle(), // Factory function
+        this.EXPLOSION_PARTICLE_POOL_INITIAL_SIZE
     );
 
     // Initialize Audio Manager
@@ -924,6 +941,7 @@ class OrbitGame {
         // Trigger enemy death sequence instead of immediate removal (Improvement: Polish)
         enemy.startDying();
         this.audioManager.playSound("explode", 0.6);
+        this.createExplosion(enemy.x, enemy.y); // Spawn explosion particles
 
         const points = this.player.scoreMultiplier;
         this.player.score += points;
@@ -1193,6 +1211,27 @@ class OrbitGame {
     }
   }
 
+  private createExplosion(x: number, y: number): void {
+      const particleCount = this.EXPLOSION_PARTICLE_COUNT_MIN + Math.floor(Math.random() * (this.EXPLOSION_PARTICLE_COUNT_MAX - this.EXPLOSION_PARTICLE_COUNT_MIN + 1));
+
+      for (let i = 0; i < particleCount; i++) {
+          const particle = this.explosionParticlePool.get();
+
+          const angle = Math.random() * Math.PI * 2;
+          const speed = this.EXPLOSION_PARTICLE_SPEED_MIN + Math.random() * (this.EXPLOSION_PARTICLE_SPEED_MAX - this.EXPLOSION_PARTICLE_SPEED_MIN);
+          const size = this.EXPLOSION_PARTICLE_SIZE_MIN + Math.random() * (this.EXPLOSION_PARTICLE_SIZE_MAX - this.EXPLOSION_PARTICLE_SIZE_MIN);
+          const decay = this.EXPLOSION_PARTICLE_DECAY_MIN + Math.random() * (this.EXPLOSION_PARTICLE_DECAY_MAX - this.EXPLOSION_PARTICLE_DECAY_MIN);
+          const alpha = 0.7 + Math.random() * 0.3;
+          // Color variation: Mostly cyan/blue, some white sparks
+          const color = Math.random() < 0.8
+              ? [50 + Math.random() * 50, 180 + Math.random() * 75, 255] // Cyan/Blue range
+              : [230 + Math.random() * 25, 230 + Math.random() * 25, 255]; // White/Light Blue range
+
+          particle.init(x, y, angle, size, alpha, speed, decay, color);
+          this.explosionParticles.push(particle);
+      }
+  }
+
   // --- Thrust Particles (Using Pooling - Improvement) ---
   private createThrustParticle(): void {
     if (!this.player) return;
@@ -1248,6 +1287,18 @@ class OrbitGame {
     }
   }
 
+  private updateExplosionParticles(): void {
+      for (let i = this.explosionParticles.length - 1; i >= 0; i--) {
+          const particle = this.explosionParticles[i];
+          particle.update(this.timeFactor); // Use entity's update
+
+          if (!particle.alive) {
+              this.explosionParticles.splice(i, 1); // Remove from active list
+              this.explosionParticlePool.release(particle); // Return to pool
+          }
+      }
+  }
+
   private renderThrustParticles(): void {
     this.context.save();
     this.context.fillStyle = "rgba(255, 120, 70, 0.8)"; // Consistent orange-red color
@@ -1258,6 +1309,25 @@ class OrbitGame {
       this.context.fill();
     }
     this.context.restore();
+  }
+
+  private renderExplosionParticles(): void {
+      this.context.save();
+      // Optional: Add blend mode for brighter effect
+      // this.context.globalCompositeOperation = 'lighter';
+
+      for (const particle of this.explosionParticles) {
+          const color = particle.color;
+          this.context.fillStyle = `rgba(${Math.round(color[0])}, ${Math.round(color[1])}, ${Math.round(color[2])}, ${particle.alpha.toFixed(2)})`;
+          this.context.beginPath();
+          // Draw simple squares for a blocky/digital explosion feel
+          const halfSize = particle.size / 2;
+          this.context.fillRect(particle.x - halfSize, particle.y - halfSize, particle.size, particle.size);
+          // Or use circles:
+          // this.context.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+          // this.context.fill();
+      }
+      this.context.restore(); // Restore composite operation if changed
   }
 
   // --- PowerUps ---
@@ -1470,6 +1540,7 @@ class OrbitGame {
         this.updateEnemies();
         this.updatePowerUps();
         this.updateThrustParticles();
+        this.updateExplosionParticles();
         this.updateBackgroundStars(); // Update background scroll
 
         this.checkEndConditions();
@@ -1686,6 +1757,7 @@ class OrbitGame {
     this.renderThrustParticles();
     this.renderEnemies();
     this.renderPowerUps();
+    this.renderExplosionParticles();
     if (this.player && this.player.alive) this.renderPlayer();
     this.renderNotifications(); // Render notifications on top
 
@@ -2052,7 +2124,7 @@ class Enemy extends Entity {
 
   // Death Animation State (Improvement: Polish)
   private dying: boolean = false;
-  private deathDuration: number = 0.25; // seconds
+  private deathDuration: number = 0.15; // seconds (Shortened)
   private deathTimer: number = 0;
 
   constructor(type: EnemyType) {
@@ -2078,7 +2150,8 @@ class Enemy extends Entity {
       this.deathTimer += timeFactor / 60; // Increment timer (assuming 60fps base)
       const deathProgress = Math.min(1, this.deathTimer / this.deathDuration);
       this.alpha = (1 - deathProgress) * 0.8; // Fade out
-      this.scale = 1 + deathProgress * 0.5; // Expand slightly while fading
+      // this.scale = 1 + deathProgress * 0.5; // Expand slightly while fading (Old)
+      this.scale = 1 - deathProgress * 0.5; // Shrink slightly while fading (New)
       this.scaleTarget = this.scale; // Stop normal scaling
       this.alphaTarget = this.alpha;
 
@@ -2204,6 +2277,53 @@ class ThrustParticle extends Entity implements Poolable {
       this.alive = false; // Mark for removal / return to pool
     }
   }
+}
+
+class ExplosionParticle extends Entity implements Poolable {
+    public angle: number = 0;
+    public size: number = 1;
+    public alpha: number = 1;
+    public speed: number = 1;
+    public decay: number = 0.02; // Controls fade speed
+    public color: number[] = [255, 255, 255]; // RGB color
+
+    constructor() {
+        super();
+        this.alive = false; // Start inactive
+        this.collisionRadius = 0;
+    }
+
+    init(x: number, y: number, angle: number, size: number, alpha: number, speed: number, decay: number, color: number[]): void {
+        this.x = x;
+        this.y = y;
+        this.angle = angle;
+        this.size = size;
+        this.alpha = alpha;
+        this.speed = speed;
+        this.decay = decay;
+        this.color = color;
+        this.alive = true;
+    }
+
+    reset(): void {
+        this.alive = false;
+        this.x = -1000;
+        this.y = -1000;
+        this.alpha = 0;
+        this.size = 0;
+    }
+
+    update(timeFactor: number): void {
+        if (!this.alive) return;
+        this.x += Math.cos(this.angle) * this.speed * timeFactor;
+        this.y += Math.sin(this.angle) * this.speed * timeFactor;
+        this.alpha -= this.decay * timeFactor;
+        this.size = Math.max(0.1, this.size - 0.05 * timeFactor); // Shrink rate
+
+        if (this.alpha <= 0 || this.size <= 0.1) {
+            this.alive = false;
+        }
+    }
 }
 
 class PowerUp extends Entity {
