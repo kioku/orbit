@@ -160,7 +160,8 @@ class OrbitGame {
   private readonly POWERUP_DURATION_MS: number = 12000; // Powerups last slightly longer
   private readonly POWERUP_MAGNET_RANGE: number = 150;
   private readonly POWERUP_MAGNET_STRENGTH: number = 2;
-  private readonly SUN_DANGER_RADIUS_FACTOR: number = 0.03;
+  // Increase SUN_DANGER_RADIUS_FACTOR slightly
+  private readonly SUN_DANGER_RADIUS_FACTOR: number = 0.04; // Increased from 0.03
   // Enemy Spawning (Improvement)
   private readonly MAX_ENEMIES: number = 15;
   private readonly ENEMY_SPAWN_INTERVAL_MS_BASE: number = 1200; // Slightly slower start
@@ -1567,10 +1568,19 @@ class OrbitGame {
         1.2,
         notificationColor
       );
-    console.log(`PowerUp ${powerUp.type} collected`);
+    console.log(`PowerUp ${resolvedType} collected/refreshed`); // Use resolvedType in log
   }
 
-  private renderPowerUps(): void {
+  // --- Helper Methods ---
+  private parseRgbaColor(rgbaString: string): number[] {
+      const match = rgbaString.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*[\d.]+)?\)/);
+      if (match) {
+          return [parseInt(match[1]), parseInt(match[2]), parseInt(match[3])];
+      }
+      return [255, 255, 255]; // Default to white if parse fails
+  }
+
+  private renderPowerUps(): void { // Add this method signature for context
     this.context.save();
     for (const powerUp of this.powerUps) {
       this.context.globalAlpha = powerUp.alpha * 0.85; // Slightly transparent base
@@ -1990,12 +2000,14 @@ class OrbitGame {
 
       // Draw Duration Bar Background
       this.context.fillStyle = "rgba(100, 100, 100, 0.5)";
-      this.context.fillRect(startX + 40, currentY, barWidth, barHeight);
+      // Adjust X position of the bar to make space for potentially longer labels if needed
+      const barStartX = startX + 45; // Increased offset slightly
+      this.context.fillRect(barStartX, currentY, barWidth, barHeight);
 
       // Draw Duration Bar Foreground
       this.context.fillStyle = powerUpColor;
       this.context.fillRect(
-        startX + 40,
+        barStartX, // Use adjusted start X
         currentY,
         barWidth * fraction,
         barHeight
@@ -2689,22 +2701,32 @@ class PowerUp extends Entity {
   }
   // Added static label getter for UI timers
   static getLabelByType(type: PowerUpType): string {
+    let label = "";
     switch (type) {
-      case PowerUpType.SHIELD:
-        return "SHLD";
-      case PowerUpType.SCORE_MULTIPLIER:
-        return "x2";
-      case PowerUpType.SLOW_TIME:
-        return "SLOW";
-      case PowerUpType.MAGNET:
-        return "MAG";
-      case PowerUpType.GRAVITY_REVERSE:
-        return "ANTI-G";
-      // Add case for RANDOM
-      case PowerUpType.RANDOM:
-        return "???";
-      default:
-        return "???";
+      case PowerUpType.SHIELD:            label = "SHIELD"; break;
+      case PowerUpType.SCORE_MULTIPLIER:  label = "SCORE MULTIPLIER"; break; // Use full name for abbreviation logic
+      case PowerUpType.SLOW_TIME:         label = "SLOW TIME"; break;
+      case PowerUpType.MAGNET:            label = "MAGNET"; break;
+      case PowerUpType.GRAVITY_REVERSE:   label = "ANTI GRAVITY"; break;
+      case PowerUpType.RANDOM:            label = "RANDOM"; break; // Keep RANDOM as ??? before pickup
+      default:                            return "???";
+    }
+
+    // Abbreviation logic: Capitalize, remove vowels (except maybe first letter if vowel?)
+    if (type === PowerUpType.RANDOM) return "???"; // Special case for display before pickup
+
+    // Simple vowel removal (can be improved)
+    // const abbreviated = label.toUpperCase().replace(/[AEIOU]/g, '');
+    // Ensure at least 2 chars, maybe take first 3-4 consonants?
+    // Example: SHIELD -> SHLD, SCORE MULTIPLIER -> SCRMLTPLR -> SCRM, SLOW TIME -> SLWTM -> SLWT, MAGNET -> MGNT, ANTI GRAVITY -> NTGRVTY -> NTGR
+    // Let's try a simpler fixed length abbreviation
+    switch (type) {
+        case PowerUpType.SHIELD:            return "SHLD";
+        case PowerUpType.SCORE_MULTIPLIER:  return "SCRx2"; // Special case for clarity
+        case PowerUpType.SLOW_TIME:         return "SLW";
+        case PowerUpType.MAGNET:            return "MGNT";
+        case PowerUpType.GRAVITY_REVERSE:   return "NGRV"; // Anti-Gravity
+        default:                            return label.substring(0, 4).toUpperCase(); // Fallback: First 4 chars, uppercase
     }
   }
   // Instance method calls static method
