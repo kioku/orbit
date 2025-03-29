@@ -2139,9 +2139,13 @@ class OrbitGame {
   // --- Projectile Management ---
   spawnProjectile(x: number, y: number, angle: number): void {
       const projectile = this.projectilePool.get();
+      const spawnOffset = 10; // Distance ahead of shooter to spawn projectile
+      const startX = x + Math.cos(angle) * spawnOffset;
+      const startY = y + Math.sin(angle) * spawnOffset;
+
       projectile.init(
-          x,
-          y,
+          startX, // Use offset start position
+          startY, // Use offset start position
           angle,
           this.PROJECTILE_SPEED,
           this.PROJECTILE_SIZE,
@@ -2317,17 +2321,29 @@ class Enemy extends Entity {
       // TODO: Add movement logic here if enemies move
       // --- Shooting Logic (for SHOOTER type) ---
       if (this.type === EnemyType.SHOOTER && game.player.alive) {
-          this.timeSinceLastShot += deltaMs;
-          if (this.timeSinceLastShot >= game.SHOOTER_COOLDOWN_MS) {
-              // Calculate angle towards player
-              const dx = game.player.x - this.x;
-              const dy = game.player.y - this.y;
-              const angleToPlayer = Math.atan2(dy, dx);
+          // Calculate distance to player first
+          const dx = game.player.x - this.x;
+          const dy = game.player.y - this.y;
+          const distSq = dx * dx + dy * dy;
+          const minFireDist = this.collisionRadius + game.player.collisionRadius + 20; // Enemy rad + player rad + buffer
+          const minFireDistSq = minFireDist * minFireDist;
 
-              // Spawn projectile
-              game.spawnProjectile(this.x, this.y, angleToPlayer);
+          // Only fire if player is not too close AND cooldown is ready
+          if (distSq > minFireDistSq) {
+              this.timeSinceLastShot += deltaMs;
+              if (this.timeSinceLastShot >= game.SHOOTER_COOLDOWN_MS) {
+                  // Angle calculation already done
+                  const angleToPlayer = Math.atan2(dy, dx);
 
-              this.timeSinceLastShot = 0; // Reset timer
+                  // Spawn projectile (pass angle, not dx/dy)
+                  game.spawnProjectile(this.x, this.y, angleToPlayer);
+
+                  this.timeSinceLastShot = 0; // Reset timer
+              }
+          } else {
+              // Optional: Reset cooldown if player gets too close? Or just pause it?
+              // For now, just prevent firing. Cooldown continues.
+              // this.timeSinceLastShot = 0; // Alternative: Reset cooldown if player is close
           }
       }
       // TODO: Add movement logic here if enemies move
