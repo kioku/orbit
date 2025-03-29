@@ -1503,70 +1503,75 @@ class OrbitGame {
   }
 
   private collectPowerUp(powerUp: PowerUp): void {
-    const endTime = Date.now() + this.POWERUP_DURATION_MS;
-    this.activePowerUps.set(powerUp.type, endTime); // Refresh or set duration
+    // Don't set activePowerUps immediately for RANDOM
     this.audioManager.playSound("powerup");
 
     let notificationText = "";
     let notificationColor: number[] = [200, 200, 200];
+    let resolvedType = powerUp.type; // Store the potentially resolved type
 
-    // --- Add this block to handle RANDOM type ---
+    // --- Modify RANDOM type handling ---
     if (powerUp.type === PowerUpType.RANDOM) {
-        // Get all *other* power-up types
         const availableTypes = Object.values(PowerUpType)
             .filter(v => typeof v === 'number' && v !== PowerUpType.RANDOM) as PowerUpType[];
 
         if (availableTypes.length > 0) {
-            // Choose a random type from the available ones
             const chosenType = availableTypes[Math.floor(Math.random() * availableTypes.length)];
-            console.log(`Random PowerUp resolved to: ${chosenType}`);
-            // Create a temporary powerup of the chosen type to reuse the logic below
-            // Or directly call the logic for the chosen type
-            powerUp.type = chosenType; // Change the type for the switch statement below
+            console.log(`Random PowerUp resolved to: ${PowerUp.getLabelByType(chosenType)} (${chosenType})`);
+            resolvedType = chosenType; // Update resolvedType with the actual chosen type
+            // Remove the RANDOM entry from activePowerUps if it was added prematurely
+            // (Shouldn't happen with the logic moved, but good practice)
+            this.activePowerUps.delete(PowerUpType.RANDOM);
         } else {
             console.warn("No other powerup types available for RANDOM to resolve to.");
-            return; // Nothing to do if no other types exist
+            return; // Nothing to do
         }
     }
-    // --- End of RANDOM block ---
+    // --- End of RANDOM modification ---
 
+    // Use resolvedType for setting duration and player state
+    const endTime = Date.now() + this.POWERUP_DURATION_MS;
+    this.activePowerUps.set(resolvedType, endTime); // Use the RESOLVED type as the key
 
-    // Set Player State Directly (Improvement 3)
-    switch (powerUp.type) {
+    // Set Player State Directly using resolvedType
+    switch (resolvedType) { // Use resolvedType here
       case PowerUpType.SHIELD:
         this.player.shielded = true;
-        notificationText = "SHIELD ACTIVE";
-        notificationColor = [0, 255, 255];
+        // Use static methods for consistency (Rule 4)
+        notificationText = PowerUp.getLabelByType(resolvedType); // Get abbreviated label
+        notificationColor = this.parseRgbaColor(PowerUp.getColorByType(resolvedType)); // Get color
         break;
       case PowerUpType.SCORE_MULTIPLIER:
         this.player.scoreMultiplier = 2;
-        notificationText = "2X SCORE";
-        notificationColor = [255, 255, 0];
+        notificationText = PowerUp.getLabelByType(resolvedType);
+        notificationColor = this.parseRgbaColor(PowerUp.getColorByType(resolvedType));
         break;
       case PowerUpType.SLOW_TIME:
         this.player.slowTimeActive = true;
-        notificationText = "TIME WARP";
-        notificationColor = [0, 255, 150];
+        notificationText = PowerUp.getLabelByType(resolvedType);
+        notificationColor = this.parseRgbaColor(PowerUp.getColorByType(resolvedType));
         break;
       case PowerUpType.MAGNET:
         this.player.magnetActive = true;
-        notificationText = "MAGNETISM";
-        notificationColor = [255, 0, 255];
+        // Use static methods for consistency (Rule 3 & 4)
+        notificationText = PowerUp.getLabelByType(resolvedType);
+        notificationColor = this.parseRgbaColor(PowerUp.getColorByType(resolvedType));
         break;
       case PowerUpType.GRAVITY_REVERSE:
         this.player.gravityReversed = true;
-        notificationText = "ANTI-GRAVITY";
-        notificationColor = [255, 128, 0];
+        notificationText = PowerUp.getLabelByType(resolvedType);
+        notificationColor = this.parseRgbaColor(PowerUp.getColorByType(resolvedType));
         break;
+      // No default needed as RANDOM is resolved before this switch
     }
 
     if (notificationText)
       this.notify(
-        notificationText,
+        `${notificationText} ACTIVE`, // Add "ACTIVE" for clarity
         this.player.x,
         this.player.y - 25,
         1.2,
-        notificationColor
+        notificationColor // Use the parsed color
       );
     console.log(`PowerUp ${resolvedType} collected/refreshed`); // Use resolvedType in log
   }
