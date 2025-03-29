@@ -963,7 +963,7 @@ class OrbitGame {
       const enemy = this.enemies[i];
 
       // Call entity's own update method, passing game context for actions like shooting
-      enemy.update(this.timeFactor, this);
+      enemy.update(this.timeFactor, this); // Pass 'this' here
 
       if (!enemy.alive) {
         // Check if entity marked itself as dead (e.g., death animation finished)
@@ -2282,9 +2282,8 @@ class Enemy extends Entity {
     this.alpha = 0;
     this.scaleTarget = 1;
     this.alphaTarget = 1;
-    this.alphaTarget = 1;
-    this.shootCooldown = 0; // Reset cooldown timer on spawn/reset
-    this.timeSinceLastShot = Math.random() * game.SHOOTER_COOLDOWN_MS; // Stagger initial shots
+    // this.shootCooldown = 0; // REMOVE THIS LINE
+    this.timeSinceLastShot = 0; // Initialize to 0, don't use game here
   }
 
   // Improvement: Entity Update Method
