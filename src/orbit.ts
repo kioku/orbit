@@ -46,6 +46,7 @@ enum PowerUpType {
   SLOW_TIME = 3,
   MAGNET = 4,
   GRAVITY_REVERSE = 5,
+  RANDOM = 6, // Add RANDOM type
 }
 
 // =============================================================================
@@ -153,7 +154,8 @@ class OrbitGame {
   private readonly PLAYER_MAX_INTERACTION_DELTA = 1.5;
   private readonly PLAYER_MIN_INTERACTION_DELTA = -0.8;
   private readonly PLAYER_ROTATION_SPEED_FACTOR = 5.5;
-  private readonly PLAYER_MIN_ORBIT_RADIUS = 50;
+  // Change PLAYER_MIN_ORBIT_RADIUS
+  private readonly PLAYER_MIN_ORBIT_RADIUS = 35; // Reduced from 50
   private readonly POWERUP_SPAWN_INTERVAL_MS: number = 5000;
   private readonly POWERUP_DURATION_MS: number = 12000; // Powerups last slightly longer
   private readonly POWERUP_MAGNET_RANGE: number = 150;
@@ -563,14 +565,21 @@ class OrbitGame {
 
     // Sun Enemy Sprite
     let cvsSun = document.createElement("canvas");
-    cvsSun.width = 64;
-    cvsSun.height = 64;
+    // Increase canvas size to accommodate the glow/shadow
+    cvsSun.width = 96; // Increased from 64
+    cvsSun.height = 96; // Increased from 64
     let ctxSun = cvsSun.getContext("2d")!;
-    ctxSun.arc(32, 32, this.sunBaseRadius, 0, Math.PI * 2);
+    // Translate to the center of the larger canvas
+    ctxSun.translate(48, 48); // Center point of 96x96
+    // Draw the arc centered in the larger canvas
+    ctxSun.arc(0, 0, this.sunBaseRadius, 0, Math.PI * 2); // Draw at (0,0) after translate
     ctxSun.fillStyle = "rgba(250, 50, 50, 1)";
     ctxSun.shadowColor = "rgba(250, 20, 20, 0.9)";
-    ctxSun.shadowBlur = 20;
+    // Increase shadow blur slightly if needed, ensure it fits within 96x96
+    ctxSun.shadowBlur = 25; // Increased from 20
     ctxSun.fill();
+    // Reset transform before assigning to sprite
+    ctxSun.setTransform(1, 0, 0, 1, 0, 0);
     this.sprites.enemySun = cvsSun;
 
     // Shooter Enemy Sprite (Example: Diamond shape)
@@ -1422,10 +1431,13 @@ class OrbitGame {
 
     // Choose a random type from available power-ups
     const typeKeys = Object.keys(this.powerUpTypes);
-    const randomTypeKey = typeKeys[
-      Math.floor(Math.random() * typeKeys.length)
+    // Filter out the numeric keys if necessary (depends on how TS handles enums)
+    const validKeys = typeKeys.filter(key => isNaN(Number(key)));
+    const randomTypeKey = validKeys[
+      Math.floor(Math.random() * validKeys.length)
     ] as keyof typeof this.powerUpTypes;
-    const randomType = this.powerUpTypes[randomTypeKey];
+    // Explicitly cast to the enum type
+    const randomType = this.powerUpTypes[randomTypeKey] as PowerUpType;
 
     const powerUp = new PowerUp(
       centerX + Math.cos(angle) * radius,
@@ -1496,6 +1508,27 @@ class OrbitGame {
 
     let notificationText = "";
     let notificationColor: number[] = [200, 200, 200];
+
+    // --- Add this block to handle RANDOM type ---
+    if (powerUp.type === PowerUpType.RANDOM) {
+        // Get all *other* power-up types
+        const availableTypes = Object.values(PowerUpType)
+            .filter(v => typeof v === 'number' && v !== PowerUpType.RANDOM) as PowerUpType[];
+
+        if (availableTypes.length > 0) {
+            // Choose a random type from the available ones
+            const chosenType = availableTypes[Math.floor(Math.random() * availableTypes.length)];
+            console.log(`Random PowerUp resolved to: ${chosenType}`);
+            // Create a temporary powerup of the chosen type to reuse the logic below
+            // Or directly call the logic for the chosen type
+            powerUp.type = chosenType; // Change the type for the switch statement below
+        } else {
+            console.warn("No other powerup types available for RANDOM to resolve to.");
+            return; // Nothing to do if no other types exist
+        }
+    }
+    // --- End of RANDOM block ---
+
 
     // Set Player State Directly (Improvement 3)
     switch (powerUp.type) {
@@ -2641,10 +2674,15 @@ class PowerUp extends Entity {
         return "rgba(255, 215, 20, 0.9)";
       case PowerUpType.SLOW_TIME:
         return "rgba(0, 255, 180, 0.9)";
+      // Change MAGNET color
       case PowerUpType.MAGNET:
-        return "rgba(255, 50, 255, 0.9)";
+        return "rgba(250, 50, 50, 0.9)"; // Changed from magenta to sun-like red
       case PowerUpType.GRAVITY_REVERSE:
         return "rgba(255, 100, 50, 0.9)";
+      // Add case for RANDOM (visual representation before collection)
+      case PowerUpType.RANDOM:
+        // Pulsating rainbow or just gray/white? Let's use white for now.
+        return "rgba(220, 220, 220, 0.9)";
       default:
         return "rgba(200, 200, 200, 0.8)";
     }
@@ -2662,6 +2700,9 @@ class PowerUp extends Entity {
         return "MAG";
       case PowerUpType.GRAVITY_REVERSE:
         return "ANTI-G";
+      // Add case for RANDOM
+      case PowerUpType.RANDOM:
+        return "???";
       default:
         return "???";
     }
