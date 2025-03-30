@@ -406,6 +406,7 @@ class OrbitGame {
     this.orbitToggleButton = document.getElementById('orbit-toggle') as HTMLButtonElement;
     this.backgroundToggleButton = document.getElementById('background-toggle') as HTMLButtonElement;
     this.soundToggleButton = document.getElementById('sound-toggle') as HTMLButtonElement;
+    this.modeToggleButton = document.getElementById('mode-toggle') as HTMLButtonElement; // Add this
 
 
     if (!this.settingsMenu || !this.closeMenuButton || !this.debugToggleButton || !this.orbitToggleButton || !this.backgroundToggleButton || !this.soundToggleButton) {
