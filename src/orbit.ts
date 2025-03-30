@@ -286,7 +286,7 @@ class OrbitGame {
   private gameState: GameState = GameState.WELCOME; // Use Enum
   private gameTimer: number = 60; // Configurable game param
   private gameMode: string = "survival";
-  private victoryScore: number = 30; // Configurable game param
+  private victoryScore: number = 300; // Configurable game param
   private powerUps: PowerUp[] = [];
   private powerUpTypes = PowerUpType; // Use Enum
   private activePowerUps: Map<PowerUpType, number> = new Map(); // type -> endTime
@@ -1099,7 +1099,8 @@ class OrbitGame {
         const rand = Math.random();
         if (rand < this.ENEMY_FAST_CHANCE) {
             type = EnemyType.FAST;
-        } else if (rand < this.ENEMY_FAST_CHANCE + this.ENEMY_SHOOTER_CHANCE) {
+        // Only allow shooters if not in score mode
+        } else if (this.gameMode !== "score" && rand < this.ENEMY_FAST_CHANCE + this.ENEMY_SHOOTER_CHANCE) {
             type = EnemyType.SHOOTER;
         } else {
             type = EnemyType.NORMAL;
@@ -1179,7 +1180,10 @@ class OrbitGame {
         this.audioManager.playSound("explode", 0.6);
         this.createExplosion(enemy.x, enemy.y); // Spawn explosion particles
 
-        const points = this.player.scoreMultiplier;
+        // Award 3 points for shooters, multiplier value otherwise
+        const points = (enemy.type === EnemyType.SHOOTER)
+            ? 3
+            : this.player.scoreMultiplier;
         this.player.score += points;
         this.notify(`+${points}`, enemy.x, enemy.y, 1, [250, 250, 100]);
       }
