@@ -1,4 +1,5 @@
 import "./main.css";
+import { Howl, Howler } from "howler";
 
 // =============================================================================
 // Interfaces & Enums
@@ -55,8 +56,18 @@ enum PowerUpType {
 
 // Basic Audio Manager Stub (Replace with actual implementation using Howler.js, Web Audio API, etc.)
 class AudioManager {
-  private sounds: { [key: string]: any } = {}; // Placeholder for sound objects
+  private sounds: { [key: string]: Howl | null } = {}; // Use Howl type
   private isMuted: boolean = false; // Global mute state
+  private musicPlaying: boolean = false; // Track music state
+
+  // The url of the background music.
+  // Thanks uploadthing.com
+  // Sport Racing Car | DRIVE by Alex-Productions | https://onsound.eu/
+  // Music promoted by https://www.chosic.com/free-music/all/
+  // Creative Commons CC BY 3.0
+  // https://creativecommons.org/licenses/by/3.0/
+  private readonly MUSIC_URL =
+    "https://g9e7a37vde.ufs.sh/f/8rP3LNAdeIqo14aH6pALc4aglCP3FIW9BAmt7QdJ8OiHr5Mx";
 
   load() {
     console.log("AudioManager: Load sounds here...");
@@ -65,49 +76,86 @@ class AudioManager {
     this.sounds["thrust"] = null;
     this.sounds["shield_break"] = null;
     this.sounds["powerup"] = null;
-    this.sounds["explode"] = null;
+    this.sounds["explode"] = null; // TODO: Load actual sound effects
     this.sounds["game_over"] = null;
     this.sounds["victory"] = null;
-    this.sounds["music"] = null;
+
+    // Load background music
+    this.sounds["music"] = new Howl({
+      src: [this.MUSIC_URL], // <<< Replace with your music URL
+      loop: true,
+      volume: 0.4, // Adjust default volume as needed
+      html5: true, // Use HTML5 Audio to potentially save resources for long tracks
+      format: "mp3",
+      onload: () => {
+        console.log("AudioManager: Music loaded.");
+      },
+      onloaderror: (_, err) => {
+        console.error("AudioManager: Error loading music.", err);
+      },
+      onplayerror: (_, err) => {
+        console.error("AudioManager: Error playing music.", err);
+        this.musicPlaying = false; // Reset flag on play error
+      },
+    });
   }
 
   // Method to toggle mute state
   mute(muted: boolean): void {
     this.isMuted = muted;
+    Howler.mute(muted); // Use Howler's global mute
     console.log(`AudioManager: Sounds ${muted ? "muted" : "unmuted"}`);
-    // TODO: Implement actual muting logic for the audio library (e.g., Howler.mute(muted))
+    // Howler handles stopping sounds on mute if configured, but explicit stopMusic might still be desired
+    // Depending on whether you want music to resume automatically on unmute.
+    // Let's keep the explicit stop/start logic for now.
     if (muted) {
-      this.stopMusic(); // Also stop music when muting globally
+      if (this.musicPlaying) this.stopMusic(); // Stop music only if it was playing
     } else {
+      // Optionally restart music if it was playing before mute?
+      // Let's let the game logic handle restarting music via playMusic() when needed.
       // Optionally restart music if it was playing before mute? Depends on desired behavior.
     }
   }
 
   playSound(key: string, volume: number = 1.0) {
-    if (this.isMuted) return; // Don't play if muted
+    // Note: Global mute (Howler.mute) already prevents playback.
+    // Keeping the isMuted check might be redundant but harmless.
+    if (this.isMuted) return;
 
-    if (this.sounds[key]) {
-      console.log(
-        `AudioManager: Playing sound "${key}" (stub), volume ${volume}`
-      );
-      // TODO: Actual playback logic: this.sounds[key].volume(volume).play();
-    } else {
-      // console.warn(`AudioManager: Sound "${key}" not found or loaded.`);
-    }
+    const sound = this.sounds[key];
+    if (sound) {
+      // console.log(`AudioManager: Playing sound "${key}", volume ${volume}`);
+      sound.volume(volume);
+      sound.play();
+    } // No warning for missing sounds needed for now
   }
 
   playMusic() {
-    if (this.isMuted) return; // Don't play if muted
+    // Global mute check is handled by Howler, but explicit check prevents unnecessary calls
+    if (this.isMuted || this.musicPlaying) return;
 
-    if (this.sounds["music"]) {
-      console.log("AudioManager: Playing music (stub)");
-      // TODO: Start background music, loop etc.
+    const music = this.sounds["music"];
+    if (music) {
+      console.log("AudioManager: Playing music.");
+      music.play();
+      this.musicPlaying = true; // Set flag
+      music.once("play", () => {
+        // Confirm playback started
+        console.log("AudioManager: Music playback confirmed.");
+        this.musicPlaying = true;
+      });
+      // Howler handles looping via the 'loop: true' setting during load.
+    } else {
+      console.warn("AudioManager: Music not loaded or ready.");
     }
   }
+
   stopMusic() {
-    if (this.sounds["music"]) {
-      console.log("AudioManager: Stopping music (stub)");
-      // TODO: Stop background music
+    const music = this.sounds["music"];
+    if (music && this.musicPlaying) {
+      console.log("AudioManager: Stopping music.");
+      music.stop(); // Stop playback
+      this.musicPlaying = false; // Reset flag
     }
   }
 }
