@@ -252,14 +252,13 @@ body.state-winner .settings-button { */
   display: flex;
   flex-direction: column;
   align-items: center;
-  transition: opacity 0.3s ease-out, visibility 0.3s ease-out;
-  opacity: 1;
-  visibility: visible;
+  transition: opacity 0.3s ease-out, visibility 0.3s ease-out; /* Keep transition */
 }
 
 .settings-menu.hidden {
   opacity: 0;
   visibility: hidden;
+  display: none;
   pointer-events: none; /* Prevent interaction when hidden */
 }
 

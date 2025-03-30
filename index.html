@@ -45,6 +45,10 @@
         top: 0;
         left: 0;
       }
+
+      .hidden {
+        display: none;
+      }
     </style>
   </head>
   <body class="start">
@@ -71,7 +75,11 @@
         </div>
         <div class="menu-item">
           <label for="background-toggle">Show Background:</label>
-          <button id="background-toggle" class="toggle-button" aria-pressed="true">
+          <button
+            id="background-toggle"
+            class="toggle-button"
+            aria-pressed="true"
+          >
             <span class="toggle-label-off">OFF</span>
             <span class="toggle-label-on">ON</span>
             <span class="toggle-handle"></span>
@@ -88,7 +96,9 @@
         <div class="menu-item">
           <label for="mode-toggle">Game Mode:</label>
           <!-- This button will show the current mode and allow toggling -->
-          <button id="mode-toggle" class="menu-button mode-toggle-button">Mode: Survival</button>
+          <button id="mode-toggle" class="menu-button mode-toggle-button">
+            Mode: Survival
+          </button>
         </div>
         <button id="close-menu-button" class="menu-button">CLOSE</button>
       </div>
