@@ -1213,10 +1213,11 @@ class OrbitGame {
         this.audioManager.playSound("explode", 0.6);
         this.createExplosion(enemy.x, enemy.y); // Spawn explosion particles
 
-        // Award 3 points for shooters, multiplier value otherwise
-        const points = (enemy.type === EnemyType.SHOOTER)
-            ? 3
-            : this.player.scoreMultiplier;
+        // Determine base points for the enemy type
+        const basePoints = (enemy.type === EnemyType.SHOOTER) ? 3 : 1;
+
+        // Apply the score multiplier
+        const points = basePoints * this.player.scoreMultiplier;
         this.player.score += points;
         this.notify(`+${points}`, enemy.x, enemy.y, 1, [250, 250, 100]);
       }
