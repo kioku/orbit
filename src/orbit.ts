@@ -369,9 +369,6 @@ class OrbitGame {
     // Load High Score (Improvement)
     this.loadHighScore();
 
-    // Init Background Stars (Improvement)
-    this.createBackgroundStars(100);
-
     // --- Button Creation ---
     this.startButton = document.createElement("button");
     this.startButton.id = "start-button";
@@ -521,6 +518,9 @@ class OrbitGame {
     this.onWindowResizeHandler();
     this.createSprites();
     this.setGameState(GameState.WELCOME); // Use Enum
+
+    // Init Background Stars (Improvement)
+    this.createBackgroundStars(100);
 
     this.reset();
     this.update();
@@ -1014,17 +1014,16 @@ class OrbitGame {
     }
   }
 
-  // --- Background Stars (Improvement) ---
   private createBackgroundStars(count: number): void {
     this.backgroundStars = [];
+
+    // // Simpler approach - place stars directly in random positions
     for (let i = 0; i < count; i++) {
-      // Increase star size randomly for some
-      const size = Math.random() < 0.3 ? 2 : 1;
       this.backgroundStars.push({
         x: Math.random() * this.world.width,
         y: Math.random() * this.world.height,
-        speed: 0.1 + Math.random() * 0.4, // Different speeds for parallax
-        size,
+        speed: 0.1 + Math.random() * 0.4,
+        size: Math.random() < 0.3 ? 2 : 1,
       });
     }
   }
