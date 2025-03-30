@@ -440,28 +440,80 @@ class OrbitGame {
         "click",
         this.closeSettingsMenu.bind(this)
       );
+      this.closeMenuButton.addEventListener(
+        "touchstart",
+        (e) => {
+          e.preventDefault();
+          this.closeSettingsMenu();
+        },
+        { passive: false }
+      );
 
       // Toggle Buttons
       this.debugToggleButton.addEventListener(
         "click",
         this.toggleDebugMode.bind(this)
       );
+      this.debugToggleButton.addEventListener(
+        "touchstart",
+        (e) => {
+          e.preventDefault();
+          this.toggleDebugMode();
+        },
+        { passive: false }
+      );
+
       this.orbitToggleButton.addEventListener(
         "click",
         this.toggleShowOrbit.bind(this)
       );
+      this.orbitToggleButton.addEventListener(
+        "touchstart",
+        (e) => {
+          e.preventDefault();
+          this.toggleShowOrbit();
+        },
+        { passive: false }
+      );
+
       this.backgroundToggleButton.addEventListener(
         "click",
         this.toggleShowBackground.bind(this)
       );
+      this.backgroundToggleButton.addEventListener(
+        "touchstart",
+        (e) => {
+          e.preventDefault();
+          this.toggleShowBackground();
+        },
+        { passive: false }
+      );
+
       this.soundToggleButton.addEventListener(
         "click",
         this.toggleSoundEnabled.bind(this)
       );
+      this.soundToggleButton.addEventListener(
+        "touchstart",
+        (e) => {
+          e.preventDefault();
+          this.toggleSoundEnabled();
+        },
+        { passive: false }
+      );
+
       this.modeToggleButton.addEventListener(
         "click",
         this.toggleGameModeSetting.bind(this)
       ); // Add listener
+      this.modeToggleButton.addEventListener(
+        "touchstart",
+        (e) => {
+          e.preventDefault();
+          this.toggleGameModeSetting();
+        },
+        { passive: false }
+      );
 
       // Initialize visual states
       this.updateDebugToggleVisual();
