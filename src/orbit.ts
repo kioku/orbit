@@ -55,8 +55,8 @@ enum PowerUpType {
 
 // Basic Audio Manager Stub (Replace with actual implementation using Howler.js, Web Audio API, etc.)
 class AudioManager {
-  // TODO: Implement audio loading and playback
   private sounds: { [key: string]: any } = {}; // Placeholder for sound objects
+  private isMuted: boolean = false; // Global mute state
 
   load() {
     console.log("AudioManager: Load sounds here...");
@@ -71,7 +71,21 @@ class AudioManager {
     this.sounds["music"] = null;
   }
 
+  // Method to toggle mute state
+  mute(muted: boolean): void {
+    this.isMuted = muted;
+    console.log(`AudioManager: Sounds ${muted ? 'muted' : 'unmuted'}`);
+    // TODO: Implement actual muting logic for the audio library (e.g., Howler.mute(muted))
+    if (muted) {
+        this.stopMusic(); // Also stop music when muting globally
+    } else {
+        // Optionally restart music if it was playing before mute? Depends on desired behavior.
+    }
+  }
+
   playSound(key: string, volume: number = 1.0) {
+    if (this.isMuted) return; // Don't play if muted
+
     if (this.sounds[key]) {
       console.log(
         `AudioManager: Playing sound "${key}" (stub), volume ${volume}`
@@ -83,6 +97,8 @@ class AudioManager {
   }
 
   playMusic() {
+    if (this.isMuted) return; // Don't play if muted
+
     if (this.sounds["music"]) {
       console.log("AudioManager: Playing music (stub)");
       // TODO: Start background music, loop etc.
@@ -215,7 +231,16 @@ class OrbitGame {
   private settingsMenu!: HTMLElement; // Reference to the menu container
   private closeMenuButton!: HTMLButtonElement; // Reference to close button
   private debugToggleButton!: HTMLButtonElement; // Reference to debug toggle
+  private orbitToggleButton!: HTMLButtonElement; // Ref for orbit toggle
+  private backgroundToggleButton!: HTMLButtonElement; // Ref for background toggle
+  private soundToggleButton!: HTMLButtonElement; // Ref for sound toggle
   private audioManager: AudioManager; // Audio Manager instance
+
+  // --- Settings State ---
+  private showOrbitGraphic: boolean = true;
+  private showBackground: boolean = true;
+  private soundEnabled: boolean = true;
+  // Debugging state is already present: private debugging: boolean = false;
 
   private isMenuOpen: boolean = false; // Track menu state
   private playing: boolean = false;
@@ -377,15 +402,29 @@ class OrbitGame {
     this.settingsMenu = document.getElementById('settings-menu') as HTMLElement;
     this.closeMenuButton = document.getElementById('close-menu-button') as HTMLButtonElement;
     this.debugToggleButton = document.getElementById('debug-toggle') as HTMLButtonElement;
+    this.orbitToggleButton = document.getElementById('orbit-toggle') as HTMLButtonElement;
+    this.backgroundToggleButton = document.getElementById('background-toggle') as HTMLButtonElement;
+    this.soundToggleButton = document.getElementById('sound-toggle') as HTMLButtonElement;
 
-    if (!this.settingsMenu || !this.closeMenuButton || !this.debugToggleButton) {
-        console.error("Failed to find settings menu elements!");
+
+    if (!this.settingsMenu || !this.closeMenuButton || !this.debugToggleButton || !this.orbitToggleButton || !this.backgroundToggleButton || !this.soundToggleButton) {
+        console.error("Failed to find all settings menu elements!");
         // Handle error appropriately, maybe disable settings button?
     } else {
+        // Close Button
         this.closeMenuButton.addEventListener('click', this.closeSettingsMenu.bind(this));
+
+        // Toggle Buttons
         this.debugToggleButton.addEventListener('click', this.toggleDebugMode.bind(this));
-        // Initialize debug toggle state visually
+        this.orbitToggleButton.addEventListener('click', this.toggleShowOrbit.bind(this));
+        this.backgroundToggleButton.addEventListener('click', this.toggleShowBackground.bind(this));
+        this.soundToggleButton.addEventListener('click', this.toggleSoundEnabled.bind(this));
+
+        // Initialize visual states
         this.updateDebugToggleVisual();
+        this.updateOrbitToggleVisual();
+        this.updateBackgroundToggleVisual();
+        this.updateSoundToggleVisual();
     }
 
 
@@ -540,6 +579,47 @@ class OrbitGame {
           this.debugging
       );
   }
+
+  // --- New Toggle Handlers ---
+
+  private toggleShowOrbit(): void {
+      this.showOrbitGraphic = !this.showOrbitGraphic;
+      this.updateOrbitToggleVisual();
+      console.log(`Show Orbit Graphic: ${this.showOrbitGraphic}`);
+  }
+
+  private updateOrbitToggleVisual(): void {
+      if (this.orbitToggleButton) {
+          this.orbitToggleButton.setAttribute('aria-pressed', this.showOrbitGraphic.toString());
+      }
+  }
+
+  private toggleShowBackground(): void {
+      this.showBackground = !this.showBackground;
+      this.updateBackgroundToggleVisual();
+      console.log(`Show Background: ${this.showBackground}`);
+  }
+
+  private updateBackgroundToggleVisual(): void {
+      if (this.backgroundToggleButton) {
+          this.backgroundToggleButton.setAttribute('aria-pressed', this.showBackground.toString());
+      }
+  }
+
+  private toggleSoundEnabled(): void {
+      this.soundEnabled = !this.soundEnabled;
+      this.updateSoundToggleVisual();
+      this.audioManager.mute(!this.soundEnabled); // Mute if sound is NOT enabled
+      console.log(`Sound Enabled: ${this.soundEnabled}`);
+  }
+
+  private updateSoundToggleVisual(): void {
+      if (this.soundToggleButton) {
+          this.soundToggleButton.setAttribute('aria-pressed', this.soundEnabled.toString());
+      }
+  }
+
+  // --- Input Handlers ---
 
   private onKeyDownHandler(e: KeyboardEvent): void {
     // Restart game
@@ -841,6 +921,8 @@ class OrbitGame {
   }
 
   private renderBackground(): void {
+    if (!this.showBackground) return; // Skip rendering if disabled
+
     this.context.save();
     // Change: Use fully opaque white as the base color
     this.context.fillStyle = "rgba(255, 255, 255, 1)";
@@ -951,6 +1033,8 @@ class OrbitGame {
   }
 
   private renderOrbit(): void {
+    if (!this.showOrbitGraphic) return; // Skip rendering if disabled
+
     const centerX: number = this.world.width / 2;
     const centerY: number = this.world.height / 2;
 
