@@ -1881,7 +1881,13 @@ class OrbitGame {
 
     // --- FPS Calculation ---
     if (now > this.timeLastSecond + 1000) {
-      /* ... */
+      const elapsedSeconds = (now - this.timeLastSecond) / 1000;
+      this.fps = Math.round(this.framesThisSecond / elapsedSeconds); // Calculate FPS based on actual time
+      this.fpsMin = Math.min(this.fpsMin, this.fps);
+      this.fpsMax = Math.max(this.fpsMax, this.fps);
+
+      this.timeLastSecond = now;
+      this.framesThisSecond = 0;
     }
 
     // --- Rendering ---
@@ -2355,7 +2361,7 @@ class OrbitGame {
     );
     print(`Score: ${this.player.score} (x${this.player.scoreMultiplier})`);
     print(`Duration: ${this.duration.toFixed(1)}s`);
-    print(`Input Down: ${this.mouse.down}`);
+    print(`Input Down: ${this.isInputDown}`); // Use combined input state
     print(`---`);
     // Use stored squared distance, calculate sqrt only for display (Improvement 1)
     const distToSun = Math.sqrt(this.playerDistToSunSq);
