@@ -281,7 +281,12 @@ class OrbitGame {
   private readonly EXPLOSION_PARTICLE_SIZE_MAX = 5;
   private readonly EXPLOSION_PARTICLE_DECAY_MIN = 0.03;
   private readonly EXPLOSION_PARTICLE_DECAY_MAX = 0.06;
-  private backgroundStars: { x: number; y: number; speed: number }[] = []; // For parallax background
+  private backgroundStars: {
+    x: number;
+    y: number;
+    speed: number;
+    size: number;
+  }[] = []; // For parallax background
 
   private debugging: boolean = false;
   private gameState: GameState = GameState.WELCOME; // Use Enum
@@ -1013,10 +1018,13 @@ class OrbitGame {
   private createBackgroundStars(count: number): void {
     this.backgroundStars = [];
     for (let i = 0; i < count; i++) {
+      // Increase star size randomly for some
+      const size = Math.random() < 0.3 ? 2 : 1;
       this.backgroundStars.push({
         x: Math.random() * this.world.width,
         y: Math.random() * this.world.height,
         speed: 0.1 + Math.random() * 0.4, // Different speeds for parallax
+        size,
       });
     }
   }
@@ -1035,11 +1043,13 @@ class OrbitGame {
     if (!this.showBackground) return; // Skip rendering if disabled
 
     this.context.save();
+    this.context.shadowBlur = 1; // Add subtle blur
+    this.context.shadowColor = "rgba(255, 255, 255, 0.5)";
     // Change: Use fully opaque white as the base color
     this.context.fillStyle = "rgba(255, 255, 255, 1)";
     this.backgroundStars.forEach((star) => {
       const alpha = star.speed * 1.5; // Alpha based on speed (keep this calculation)
-      const size = star.speed * 1.2; // Size based on speed (keep this calculation for now)
+      const size = star.size; // Use star's size
       // Change: Increase the maximum alpha slightly
       this.context.globalAlpha = Math.min(0.8, alpha); // Increased cap from 0.7 to 0.8
       this.context.fillRect(Math.round(star.x), Math.round(star.y), size, size);
@@ -2507,7 +2517,9 @@ class OrbitGame {
         2
       )}`
     );
-    addLine(`State: ${this.gameState}, Playing: ${this.playing}, Paused: ${this.paused}, Menu: ${this.isMenuOpen}`);
+    addLine(
+      `State: ${this.gameState}, Playing: ${this.playing}, Paused: ${this.paused}, Menu: ${this.isMenuOpen}`
+    );
     addLine(`Mode: ${this.gameMode}, Debug: ${this.debugging}`);
     addLine(`---`);
     // Player Info
@@ -2519,7 +2531,9 @@ class OrbitGame {
         1
       )} / ${this.maxPlayerRadius.toFixed(1)}`
     );
-    addLine(`Player Angle: ${((this.player.angle * 180) / Math.PI).toFixed(1)}°`);
+    addLine(
+      `Player Angle: ${((this.player.angle * 180) / Math.PI).toFixed(1)}°`
+    );
     addLine(`Player iDelta: ${this.player.interactionDelta.toFixed(3)}`);
     addLine(
       `Player Speed (rot): ${(
@@ -2570,12 +2584,12 @@ class OrbitGame {
 
     // --- Calculate starting position and render ---
     const totalHeight = debugStrings.length * lineHeight;
-    let currentY = (this.world.height / 2) - (totalHeight / 2); // Start Y centered
+    let currentY = this.world.height / 2 - totalHeight / 2; // Start Y centered
 
     // Draw each line
-    debugStrings.forEach(text => {
-        this.context.fillText(text, x, currentY);
-        currentY += lineHeight;
+    debugStrings.forEach((text) => {
+      this.context.fillText(text, x, currentY);
+      currentY += lineHeight;
     });
 
     // --- Visual Debug Elements ---
