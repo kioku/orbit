@@ -288,7 +288,7 @@ class OrbitGame {
   // --- Settings State ---
   private showOrbitGraphic: boolean = true;
   private showBackground: boolean = true;
-  private soundEnabled: boolean = true;
+  private soundEnabled: boolean = false;
   // Debugging state is already present: private debugging: boolean = false;
 
   private isMenuOpen: boolean = false; // Track menu state
@@ -632,10 +632,6 @@ class OrbitGame {
       // Reset timers only when starting fresh, not unpausing
       this.timeGameStart = Date.now() - this.duration * 1000; // Adjust start time based on current duration
       this.timeLastFrame = Date.now(); // Prevent large delta jump after pause/welcome
-      this.audioManager.playMusic();
-    }
-    if (newState !== GameState.PLAYING && newState !== GameState.PAUSED) {
-      this.audioManager.stopMusic();
     }
 
     this.gameState = newState;
@@ -654,7 +650,6 @@ class OrbitGame {
     if (this.gameState === GameState.PLAYING) {
       this.paused = true; // Set paused flag
       this.setGameState(GameState.PAUSED); // Update game state
-      this.audioManager.stopMusic(); // Stop music when menu opens
     }
     // No need to explicitly call togglePause here, handled by state change
   }
@@ -676,7 +671,6 @@ class OrbitGame {
       this.paused = false; // Clear paused flag
       this.setGameState(GameState.PLAYING); // Set back to playing
       this.timeLastFrame = Date.now(); // Adjust time
-      this.audioManager.playMusic(); // Resume music
     }
   }
 
@@ -695,13 +689,7 @@ class OrbitGame {
 
     this.paused = !this.paused; // Toggle pause state
     this.setGameState(this.paused ? GameState.PAUSED : GameState.PLAYING); // Update game state
-
-    if (this.paused) {
-      this.audioManager.stopMusic(); // Stop music when paused
-    } else {
-      this.timeLastFrame = Date.now(); // Adjust time to prevent jump
-      this.audioManager.playMusic(); // Resume music
-    }
+    this.timeLastFrame = Date.now(); // Adjust time to prevent jump
   }
 
   // Handles clicking the main settings button (cog icon)
@@ -770,6 +758,11 @@ class OrbitGame {
     this.soundEnabled = !this.soundEnabled;
     this.updateSoundToggleVisual();
     this.audioManager.mute(!this.soundEnabled); // Mute if sound is NOT enabled
+    if (this.soundEnabled) {
+      this.audioManager.playMusic();
+    } else {
+      this.audioManager.stopMusic();
+    }
     console.log(`Sound Enabled: ${this.soundEnabled}`);
   }
 
