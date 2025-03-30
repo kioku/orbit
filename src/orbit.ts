@@ -2454,6 +2454,10 @@ class OrbitGame {
 
   // Render Welcome Screen Instructions (Improvement)
   private renderWelcomeScreen(): void {
+    // Don't show detailed instructions on small screens
+    const mobileWidthThreshold = 500;
+    if (this.world.width < mobileWidthThreshold) return;
+
     this.context.save();
     this.context.fillStyle = "rgba(180, 210, 240, 0.8)";
     this.context.font = "16px Rajdhani, Arial";
