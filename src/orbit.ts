@@ -2493,82 +2493,90 @@ class OrbitGame {
     this.context.shadowOffsetX = 1;
     this.context.shadowOffsetY = 1;
 
-    const x = 10;
-    let y = 20; // Start lower to avoid settings button
+    const x = 15; // Keep some left padding
     const lineHeight = 13;
+    const debugStrings: string[] = []; // Array to hold all debug lines
 
-    const print = (text: string) => {
-      this.context.fillText(text, x, y);
-      y += lineHeight;
-    };
+    // --- Collect all debug strings ---
+    const addLine = (text: string) => debugStrings.push(text);
 
     // Basic Info
-    print(`FPS: ${this.fps} (Min: ${this.fpsMin}, Max: ${this.fpsMax})`);
-    print(
+    addLine(`FPS: ${this.fps} (Min: ${this.fpsMin}, Max: ${this.fpsMax})`);
+    addLine(
       `Delta/Factor: ${this.timeDelta.toFixed(1)}ms / ${this.timeFactor.toFixed(
         2
       )}`
     );
-    print(`State: ${this.gameState}, Playing: ${this.playing}`);
-    print(`Mode: ${this.gameMode}, Debug: ${this.debugging}`);
-    print(`---`);
+    addLine(`State: ${this.gameState}, Playing: ${this.playing}, Paused: ${this.paused}, Menu: ${this.isMenuOpen}`);
+    addLine(`Mode: ${this.gameMode}, Debug: ${this.debugging}`);
+    addLine(`---`);
     // Player Info
-    print(
+    addLine(
       `Player Pos: ${this.player.x.toFixed(1)}, ${this.player.y.toFixed(1)}`
     );
-    print(
+    addLine(
       `Player Radius: ${this.player.radius.toFixed(
         1
       )} / ${this.maxPlayerRadius.toFixed(1)}`
     );
-    print(`Player Angle: ${((this.player.angle * 180) / Math.PI).toFixed(1)}°`);
-    print(`Player iDelta: ${this.player.interactionDelta.toFixed(3)}`);
-    print(
+    addLine(`Player Angle: ${((this.player.angle * 180) / Math.PI).toFixed(1)}°`);
+    addLine(`Player iDelta: ${this.player.interactionDelta.toFixed(3)}`);
+    addLine(
       `Player Speed (rot): ${(
         this.PLAYER_ROTATION_SPEED_FACTOR / Math.max(1, this.player.radius)
       ).toFixed(3)}`
     );
-    print(`---`);
+    addLine(`---`);
     // Game State
     let activeEnemies = 0;
     this.enemies.forEach((e) => {
       if (e.type !== EnemyType.SUN) activeEnemies++;
     });
-    print(`Enemies: ${activeEnemies}/${this.MAX_ENEMIES}`); // Use count/max (Improvement 2)
-    print(
+    addLine(`Enemies: ${activeEnemies}/${this.MAX_ENEMIES}`); // Use count/max (Improvement 2)
+    addLine(
       `Enemy Spawn Interval: ${this.currentEnemySpawnInterval.toFixed(0)}ms`
     ); // Show current rate (Improvement 2)
-    print(
+    addLine(
       `Thrust Particles: ${
         this.thrustParticles.length
       } (Pool: ${this.particlePool.getPoolSize()})`
     );
-    print(
+    addLine(
       `Explosion Particles: ${
         this.explosionParticles.length
       } (Pool: ${this.explosionParticlePool.getPoolSize()})`
     );
-    print(
+    addLine(
       `Projectiles: ${
         this.projectiles.length
       } (Pool: ${this.projectilePool.getPoolSize()})`
     );
-    print(
+    addLine(
       `Powerups: ${this.powerUps.length} (Active: ${this.activePowerUps.size})`
     );
-    print(`Score: ${this.player.score} (x${this.player.scoreMultiplier})`);
-    print(`Duration: ${this.duration.toFixed(1)}s`);
-    print(`Input Down: ${this.isInputDown}`); // Use combined input state
-    print(`---`);
+    addLine(`Score: ${this.player.score} (x${this.player.scoreMultiplier})`);
+    addLine(`Duration: ${this.duration.toFixed(1)}s`);
+    addLine(`Input Down: ${this.isInputDown}`); // Use combined input state
+    addLine(`---`);
     // Use stored squared distance, calculate sqrt only for display (Improvement 1)
     const distToSun = Math.sqrt(this.playerDistToSunSq);
-    print(`Dist to Sun: ${distToSun.toFixed(1)}px`);
-    print(`Sun Danger Rad: ${this.sunDangerRadius.toFixed(1)}px`);
-    print(`---`);
+    addLine(`Dist to Sun: ${distToSun.toFixed(1)}px`);
+    addLine(`Sun Danger Rad: ${this.sunDangerRadius.toFixed(1)}px`);
+    addLine(`---`);
     // Active Powerups List
     if (this.activePowerUps.size > 0) {
-      print(`Active: [${Array.from(this.activePowerUps.keys()).join(", ")}]`);
+      addLine(`Active: [${Array.from(this.activePowerUps.keys()).join(", ")}]`);
     }
+
+    // --- Calculate starting position and render ---
+    const totalHeight = debugStrings.length * lineHeight;
+    let currentY = (this.world.height / 2) - (totalHeight / 2); // Start Y centered
+
+    // Draw each line
+    debugStrings.forEach(text => {
+        this.context.fillText(text, x, currentY);
+        currentY += lineHeight;
+    });
 
     // --- Visual Debug Elements ---
 
