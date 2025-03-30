@@ -50,6 +50,20 @@
   <body class="start">
     <div id="game">
       <canvas id="world"></canvas>
+      <!-- Settings Menu -->
+      <div id="settings-menu" class="settings-menu hidden">
+        <h2>SETTINGS</h2>
+        <div class="menu-item">
+          <label for="debug-toggle">Debug Mode:</label>
+          <button id="debug-toggle" class="toggle-button" aria-pressed="false">
+            <span class="toggle-label-off">OFF</span>
+            <span class="toggle-label-on">ON</span>
+            <span class="toggle-handle"></span>
+          </button>
+        </div>
+        <!-- Add more settings items here -->
+        <button id="close-menu-button" class="menu-button">CLOSE</button>
+      </div>
     </div>
     <script type="module" src="/src/orbit.ts"></script>
   </body>

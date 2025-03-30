@@ -212,8 +212,12 @@ class OrbitGame {
   private container!: HTMLElement;
   private startButton!: HTMLButtonElement;
   private settingsButton!: HTMLButtonElement;
+  private settingsMenu!: HTMLElement; // Reference to the menu container
+  private closeMenuButton!: HTMLButtonElement; // Reference to close button
+  private debugToggleButton!: HTMLButtonElement; // Reference to debug toggle
   private audioManager: AudioManager; // Audio Manager instance
 
+  private isMenuOpen: boolean = false; // Track menu state
   private playing: boolean = false;
   private paused: boolean = false; // Pause state flag
   private duration: number = 0;
@@ -361,15 +365,31 @@ class OrbitGame {
     this.container.appendChild(this.settingsButton);
     this.settingsButton.addEventListener(
       "click",
-      this.onSettingsButtonClick.bind(this)
+      this.onSettingsButtonClick.bind(this) // Keep this for opening
     );
     this.settingsButton.addEventListener(
       "touchstart",
-      this.onSettingsButtonClick.bind(this),
+      this.onSettingsButtonClick.bind(this), // Keep this for opening
       { passive: false }
     );
 
-    // --- Event Listeners ---
+    // --- Menu Elements & Listeners ---
+    this.settingsMenu = document.getElementById('settings-menu') as HTMLElement;
+    this.closeMenuButton = document.getElementById('close-menu-button') as HTMLButtonElement;
+    this.debugToggleButton = document.getElementById('debug-toggle') as HTMLButtonElement;
+
+    if (!this.settingsMenu || !this.closeMenuButton || !this.debugToggleButton) {
+        console.error("Failed to find settings menu elements!");
+        // Handle error appropriately, maybe disable settings button?
+    } else {
+        this.closeMenuButton.addEventListener('click', this.closeSettingsMenu.bind(this));
+        this.debugToggleButton.addEventListener('click', this.toggleDebugMode.bind(this));
+        // Initialize debug toggle state visually
+        this.updateDebugToggleVisual();
+    }
+
+
+    // --- Other Event Listeners ---
     document.addEventListener(
       "keydown",
       this.onKeyDownHandler.bind(this),
@@ -444,24 +464,81 @@ class OrbitGame {
       this.setGameState(GameState.PAUSED);
       // Keep track of when pause started to adjust timers later? Or just stop updating duration.
       this.audioManager.stopMusic(); // Or maybe just lower volume?
-    } else if (this.gameState === GameState.PAUSED) {
-      this.paused = false;
-      this.setGameState(GameState.PLAYING); // Resume playing state
-      // Adjust time measurement to avoid jump caused by pause duration
-      this.timeLastFrame = Date.now();
-      this.audioManager.playMusic();
+      // Only unpause if the menu is NOT open
+      if (!this.isMenuOpen) {
+          this.paused = false;
+          this.setGameState(GameState.PLAYING); // Resume playing state
+          // Adjust time measurement to avoid jump caused by pause duration
+          this.timeLastFrame = Date.now();
+          this.audioManager.playMusic();
+      } else {
+          // If menu is open, stay paused but update state visually if needed
+          this.setGameState(GameState.PAUSED);
+      }
     }
   }
 
+  // Opens the settings menu and pauses the game
+  private openSettingsMenu(): void {
+      if (this.isMenuOpen) return; // Already open
+
+      this.isMenuOpen = true;
+      this.settingsMenu.classList.remove('hidden');
+
+      // Pause the game only if it's currently playing
+      if (this.gameState === GameState.PLAYING) {
+          this.paused = true; // Set paused flag
+          this.setGameState(GameState.PAUSED); // Update game state
+          this.audioManager.stopMusic(); // Stop music when menu opens
+      }
+      // No need to explicitly call togglePause here, handled by state change
+  }
+
+  // Closes the settings menu and potentially unpauses the game
+  private closeSettingsMenu(): void {
+      if (!this.isMenuOpen) return; // Already closed
+
+      this.isMenuOpen = false;
+      this.settingsMenu.classList.add('hidden');
+
+      // Unpause the game only if it was paused *because* of the menu
+      // And not paused for other reasons (like 'P' key)
+      if (this.paused && this.gameState === GameState.PAUSED) {
+          // Check if the game *should* be playing (i.e., wasn't paused by 'P' before menu)
+          // This logic might need refinement depending on exact pause interactions desired.
+          // For now, assume closing menu always attempts to resume if game was playing before.
+          this.paused = false; // Clear paused flag
+          this.setGameState(GameState.PLAYING); // Set back to playing
+          this.timeLastFrame = Date.now(); // Adjust time
+          this.audioManager.playMusic(); // Resume music
+      }
+  }
+
+  // Handles clicking the main settings button (cog icon)
   private onSettingsButtonClick(e: Event): void {
     e.preventDefault();
     e.stopPropagation();
-    this.debugging = !this.debugging;
-    this.settingsButton.classList.toggle(
-      "settings-button--debugging",
-      this.debugging
-    );
-    console.log(`Debug mode: ${this.debugging ? "ON" : "OFF"}`);
+    // This button now *only* opens the menu
+    this.openSettingsMenu();
+  }
+
+  // Toggles the debug state (called by the button inside the menu)
+  private toggleDebugMode(): void {
+      this.debugging = !this.debugging;
+      this.updateDebugToggleVisual(); // Update button appearance
+      console.log(`Debug mode: ${this.debugging ? "ON" : "OFF"}`);
+  }
+
+  // Updates the visual state of the debug toggle button
+  private updateDebugToggleVisual(): void {
+      if (this.debugToggleButton) {
+          this.debugToggleButton.setAttribute('aria-pressed', this.debugging.toString());
+      }
+      // Also update the main settings button visual cue (pulsing color)
+      this.settingsButton.classList.toggle(
+          "settings-button--debugging",
+          this.debugging
+      );
   }
 
   private onKeyDownHandler(e: KeyboardEvent): void {
@@ -482,16 +559,17 @@ class OrbitGame {
     else if (e.key === "d" || e.key === "D") {
       this.onSettingsButtonClick(e);
     }
-    // Toggle Pause (Improvement)
+    // Toggle Pause (Improvement) - Only works if menu is not open
     else if (e.key === "p" || e.key === "P") {
-      if (
-        this.gameState === GameState.PLAYING ||
-        this.gameState === GameState.PAUSED
-      ) {
-        this.togglePause();
-      }
+        if (!this.isMenuOpen && (this.gameState === GameState.PLAYING || this.gameState === GameState.PAUSED)) {
+            this.togglePause();
+        }
     }
-    // Keyboard Thrust (Improvement)
+    // Close Menu with Escape key
+    else if (e.key === "Escape" && this.isMenuOpen) {
+        this.closeSettingsMenu();
+    }
+    // Keyboard Thrust (Improvement) - Only works if menu is not open
     else if (e.key === " ") {
       // Spacebar
       if (!this.keyboardThrust) {
@@ -777,8 +855,11 @@ class OrbitGame {
 
   // --- Input Handlers ---
   private onMouseDownHandler(event: MouseEvent): void {
-    if (!(event.target as HTMLElement).closest("button"))
-      this.mouse.down = true;
+    // Prevent activating thrust if clicking inside the menu or on any button
+    const targetElement = event.target as HTMLElement;
+    if (!targetElement.closest("button") && !targetElement.closest(".settings-menu")) {
+        this.mouse.down = true;
+    }
   }
   private onMouseMoveHandler(event: MouseEvent): void {
     event.preventDefault();
@@ -788,9 +869,11 @@ class OrbitGame {
     this.mouse.down = false;
   }
   private onTouchStartHandler(event: TouchEvent): void {
-    if (!(event.target as HTMLElement).closest("button")) {
-      event.preventDefault();
-      this.mouse.down = true;
+    // Prevent activating thrust if touching inside the menu or on any button
+    const targetElement = event.target as HTMLElement;
+    if (!targetElement.closest("button") && !targetElement.closest(".settings-menu")) {
+        event.preventDefault();
+        this.mouse.down = true;
     }
   }
   private onTouchMoveHandler(event: TouchEvent): void {
@@ -1657,9 +1740,11 @@ class OrbitGame {
     this.frameCount++;
 
     // --- State Machine Logic (Improvement) ---
-    switch (this.gameState) {
-      case GameState.PLAYING:
-        this.duration = (now - this.timeGameStart) / 1000; // Update duration only when playing
+    // Check if paused OR menu is open before deciding to update game logic
+    const shouldUpdateGame = this.gameState === GameState.PLAYING && !this.paused && !this.isMenuOpen;
+
+    if (shouldUpdateGame) {
+        this.duration = (now - this.timeGameStart) / 1000; // Update duration only when playing actively
 
         // Update game elements
         this.updatePlayer();
@@ -1671,14 +1756,27 @@ class OrbitGame {
         this.updateBackgroundStars(); // Update background scroll
 
         this.checkEndConditions();
-        break;
 
-      case GameState.PAUSED:
-        // Only update things that should animate while paused (e.g., UI)
-        // For now, do nothing. Duration does not increase.
-        break;
+    } else {
+        // Game is paused, in menu, or in a non-playing state
+        // Update things that should always update or animate in menus/pause
+        this.updateBackgroundStars(); // Keep background moving slowly? Or stop? Let's keep it moving.
+        this.updateNotificationsOnly(); // Allow notifications to fade even when paused/in menu
+    }
 
-      case GameState.WELCOME:
+
+    // --- Handle different states for UI, etc. ---
+    // This switch is now more about what *else* happens in each state,
+    // as the core game update is handled above.
+    switch (this.gameState) {
+        case GameState.PLAYING:
+            // Already handled by shouldUpdateGame block
+            break;
+        case GameState.PAUSED:
+            // Duration does not increase.
+            // Potentially update paused UI elements here.
+            break;
+        case GameState.WELCOME:
       case GameState.LOSER:
       case GameState.WINNER:
         // Update background stars even when not playing for visual appeal
@@ -1893,9 +1991,13 @@ class OrbitGame {
     this.renderGameInfo(); // Score, Time, etc.
     this.renderPowerUpTimers(); // UI for powerup durations
 
-    // Render Pause Overlay (Improvement)
-    if (this.gameState === GameState.PAUSED) {
+    // Render Pause Overlay (Improvement) - Render only if paused AND menu is NOT open
+    if (this.gameState === GameState.PAUSED && !this.isMenuOpen) {
       this.renderPauseScreen();
+    }
+    // Render Menu Dimming Overlay (if menu is open)
+    else if (this.isMenuOpen) {
+        this.renderMenuBackgroundDim();
     }
     // Render Welcome Instructions (Improvement)
     else if (this.gameState === GameState.WELCOME) {
@@ -1910,6 +2012,15 @@ class OrbitGame {
 
     this.context.restore(); // Restore context state after shake
   }
+
+  // Renders a dim overlay when the settings menu is open
+  private renderMenuBackgroundDim(): void {
+      this.context.save();
+      this.context.fillStyle = "rgba(0, 0, 0, 0.6)"; // Same as pause screen dim
+      this.context.fillRect(0, 0, this.world.width, this.world.height);
+      this.context.restore();
+  }
+
 
   private renderGameInfo(): void {
     this.context.save();
