@@ -570,12 +570,13 @@ class OrbitGame {
         this.closeSettingsMenu();
     }
     // Keyboard Thrust (Improvement) - Only works if menu is not open
-    else if (e.key === " ") {
+    else if (e.key === " " && !this.isMenuOpen) { // Check !isMenuOpen
       // Spacebar
       if (!this.keyboardThrust) {
         // Prevent repeated triggers while holding
         this.keyboardThrust = true;
         // Optional: Trigger sound immediately on press
+        // Check playing and !paused (implicitly covers !isMenuOpen check again, but safe)
         if (this.playing && !this.paused)
           this.audioManager.playSound("thrust", 0.5);
       }
