@@ -371,6 +371,21 @@ body.state-winner .settings-button { */
   box-shadow: 0 0 10px rgba(80, 220, 255, 0.8), inset 0 0 6px rgba(80, 220, 255, 0.5);
 }
 
+/* Style for the mode toggle button (can reuse menu-button or customize) */
+.mode-toggle-button {
+  min-width: 150px; /* Ensure enough space for text */
+  text-align: center;
+}
+
+/* Disabled state for the mode toggle button */
+.mode-toggle-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  border-color: rgba(100, 100, 100, 0.5);
+  box-shadow: none;
+  text-shadow: none;
+}
+
 .start-button--pulsing {
   animation: pulse-glow-start 2s infinite ease-in-out;
 }

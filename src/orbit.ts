@@ -234,6 +234,7 @@ class OrbitGame {
   private orbitToggleButton!: HTMLButtonElement; // Ref for orbit toggle
   private backgroundToggleButton!: HTMLButtonElement; // Ref for background toggle
   private soundToggleButton!: HTMLButtonElement; // Ref for sound toggle
+  private modeToggleButton!: HTMLButtonElement; // Ref for mode toggle
   private audioManager: AudioManager; // Audio Manager instance
 
   // --- Settings State ---
@@ -419,6 +420,7 @@ class OrbitGame {
         this.orbitToggleButton.addEventListener('click', this.toggleShowOrbit.bind(this));
         this.backgroundToggleButton.addEventListener('click', this.toggleShowBackground.bind(this));
         this.soundToggleButton.addEventListener('click', this.toggleSoundEnabled.bind(this));
+        this.modeToggleButton.addEventListener('click', this.toggleGameModeSetting.bind(this)); // Add listener
 
         // Initialize visual states
         this.updateDebugToggleVisual();
@@ -426,6 +428,7 @@ class OrbitGame {
         this.updateBackgroundToggleVisual();
         this.updateSoundToggleVisual();
     }
+    this.updateModeToggleVisual(); // Initialize mode button state
 
 
     // --- Other Event Listeners ---
@@ -496,27 +499,6 @@ class OrbitGame {
     document.body.className = newState.toString(); // Use enum value for class name
   }
 
-  // Improvement: Pause Toggle Logic
-  private togglePause(): void {
-    if (this.gameState === GameState.PLAYING) {
-      this.paused = true;
-      this.setGameState(GameState.PAUSED);
-      // Keep track of when pause started to adjust timers later? Or just stop updating duration.
-      this.audioManager.stopMusic(); // Or maybe just lower volume?
-      // Only unpause if the menu is NOT open
-      if (!this.isMenuOpen) {
-          this.paused = false;
-          this.setGameState(GameState.PLAYING); // Resume playing state
-          // Adjust time measurement to avoid jump caused by pause duration
-          this.timeLastFrame = Date.now();
-          this.audioManager.playMusic();
-      } else {
-          // If menu is open, stay paused but update state visually if needed
-          this.setGameState(GameState.PAUSED);
-      }
-    }
-  }
-
   // Opens the settings menu and pauses the game
   private openSettingsMenu(): void {
       if (this.isMenuOpen) return; // Already open
@@ -550,6 +532,15 @@ class OrbitGame {
           this.setGameState(GameState.PLAYING); // Set back to playing
           this.timeLastFrame = Date.now(); // Adjust time
           this.audioManager.playMusic(); // Resume music
+      }
+  }
+
+  // Add this new method after closeSettingsMenu
+  private toggleSettingsMenu(): void {
+      if (this.isMenuOpen) {
+          this.closeSettingsMenu();
+      } else {
+          this.openSettingsMenu();
       }
   }
 
@@ -619,6 +610,36 @@ class OrbitGame {
       }
   }
 
+  // Add this method after updateSoundToggleVisual
+  private toggleGameModeSetting(): void {
+      // Only allow changing mode if the game is not actively playing
+      if (this.playing || this.paused) {
+          console.log("Cannot change game mode while playing or paused.");
+          // Optionally provide visual feedback (e.g., shake the button briefly)
+          return;
+      }
+
+      this.gameMode = this.gameMode === "survival" ? "score" : "survival";
+      this.updateModeToggleVisual(); // Update button text
+      this.notifyGameMode(); // Show notification
+      console.log(`Game mode changed to: ${this.gameMode}`);
+  }
+
+  // Add this method after toggleGameModeSetting
+  private updateModeToggleVisual(): void {
+      if (!this.modeToggleButton) return;
+
+      const isGameActive = this.playing || this.paused;
+      this.modeToggleButton.disabled = isGameActive; // Disable if playing or paused
+
+      // Update text based on current mode
+      const modeText = this.gameMode === "survival" ? "Survival" : "Score";
+      this.modeToggleButton.textContent = `Mode: ${modeText}`;
+
+      // Optional: Add/remove a class for styling disabled state if needed
+      this.modeToggleButton.classList.toggle('disabled', isGameActive);
+  }
+
   // --- Input Handlers ---
 
   private onKeyDownHandler(e: KeyboardEvent): void {
@@ -636,13 +657,14 @@ class OrbitGame {
       this.notifyGameMode();
     }
     // Toggle debugging
-    else if (e.key === "d" || e.key === "D") {
-      this.onSettingsButtonClick(e);
+    else if ((e.key === "d" || e.key === "D") && !this.isMenuOpen) { // Only toggle if menu isn't open
+      this.toggleDebugMode();
     }
-    // Toggle Pause (Improvement) - Only works if menu is not open
+    // Toggle Settings Menu / Pause
     else if (e.key === "p" || e.key === "P") {
-        if (!this.isMenuOpen && (this.gameState === GameState.PLAYING || this.gameState === GameState.PAUSED)) {
-            this.togglePause();
+        // Allow toggling menu/pause if playing or already paused
+        if (this.gameState === GameState.PLAYING || this.gameState === GameState.PAUSED) {
+            this.toggleSettingsMenu();
         }
     }
     // Close Menu with Escape key
@@ -660,6 +682,12 @@ class OrbitGame {
         if (this.playing && !this.paused)
           this.audioManager.playSound("thrust", 0.5);
       }
+    }
+    // Start Game with 'I' - Only if not already playing/paused
+    else if ((e.key === "i" || e.key === "I") && !this.playing && !this.paused && !this.isMenuOpen) {
+        // Simulate start button click if in a state where starting is possible
+        if (this.gameState === GameState.WELCOME || this.gameState === GameState.LOSER || this.gameState === GameState.WINNER)
+            this.onStartButtonClick(new MouseEvent("click"));
     }
   }
 
@@ -782,6 +810,7 @@ class OrbitGame {
     // If starting from Welcome state
     this.resetGameStats(); // Reset scores/timers for a fresh round
     this.player.alive = true;
+    this.updateModeToggleVisual(); // Disable mode toggle
     this.playing = true; // Set playing flag
     // Set state calls playMusic and adjusts timers
     this.setGameState(GameState.PLAYING);
@@ -823,6 +852,7 @@ class OrbitGame {
     this.resetGameStats(); // Reset scores, timers, spawn rate etc.
 
     this.setGameState(GameState.WELCOME);
+    this.updateModeToggleVisual(); // Ensure mode toggle is enabled
     this.startButton.textContent = "INITIALIZE";
   }
 
@@ -2026,6 +2056,7 @@ class OrbitGame {
   private endGame(isVictory: boolean, message: string): void {
     this.playing = false; // Stop main game logic flag
     if (this.player) this.player.alive = false;
+    this.updateModeToggleVisual(); // Enable mode toggle
     const endState = isVictory ? GameState.WINNER : GameState.LOSER;
     this.setGameState(endState); // Set final state
 
