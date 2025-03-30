@@ -1221,13 +1221,21 @@ class OrbitGame {
       if (this.player.shielded) {
         this.context.beginPath();
         // Scale the visual radius of the shield based on the player's sprite scale
-        const shieldVisualRadius =
-          (this.player.collisionRadius + 5) / this.PLAYER_SPRITE_SCALE;
-        this.context.arc(0, 0, shieldVisualRadius, 0, Math.PI * 2);
-        this.context.strokeStyle = "rgba(0, 255, 255, 0.7)";
-        // Adjust line width so it looks consistent regardless of scale
-        this.context.lineWidth = 2 / this.PLAYER_SPRITE_SCALE;
-        this.context.stroke();
+       const shieldVisualRadius =
+         (this.player.collisionRadius + 5) / this.PLAYER_SPRITE_SCALE;
+       this.context.arc(0, 0, shieldVisualRadius, 0, Math.PI * 2);
+       // Pulsing alpha effect
+       const pulse = Math.sin(Date.now() * 0.005) * 0.15 + 0.6; // Oscillates between 0.45 and 0.75
+       this.context.strokeStyle = `rgba(0, 255, 255, ${pulse})`;
+       // Glow effect
+       this.context.shadowColor = "rgba(0, 255, 255, 0.8)";
+       this.context.shadowBlur = 10;
+       // Adjust line width so it looks consistent regardless of scale
+       this.context.lineWidth = 2 / this.PLAYER_SPRITE_SCALE;
+       this.context.stroke();
+       // Reset shadow for other elements
+       this.context.shadowColor = "transparent";
+       this.context.shadowBlur = 0;
       }
 
       // Debug: Draw center point (scaled)
