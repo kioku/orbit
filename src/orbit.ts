@@ -74,12 +74,12 @@ class AudioManager {
   // Method to toggle mute state
   mute(muted: boolean): void {
     this.isMuted = muted;
-    console.log(`AudioManager: Sounds ${muted ? 'muted' : 'unmuted'}`);
+    console.log(`AudioManager: Sounds ${muted ? "muted" : "unmuted"}`);
     // TODO: Implement actual muting logic for the audio library (e.g., Howler.mute(muted))
     if (muted) {
-        this.stopMusic(); // Also stop music when muting globally
+      this.stopMusic(); // Also stop music when muting globally
     } else {
-        // Optionally restart music if it was playing before mute? Depends on desired behavior.
+      // Optionally restart music if it was playing before mute? Depends on desired behavior.
     }
   }
 
@@ -263,7 +263,7 @@ class OrbitGame {
   private sunEnemy: Enemy | null = null;
   private playerDistToSunSq: number = 0;
 
-  private world: World = {
+  public world: World = {
     width: this.DEFAULT_WIDTH,
     height: this.DEFAULT_HEIGHT,
   };
@@ -334,14 +334,14 @@ class OrbitGame {
 
     // Initialize Explosion Particle Pool
     this.explosionParticlePool = new ObjectPool<ExplosionParticle>(
-        () => new ExplosionParticle(), // Factory function
-        this.EXPLOSION_PARTICLE_POOL_INITIAL_SIZE
+      () => new ExplosionParticle(), // Factory function
+      this.EXPLOSION_PARTICLE_POOL_INITIAL_SIZE
     );
 
     // Initialize Projectile Pool
     this.projectilePool = new ObjectPool<Projectile>(
-        () => new Projectile(), // Factory function
-        this.PROJECTILE_POOL_INITIAL_SIZE
+      () => new Projectile(), // Factory function
+      this.PROJECTILE_POOL_INITIAL_SIZE
     );
 
     // Initialize Audio Manager
@@ -400,37 +400,74 @@ class OrbitGame {
     );
 
     // --- Menu Elements & Listeners ---
-    this.settingsMenu = document.getElementById('settings-menu') as HTMLElement;
-    this.closeMenuButton = document.getElementById('close-menu-button') as HTMLButtonElement;
-    this.debugToggleButton = document.getElementById('debug-toggle') as HTMLButtonElement;
-    this.orbitToggleButton = document.getElementById('orbit-toggle') as HTMLButtonElement;
-    this.backgroundToggleButton = document.getElementById('background-toggle') as HTMLButtonElement;
-    this.soundToggleButton = document.getElementById('sound-toggle') as HTMLButtonElement;
-    this.modeToggleButton = document.getElementById('mode-toggle') as HTMLButtonElement; // Add this
+    this.settingsMenu = document.getElementById("settings-menu") as HTMLElement;
+    this.closeMenuButton = document.getElementById(
+      "close-menu-button"
+    ) as HTMLButtonElement;
+    this.debugToggleButton = document.getElementById(
+      "debug-toggle"
+    ) as HTMLButtonElement;
+    this.orbitToggleButton = document.getElementById(
+      "orbit-toggle"
+    ) as HTMLButtonElement;
+    this.backgroundToggleButton = document.getElementById(
+      "background-toggle"
+    ) as HTMLButtonElement;
+    this.soundToggleButton = document.getElementById(
+      "sound-toggle"
+    ) as HTMLButtonElement;
+    this.modeToggleButton = document.getElementById(
+      "mode-toggle"
+    ) as HTMLButtonElement; // Add this
 
-
-    if (!this.settingsMenu || !this.closeMenuButton || !this.debugToggleButton || !this.orbitToggleButton || !this.backgroundToggleButton || !this.soundToggleButton || !this.modeToggleButton) { // Add modeToggleButton here
-        console.error("Failed to find all settings menu elements!");
-        // Handle error appropriately, maybe disable settings button?
+    if (
+      !this.settingsMenu ||
+      !this.closeMenuButton ||
+      !this.debugToggleButton ||
+      !this.orbitToggleButton ||
+      !this.backgroundToggleButton ||
+      !this.soundToggleButton ||
+      !this.modeToggleButton
+    ) {
+      // Add modeToggleButton here
+      console.error("Failed to find all settings menu elements!");
+      // Handle error appropriately, maybe disable settings button?
     } else {
-        // Close Button
-        this.closeMenuButton.addEventListener('click', this.closeSettingsMenu.bind(this));
+      // Close Button
+      this.closeMenuButton.addEventListener(
+        "click",
+        this.closeSettingsMenu.bind(this)
+      );
 
-        // Toggle Buttons
-        this.debugToggleButton.addEventListener('click', this.toggleDebugMode.bind(this));
-        this.orbitToggleButton.addEventListener('click', this.toggleShowOrbit.bind(this));
-        this.backgroundToggleButton.addEventListener('click', this.toggleShowBackground.bind(this));
-        this.soundToggleButton.addEventListener('click', this.toggleSoundEnabled.bind(this));
-        this.modeToggleButton.addEventListener('click', this.toggleGameModeSetting.bind(this)); // Add listener
+      // Toggle Buttons
+      this.debugToggleButton.addEventListener(
+        "click",
+        this.toggleDebugMode.bind(this)
+      );
+      this.orbitToggleButton.addEventListener(
+        "click",
+        this.toggleShowOrbit.bind(this)
+      );
+      this.backgroundToggleButton.addEventListener(
+        "click",
+        this.toggleShowBackground.bind(this)
+      );
+      this.soundToggleButton.addEventListener(
+        "click",
+        this.toggleSoundEnabled.bind(this)
+      );
+      this.modeToggleButton.addEventListener(
+        "click",
+        this.toggleGameModeSetting.bind(this)
+      ); // Add listener
 
-        // Initialize visual states
-        this.updateDebugToggleVisual();
-        this.updateOrbitToggleVisual();
-        this.updateBackgroundToggleVisual();
-        this.updateSoundToggleVisual();
+      // Initialize visual states
+      this.updateDebugToggleVisual();
+      this.updateOrbitToggleVisual();
+      this.updateBackgroundToggleVisual();
+      this.updateSoundToggleVisual();
     }
     this.updateModeToggleVisual(); // Initialize mode button state
-
 
     // --- Other Event Listeners ---
     document.addEventListener(
@@ -502,49 +539,64 @@ class OrbitGame {
 
   // Opens the settings menu and pauses the game
   private openSettingsMenu(): void {
-      if (this.isMenuOpen) return; // Already open
+    if (this.isMenuOpen) return; // Already open
 
-      this.isMenuOpen = true;
-      this.settingsMenu.classList.remove('hidden');
-      this.startButton.style.display = 'none'; // Hide start button
+    this.isMenuOpen = true;
+    this.settingsMenu.classList.remove("hidden");
+    this.startButton.style.display = "none"; // Hide start button
 
-      // Pause the game only if it's currently playing
-      if (this.gameState === GameState.PLAYING) {
-          this.paused = true; // Set paused flag
-          this.setGameState(GameState.PAUSED); // Update game state
-          this.audioManager.stopMusic(); // Stop music when menu opens
-      }
-      // No need to explicitly call togglePause here, handled by state change
+    // Pause the game only if it's currently playing
+    if (this.gameState === GameState.PLAYING) {
+      this.paused = true; // Set paused flag
+      this.setGameState(GameState.PAUSED); // Update game state
+      this.audioManager.stopMusic(); // Stop music when menu opens
+    }
+    // No need to explicitly call togglePause here, handled by state change
   }
 
   // Closes the settings menu and potentially unpauses the game
   private closeSettingsMenu(): void {
-      if (!this.isMenuOpen) return; // Already closed
+    if (!this.isMenuOpen) return; // Already closed
 
-      this.isMenuOpen = false;
-      this.settingsMenu.classList.add('hidden');
-      this.startButton.style.display = ''; // Allow CSS to control visibility again
+    this.isMenuOpen = false;
+    this.settingsMenu.classList.add("hidden");
+    this.startButton.style.display = ""; // Allow CSS to control visibility again
 
-      // Unpause the game only if it was paused *because* of the menu
-      // And not paused for other reasons (like 'P' key)
-      if (this.paused && this.gameState === GameState.PAUSED) {
-          // Check if the game *should* be playing (i.e., wasn't paused by 'P' before menu)
-          // This logic might need refinement depending on exact pause interactions desired.
-          // For now, assume closing menu always attempts to resume if game was playing before.
-          this.paused = false; // Clear paused flag
-          this.setGameState(GameState.PLAYING); // Set back to playing
-          this.timeLastFrame = Date.now(); // Adjust time
-          this.audioManager.playMusic(); // Resume music
-      }
+    // Unpause the game only if it was paused *because* of the menu
+    // And not paused for other reasons (like 'P' key)
+    if (this.paused && this.gameState === GameState.PAUSED) {
+      // Check if the game *should* be playing (i.e., wasn't paused by 'P' before menu)
+      // This logic might need refinement depending on exact pause interactions desired.
+      // For now, assume closing menu always attempts to resume if game was playing before.
+      this.paused = false; // Clear paused flag
+      this.setGameState(GameState.PLAYING); // Set back to playing
+      this.timeLastFrame = Date.now(); // Adjust time
+      this.audioManager.playMusic(); // Resume music
+    }
   }
 
   // Add this new method after closeSettingsMenu
   private toggleSettingsMenu(): void {
-      if (this.isMenuOpen) {
-          this.closeSettingsMenu();
-      } else {
-          this.openSettingsMenu();
-      }
+    if (this.isMenuOpen) {
+      this.closeSettingsMenu();
+    } else {
+      this.openSettingsMenu();
+    }
+  }
+
+  // Add this new method after closeSettingsMenu
+  public togglePause(): void {
+    if (!this.playing) return; // Can't pause if not playing
+
+    this.paused = !this.paused; // Toggle pause state
+    this.setGameState(this.paused ? GameState.PAUSED : GameState.PLAYING); // Update game state
+
+    if (this.paused) {
+      this.audioManager.stopMusic(); // Stop music when paused
+    } else {
+      this.timeLastFrame = Date.now(); // Adjust time to prevent jump
+      this.audioManager.playMusic(); // Resume music
+    }
   }
 
   // Handles clicking the main settings button (cog icon)
@@ -557,90 +609,102 @@ class OrbitGame {
 
   // Toggles the debug state (called by the button inside the menu)
   private toggleDebugMode(): void {
-      this.debugging = !this.debugging;
-      this.updateDebugToggleVisual(); // Update button appearance
-      console.log(`Debug mode: ${this.debugging ? "ON" : "OFF"}`);
+    this.debugging = !this.debugging;
+    this.updateDebugToggleVisual(); // Update button appearance
+    console.log(`Debug mode: ${this.debugging ? "ON" : "OFF"}`);
   }
 
   // Updates the visual state of the debug toggle button
   private updateDebugToggleVisual(): void {
-      if (this.debugToggleButton) {
-          this.debugToggleButton.setAttribute('aria-pressed', this.debugging.toString());
-      }
-      // Also update the main settings button visual cue (pulsing color)
-      this.settingsButton.classList.toggle(
-          "settings-button--debugging",
-          this.debugging
+    if (this.debugToggleButton) {
+      this.debugToggleButton.setAttribute(
+        "aria-pressed",
+        this.debugging.toString()
       );
+    }
+    // Also update the main settings button visual cue (pulsing color)
+    this.settingsButton.classList.toggle(
+      "settings-button--debugging",
+      this.debugging
+    );
   }
 
   // --- New Toggle Handlers ---
 
   private toggleShowOrbit(): void {
-      this.showOrbitGraphic = !this.showOrbitGraphic;
-      this.updateOrbitToggleVisual();
-      console.log(`Show Orbit Graphic: ${this.showOrbitGraphic}`);
+    this.showOrbitGraphic = !this.showOrbitGraphic;
+    this.updateOrbitToggleVisual();
+    console.log(`Show Orbit Graphic: ${this.showOrbitGraphic}`);
   }
 
   private updateOrbitToggleVisual(): void {
-      if (this.orbitToggleButton) {
-          this.orbitToggleButton.setAttribute('aria-pressed', this.showOrbitGraphic.toString());
-      }
+    if (this.orbitToggleButton) {
+      this.orbitToggleButton.setAttribute(
+        "aria-pressed",
+        this.showOrbitGraphic.toString()
+      );
+    }
   }
 
   private toggleShowBackground(): void {
-      this.showBackground = !this.showBackground;
-      this.updateBackgroundToggleVisual();
-      console.log(`Show Background: ${this.showBackground}`);
+    this.showBackground = !this.showBackground;
+    this.updateBackgroundToggleVisual();
+    console.log(`Show Background: ${this.showBackground}`);
   }
 
   private updateBackgroundToggleVisual(): void {
-      if (this.backgroundToggleButton) {
-          this.backgroundToggleButton.setAttribute('aria-pressed', this.showBackground.toString());
-      }
+    if (this.backgroundToggleButton) {
+      this.backgroundToggleButton.setAttribute(
+        "aria-pressed",
+        this.showBackground.toString()
+      );
+    }
   }
 
   private toggleSoundEnabled(): void {
-      this.soundEnabled = !this.soundEnabled;
-      this.updateSoundToggleVisual();
-      this.audioManager.mute(!this.soundEnabled); // Mute if sound is NOT enabled
-      console.log(`Sound Enabled: ${this.soundEnabled}`);
+    this.soundEnabled = !this.soundEnabled;
+    this.updateSoundToggleVisual();
+    this.audioManager.mute(!this.soundEnabled); // Mute if sound is NOT enabled
+    console.log(`Sound Enabled: ${this.soundEnabled}`);
   }
 
   private updateSoundToggleVisual(): void {
-      if (this.soundToggleButton) {
-          this.soundToggleButton.setAttribute('aria-pressed', this.soundEnabled.toString());
-      }
+    if (this.soundToggleButton) {
+      this.soundToggleButton.setAttribute(
+        "aria-pressed",
+        this.soundEnabled.toString()
+      );
+    }
   }
 
   // Add this method after updateSoundToggleVisual
   private toggleGameModeSetting(): void {
-      // Only allow changing mode if the game is not actively playing
-      if (this.playing || this.paused) {
-          console.log("Cannot change game mode while playing or paused.");
-          // Optionally provide visual feedback (e.g., shake the button briefly)
-          return;
-      }
+    // Only allow changing mode if the game is not actively playing
+    if (this.playing || this.paused) {
+      console.log("Cannot change game mode while playing or paused.");
+      // Optionally provide visual feedback (e.g., shake the button briefly)
+      return;
+    }
 
-      this.gameMode = this.gameMode === "survival" ? "score" : "survival";
-      this.updateModeToggleVisual(); // Update button text
-      this.notifyGameMode(); // Show notification
-      console.log(`Game mode changed to: ${this.gameMode}`);
+    this.gameMode = this.gameMode === "survival" ? "score" : "survival";
+    this.updateModeToggleVisual(); // Update button text
+    this.notifyGameMode(); // Show notification
+    console.log(`Game mode changed to: ${this.gameMode}`);
   }
 
   // Add this method after toggleGameModeSetting
   private updateModeToggleVisual(): void {
-      if (!this.modeToggleButton) return;
+    if (!this.modeToggleButton) return;
 
-      const isGameActive = this.playing || this.paused;
-      this.modeToggleButton.disabled = isGameActive; // Disable if playing or paused
+    const isGameActive = this.playing || this.paused;
+    this.modeToggleButton.disabled = isGameActive; // Disable if playing or paused
 
-      // Update text based on current mode
-      const modeText = this.gameMode === "survival" ? "Survival" : "Score";
-      this.modeToggleButton.textContent = `Mode: ${modeText}`;
+    // Update text based on current mode
+    const modeText = this.gameMode === "survival" ? "Survival" : "Score";
+    this.modeToggleButton.textContent = `Mode: ${modeText}`;
 
-      // Optional: Add/remove a class for styling disabled state if needed
-      this.modeToggleButton.classList.toggle('disabled', isGameActive);
+    // Optional: Add/remove a class for styling disabled state if needed
+    this.modeToggleButton.classList.toggle("disabled", isGameActive);
   }
 
   // --- Input Handlers ---
@@ -660,22 +724,27 @@ class OrbitGame {
       this.notifyGameMode();
     }
     // Toggle debugging
-    else if ((e.key === "d" || e.key === "D") && !this.isMenuOpen) { // Only toggle if menu isn't open
+    else if ((e.key === "d" || e.key === "D") && !this.isMenuOpen) {
+      // Only toggle if menu isn't open
       this.toggleDebugMode();
     }
     // Toggle Settings Menu / Pause
     else if (e.key === "p" || e.key === "P") {
-        // Allow toggling menu/pause if playing or already paused
-        if (this.gameState === GameState.PLAYING || this.gameState === GameState.PAUSED) {
-            this.toggleSettingsMenu();
-        }
+      // Allow toggling menu/pause if playing or already paused
+      if (
+        this.gameState === GameState.PLAYING ||
+        this.gameState === GameState.PAUSED
+      ) {
+        this.toggleSettingsMenu();
+      }
     }
     // Close Menu with Escape key
     else if (e.key === "Escape" && this.isMenuOpen) {
-        this.closeSettingsMenu();
+      this.closeSettingsMenu();
     }
     // Keyboard Thrust (Improvement) - Only works if menu is not open
-    else if (e.key === " " && !this.isMenuOpen) { // Check !isMenuOpen
+    else if (e.key === " " && !this.isMenuOpen) {
+      // Check !isMenuOpen
       // Spacebar
       if (!this.keyboardThrust) {
         // Prevent repeated triggers while holding
@@ -687,10 +756,19 @@ class OrbitGame {
       }
     }
     // Start Game with 'I' - Only if not already playing/paused
-    else if ((e.key === "i" || e.key === "I") && !this.playing && !this.paused && !this.isMenuOpen) {
-        // Simulate start button click if in a state where starting is possible
-        if (this.gameState === GameState.WELCOME || this.gameState === GameState.LOSER || this.gameState === GameState.WINNER)
-            this.onStartButtonClick(new MouseEvent("click"));
+    else if (
+      (e.key === "i" || e.key === "I") &&
+      !this.playing &&
+      !this.paused &&
+      !this.isMenuOpen
+    ) {
+      // Simulate start button click if in a state where starting is possible
+      if (
+        this.gameState === GameState.WELCOME ||
+        this.gameState === GameState.LOSER ||
+        this.gameState === GameState.WINNER
+      )
+        this.onStartButtonClick(new MouseEvent("click"));
     }
   }
 
@@ -830,7 +908,7 @@ class OrbitGame {
     this.notifications = [];
     this.powerUps = [];
     this.activePowerUps.clear();
-    this.projectiles.forEach(p => this.projectilePool.release(p));
+    this.projectiles.forEach((p) => this.projectilePool.release(p));
     this.projectiles = [];
 
     this.player = new Player(
@@ -891,8 +969,8 @@ class OrbitGame {
       if (p.alive) this.particlePool.release(p);
     });
     this.thrustParticles = [];
-    this.projectiles.forEach(p => {
-        if (p.alive) this.projectilePool.release(p);
+    this.projectiles.forEach((p) => {
+      if (p.alive) this.projectilePool.release(p);
     });
     this.projectiles = [];
   }
@@ -961,7 +1039,7 @@ class OrbitGame {
     this.context.fillStyle = "rgba(255, 255, 255, 1)";
     this.backgroundStars.forEach((star) => {
       const alpha = star.speed * 1.5; // Alpha based on speed (keep this calculation)
-      const size = star.speed * 1.2;  // Size based on speed (keep this calculation for now)
+      const size = star.speed * 1.2; // Size based on speed (keep this calculation for now)
       // Change: Increase the maximum alpha slightly
       this.context.globalAlpha = Math.min(0.8, alpha); // Increased cap from 0.7 to 0.8
       this.context.fillRect(Math.round(star.x), Math.round(star.y), size, size);
@@ -973,8 +1051,11 @@ class OrbitGame {
   private onMouseDownHandler(event: MouseEvent): void {
     // Prevent activating thrust if clicking inside the menu or on any button
     const targetElement = event.target as HTMLElement;
-    if (!targetElement.closest("button") && !targetElement.closest(".settings-menu")) {
-        this.mouse.down = true;
+    if (
+      !targetElement.closest("button") &&
+      !targetElement.closest(".settings-menu")
+    ) {
+      this.mouse.down = true;
     }
   }
   private onMouseMoveHandler(event: MouseEvent): void {
@@ -987,9 +1068,12 @@ class OrbitGame {
   private onTouchStartHandler(event: TouchEvent): void {
     // Prevent activating thrust if touching inside the menu or on any button
     const targetElement = event.target as HTMLElement;
-    if (!targetElement.closest("button") && !targetElement.closest(".settings-menu")) {
-        event.preventDefault();
-        this.mouse.down = true;
+    if (
+      !targetElement.closest("button") &&
+      !targetElement.closest(".settings-menu")
+    ) {
+      event.preventDefault();
+      this.mouse.down = true;
     }
   }
   private onTouchMoveHandler(event: TouchEvent): void {
@@ -1131,12 +1215,15 @@ class OrbitGame {
         let type: EnemyType;
         const rand = Math.random();
         if (rand < this.ENEMY_FAST_CHANCE) {
-            type = EnemyType.FAST;
-        // Only allow shooters if not in score mode
-        } else if (this.gameMode !== "score" && rand < this.ENEMY_FAST_CHANCE + this.ENEMY_SHOOTER_CHANCE) {
-            type = EnemyType.SHOOTER;
+          type = EnemyType.FAST;
+          // Only allow shooters if not in score mode
+        } else if (
+          this.gameMode !== "score" &&
+          rand < this.ENEMY_FAST_CHANCE + this.ENEMY_SHOOTER_CHANCE
+        ) {
+          type = EnemyType.SHOOTER;
         } else {
-            type = EnemyType.NORMAL;
+          type = EnemyType.NORMAL;
         }
 
         let enemy = new Enemy(type); // Pass type
@@ -1214,7 +1301,7 @@ class OrbitGame {
         this.createExplosion(enemy.x, enemy.y); // Spawn explosion particles
 
         // Determine base points for the enemy type
-        const basePoints = (enemy.type === EnemyType.SHOOTER) ? 3 : 1;
+        const basePoints = enemy.type === EnemyType.SHOOTER ? 3 : 1;
 
         // Apply the score multiplier
         const points = basePoints * this.player.scoreMultiplier;
@@ -1259,21 +1346,21 @@ class OrbitGame {
       if (this.player.shielded) {
         this.context.beginPath();
         // Scale the visual radius of the shield based on the player's sprite scale
-       const shieldVisualRadius =
-         (this.player.collisionRadius + 5) / this.PLAYER_SPRITE_SCALE;
-       this.context.arc(0, 0, shieldVisualRadius, 0, Math.PI * 2);
-       // Pulsing alpha effect
-       const pulse = Math.sin(Date.now() * 0.005) * 0.15 + 0.6; // Oscillates between 0.45 and 0.75
-       this.context.strokeStyle = `rgba(0, 255, 255, ${pulse})`;
-       // Glow effect
-       this.context.shadowColor = "rgba(0, 255, 255, 0.8)";
-       this.context.shadowBlur = 10;
-       // Adjust line width so it looks consistent regardless of scale
-       this.context.lineWidth = 2 / this.PLAYER_SPRITE_SCALE;
-       this.context.stroke();
-       // Reset shadow for other elements
-       this.context.shadowColor = "transparent";
-       this.context.shadowBlur = 0;
+        const shieldVisualRadius =
+          (this.player.collisionRadius + 5) / this.PLAYER_SPRITE_SCALE;
+        this.context.arc(0, 0, shieldVisualRadius, 0, Math.PI * 2);
+        // Pulsing alpha effect
+        const pulse = Math.sin(Date.now() * 0.005) * 0.15 + 0.6; // Oscillates between 0.45 and 0.75
+        this.context.strokeStyle = `rgba(0, 255, 255, ${pulse})`;
+        // Glow effect
+        this.context.shadowColor = "rgba(0, 255, 255, 0.8)";
+        this.context.shadowBlur = 10;
+        // Adjust line width so it looks consistent regardless of scale
+        this.context.lineWidth = 2 / this.PLAYER_SPRITE_SCALE;
+        this.context.stroke();
+        // Reset shadow for other elements
+        this.context.shadowColor = "transparent";
+        this.context.shadowBlur = 0;
       }
 
       // Debug: Draw center point (scaled)
@@ -1301,16 +1388,23 @@ class OrbitGame {
       let tintColor: string | null = null; // Add this line
 
       switch (enemy.type) {
-          case EnemyType.NORMAL: sprite = this.sprites.enemy; break;
-          // Change this block for FAST enemy
-          case EnemyType.FAST:
-              sprite = this.sprites.enemy;
-              tintColor = "rgba(255, 255, 0, 0.15)"; // Yellow tint
-              break;
-          // End of change block
-          case EnemyType.SHOOTER: sprite = this.sprites.shooterSprite; break;
-          case EnemyType.SUN: sprite = this.sprites.enemySun; break;
-          default: sprite = null;
+        case EnemyType.NORMAL:
+          sprite = this.sprites.enemy;
+          break;
+        // Change this block for FAST enemy
+        case EnemyType.FAST:
+          sprite = this.sprites.enemy;
+          tintColor = "rgba(255, 255, 0, 0.15)"; // Yellow tint
+          break;
+        // End of change block
+        case EnemyType.SHOOTER:
+          sprite = this.sprites.shooterSprite;
+          break;
+        case EnemyType.SUN:
+          sprite = this.sprites.enemySun;
+          break;
+        default:
+          sprite = null;
       }
       if (!sprite) continue;
 
@@ -1330,10 +1424,10 @@ class OrbitGame {
 
       // Add this block to apply tint if needed
       if (tintColor) {
-          this.context.globalCompositeOperation = 'source-atop'; // Apply tint over the sprite
-          this.context.fillStyle = tintColor;
-          this.context.fillRect(-offsetX, -offsetY, sprite.width, sprite.height);
-          this.context.globalCompositeOperation = 'source-over'; // Reset composite operation
+        this.context.globalCompositeOperation = "source-atop"; // Apply tint over the sprite
+        this.context.fillStyle = tintColor;
+        this.context.fillRect(-offsetX, -offsetY, sprite.width, sprite.height);
+        this.context.globalCompositeOperation = "source-over"; // Reset composite operation
       }
       // End of tint block
 
@@ -1514,24 +1608,43 @@ class OrbitGame {
   }
 
   private createExplosion(x: number, y: number): void {
-      const particleCount = this.EXPLOSION_PARTICLE_COUNT_MIN + Math.floor(Math.random() * (this.EXPLOSION_PARTICLE_COUNT_MAX - this.EXPLOSION_PARTICLE_COUNT_MIN + 1));
+    const particleCount =
+      this.EXPLOSION_PARTICLE_COUNT_MIN +
+      Math.floor(
+        Math.random() *
+          (this.EXPLOSION_PARTICLE_COUNT_MAX -
+            this.EXPLOSION_PARTICLE_COUNT_MIN +
+            1)
+      );
 
-      for (let i = 0; i < particleCount; i++) {
-          const particle = this.explosionParticlePool.get();
+    for (let i = 0; i < particleCount; i++) {
+      const particle = this.explosionParticlePool.get();
 
-          const angle = Math.random() * Math.PI * 2;
-          const speed = this.EXPLOSION_PARTICLE_SPEED_MIN + Math.random() * (this.EXPLOSION_PARTICLE_SPEED_MAX - this.EXPLOSION_PARTICLE_SPEED_MIN);
-          const size = this.EXPLOSION_PARTICLE_SIZE_MIN + Math.random() * (this.EXPLOSION_PARTICLE_SIZE_MAX - this.EXPLOSION_PARTICLE_SIZE_MIN);
-          const decay = this.EXPLOSION_PARTICLE_DECAY_MIN + Math.random() * (this.EXPLOSION_PARTICLE_DECAY_MAX - this.EXPLOSION_PARTICLE_DECAY_MIN);
-          const alpha = 0.7 + Math.random() * 0.3;
-          // Color variation: Mostly cyan/blue, some white sparks
-          const color = Math.random() < 0.8
-              ? [50 + Math.random() * 50, 180 + Math.random() * 75, 255] // Cyan/Blue range
-              : [230 + Math.random() * 25, 230 + Math.random() * 25, 255]; // White/Light Blue range
+      const angle = Math.random() * Math.PI * 2;
+      const speed =
+        this.EXPLOSION_PARTICLE_SPEED_MIN +
+        Math.random() *
+          (this.EXPLOSION_PARTICLE_SPEED_MAX -
+            this.EXPLOSION_PARTICLE_SPEED_MIN);
+      const size =
+        this.EXPLOSION_PARTICLE_SIZE_MIN +
+        Math.random() *
+          (this.EXPLOSION_PARTICLE_SIZE_MAX - this.EXPLOSION_PARTICLE_SIZE_MIN);
+      const decay =
+        this.EXPLOSION_PARTICLE_DECAY_MIN +
+        Math.random() *
+          (this.EXPLOSION_PARTICLE_DECAY_MAX -
+            this.EXPLOSION_PARTICLE_DECAY_MIN);
+      const alpha = 0.7 + Math.random() * 0.3;
+      // Color variation: Mostly cyan/blue, some white sparks
+      const color =
+        Math.random() < 0.8
+          ? [50 + Math.random() * 50, 180 + Math.random() * 75, 255] // Cyan/Blue range
+          : [230 + Math.random() * 25, 230 + Math.random() * 25, 255]; // White/Light Blue range
 
-          particle.init(x, y, angle, size, alpha, speed, decay, color);
-          this.explosionParticles.push(particle);
-      }
+      particle.init(x, y, angle, size, alpha, speed, decay, color);
+      this.explosionParticles.push(particle);
+    }
   }
 
   // --- Thrust Particles (Using Pooling - Improvement) ---
@@ -1590,15 +1703,15 @@ class OrbitGame {
   }
 
   private updateExplosionParticles(): void {
-      for (let i = this.explosionParticles.length - 1; i >= 0; i--) {
-          const particle = this.explosionParticles[i];
-          particle.update(this.timeFactor); // Use entity's update
+    for (let i = this.explosionParticles.length - 1; i >= 0; i--) {
+      const particle = this.explosionParticles[i];
+      particle.update(this.timeFactor); // Use entity's update
 
-          if (!particle.alive) {
-              this.explosionParticles.splice(i, 1); // Remove from active list
-              this.explosionParticlePool.release(particle); // Return to pool
-          }
+      if (!particle.alive) {
+        this.explosionParticles.splice(i, 1); // Remove from active list
+        this.explosionParticlePool.release(particle); // Return to pool
       }
+    }
   }
 
   private renderThrustParticles(): void {
@@ -1614,22 +1727,29 @@ class OrbitGame {
   }
 
   private renderExplosionParticles(): void {
-      this.context.save();
-      // Optional: Add blend mode for brighter effect
-      // this.context.globalCompositeOperation = 'lighter';
+    this.context.save();
+    // Optional: Add blend mode for brighter effect
+    // this.context.globalCompositeOperation = 'lighter';
 
-      for (const particle of this.explosionParticles) {
-          const color = particle.color;
-          this.context.fillStyle = `rgba(${Math.round(color[0])}, ${Math.round(color[1])}, ${Math.round(color[2])}, ${particle.alpha.toFixed(2)})`;
-          this.context.beginPath();
-          // Draw simple squares for a blocky/digital explosion feel
-          const halfSize = particle.size / 2;
-          this.context.fillRect(particle.x - halfSize, particle.y - halfSize, particle.size, particle.size);
-          // Or use circles:
-          // this.context.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
-          // this.context.fill();
-      }
-      this.context.restore(); // Restore composite operation if changed
+    for (const particle of this.explosionParticles) {
+      const color = particle.color;
+      this.context.fillStyle = `rgba(${Math.round(color[0])}, ${Math.round(
+        color[1]
+      )}, ${Math.round(color[2])}, ${particle.alpha.toFixed(2)})`;
+      this.context.beginPath();
+      // Draw simple squares for a blocky/digital explosion feel
+      const halfSize = particle.size / 2;
+      this.context.fillRect(
+        particle.x - halfSize,
+        particle.y - halfSize,
+        particle.size,
+        particle.size
+      );
+      // Or use circles:
+      // this.context.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+      // this.context.fill();
+    }
+    this.context.restore(); // Restore composite operation if changed
   }
 
   // --- PowerUps ---
@@ -1649,7 +1769,7 @@ class OrbitGame {
     // Choose a random type from available power-ups
     const typeKeys = Object.keys(this.powerUpTypes);
     // Filter out the numeric keys if necessary (depends on how TS handles enums)
-    const validKeys = typeKeys.filter(key => isNaN(Number(key)));
+    const validKeys = typeKeys.filter((key) => isNaN(Number(key)));
     const randomTypeKey = validKeys[
       Math.floor(Math.random() * validKeys.length)
     ] as keyof typeof this.powerUpTypes;
@@ -1728,20 +1848,28 @@ class OrbitGame {
 
     // --- Modify RANDOM type handling ---
     if (powerUp.type === PowerUpType.RANDOM) {
-        const availableTypes = Object.values(PowerUpType)
-            .filter(v => typeof v === 'number' && v !== PowerUpType.RANDOM) as PowerUpType[];
+      const availableTypes = Object.values(PowerUpType).filter(
+        (v) => typeof v === "number" && v !== PowerUpType.RANDOM
+      ) as PowerUpType[];
 
-        if (availableTypes.length > 0) {
-            const chosenType = availableTypes[Math.floor(Math.random() * availableTypes.length)];
-            console.log(`Random PowerUp resolved to: ${PowerUp.getLabelByType(chosenType)} (${chosenType})`);
-            resolvedType = chosenType; // Update resolvedType with the actual chosen type
-            // Remove the RANDOM entry from activePowerUps if it was added prematurely
-            // (Shouldn't happen with the logic moved, but good practice)
-            this.activePowerUps.delete(PowerUpType.RANDOM);
-        } else {
-            console.warn("No other powerup types available for RANDOM to resolve to.");
-            return; // Nothing to do
-        }
+      if (availableTypes.length > 0) {
+        const chosenType =
+          availableTypes[Math.floor(Math.random() * availableTypes.length)];
+        console.log(
+          `Random PowerUp resolved to: ${PowerUp.getLabelByType(
+            chosenType
+          )} (${chosenType})`
+        );
+        resolvedType = chosenType; // Update resolvedType with the actual chosen type
+        // Remove the RANDOM entry from activePowerUps if it was added prematurely
+        // (Shouldn't happen with the logic moved, but good practice)
+        this.activePowerUps.delete(PowerUpType.RANDOM);
+      } else {
+        console.warn(
+          "No other powerup types available for RANDOM to resolve to."
+        );
+        return; // Nothing to do
+      }
     }
     // --- End of RANDOM modification ---
 
@@ -1750,33 +1878,45 @@ class OrbitGame {
     this.activePowerUps.set(resolvedType, endTime); // Use the RESOLVED type as the key
 
     // Set Player State Directly using resolvedType
-    switch (resolvedType) { // Use resolvedType here
+    switch (
+      resolvedType // Use resolvedType here
+    ) {
       case PowerUpType.SHIELD:
         this.player.shielded = true;
         // Use static methods for consistency (Rule 4)
         notificationText = PowerUp.getLabelByType(resolvedType); // Get abbreviated label
-        notificationColor = this.parseRgbaColor(PowerUp.getColorByType(resolvedType)); // Get color
+        notificationColor = this.parseRgbaColor(
+          PowerUp.getColorByType(resolvedType)
+        ); // Get color
         break;
       case PowerUpType.SCORE_MULTIPLIER:
         this.player.scoreMultiplier = 2;
         notificationText = PowerUp.getLabelByType(resolvedType);
-        notificationColor = this.parseRgbaColor(PowerUp.getColorByType(resolvedType));
+        notificationColor = this.parseRgbaColor(
+          PowerUp.getColorByType(resolvedType)
+        );
         break;
       case PowerUpType.SLOW_TIME:
         this.player.slowTimeActive = true;
         notificationText = PowerUp.getLabelByType(resolvedType);
-        notificationColor = this.parseRgbaColor(PowerUp.getColorByType(resolvedType));
+        notificationColor = this.parseRgbaColor(
+          PowerUp.getColorByType(resolvedType)
+        );
         break;
       case PowerUpType.MAGNET:
         this.player.magnetActive = true;
         // Use static methods for consistency (Rule 3 & 4)
         notificationText = PowerUp.getLabelByType(resolvedType);
-        notificationColor = this.parseRgbaColor(PowerUp.getColorByType(resolvedType));
+        notificationColor = this.parseRgbaColor(
+          PowerUp.getColorByType(resolvedType)
+        );
         break;
       case PowerUpType.GRAVITY_REVERSE:
         this.player.gravityReversed = true;
         notificationText = PowerUp.getLabelByType(resolvedType);
-        notificationColor = this.parseRgbaColor(PowerUp.getColorByType(resolvedType));
+        notificationColor = this.parseRgbaColor(
+          PowerUp.getColorByType(resolvedType)
+        );
         break;
       // No default needed as RANDOM is resolved before this switch
     }
@@ -1794,14 +1934,17 @@ class OrbitGame {
 
   // --- Helper Methods ---
   private parseRgbaColor(rgbaString: string): number[] {
-      const match = rgbaString.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*[\d.]+)?\)/);
-      if (match) {
-          return [parseInt(match[1]), parseInt(match[2]), parseInt(match[3])];
-      }
-      return [255, 255, 255]; // Default to white if parse fails
+    const match = rgbaString.match(
+      /rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*[\d.]+)?\)/
+    );
+    if (match) {
+      return [parseInt(match[1]), parseInt(match[2]), parseInt(match[3])];
+    }
+    return [255, 255, 255]; // Default to white if parse fails
   }
 
-  private renderPowerUps(): void { // Add this method signature for context
+  private renderPowerUps(): void {
+    // Add this method signature for context
     this.context.save();
     for (const powerUp of this.powerUps) {
       this.context.globalAlpha = powerUp.alpha * 0.85; // Slightly transparent base
@@ -1872,42 +2015,41 @@ class OrbitGame {
 
     // --- State Machine Logic (Improvement) ---
     // Check if paused OR menu is open before deciding to update game logic
-    const shouldUpdateGame = this.gameState === GameState.PLAYING && !this.paused && !this.isMenuOpen;
+    const shouldUpdateGame =
+      this.gameState === GameState.PLAYING && !this.paused && !this.isMenuOpen;
 
     if (shouldUpdateGame) {
-        this.duration = (now - this.timeGameStart) / 1000; // Update duration only when playing actively
+      this.duration = (now - this.timeGameStart) / 1000; // Update duration only when playing actively
 
-        // Update game elements
-        this.updatePlayer();
-        this.updateEnemies();
-        this.updatePowerUps();
-        this.updateProjectiles(); // Update projectiles
-        this.updateThrustParticles();
-        this.updateExplosionParticles();
-        this.updateBackgroundStars(); // Update background scroll
+      // Update game elements
+      this.updatePlayer();
+      this.updateEnemies();
+      this.updatePowerUps();
+      this.updateProjectiles(); // Update projectiles
+      this.updateThrustParticles();
+      this.updateExplosionParticles();
+      this.updateBackgroundStars(); // Update background scroll
 
-        this.checkEndConditions();
-
+      this.checkEndConditions();
     } else {
-        // Game is paused, in menu, or in a non-playing state
-        // Update things that should always update or animate in menus/pause
-        this.updateBackgroundStars(); // Keep background moving slowly? Or stop? Let's keep it moving.
-        this.updateNotificationsOnly(); // Allow notifications to fade even when paused/in menu
+      // Game is paused, in menu, or in a non-playing state
+      // Update things that should always update or animate in menus/pause
+      this.updateBackgroundStars(); // Keep background moving slowly? Or stop? Let's keep it moving.
+      this.updateNotificationsOnly(); // Allow notifications to fade even when paused/in menu
     }
-
 
     // --- Handle different states for UI, etc. ---
     // This switch is now more about what *else* happens in each state,
     // as the core game update is handled above.
     switch (this.gameState) {
-        case GameState.PLAYING:
-            // Already handled by shouldUpdateGame block
-            break;
-        case GameState.PAUSED:
-            // Duration does not increase.
-            // Potentially update paused UI elements here.
-            break;
-        case GameState.WELCOME:
+      case GameState.PLAYING:
+        // Already handled by shouldUpdateGame block
+        break;
+      case GameState.PAUSED:
+        // Duration does not increase.
+        // Potentially update paused UI elements here.
+        break;
+      case GameState.WELCOME:
       case GameState.LOSER:
       case GameState.WINNER:
         // Update background stars even when not playing for visual appeal
@@ -2135,7 +2277,7 @@ class OrbitGame {
     }
     // Render Menu Dimming Overlay (if menu is open)
     else if (this.isMenuOpen) {
-        this.renderMenuBackgroundDim();
+      this.renderMenuBackgroundDim();
     }
     // Render Welcome Instructions (Improvement)
     else if (this.gameState === GameState.WELCOME) {
@@ -2153,12 +2295,11 @@ class OrbitGame {
 
   // Renders a dim overlay when the settings menu is open
   private renderMenuBackgroundDim(): void {
-      this.context.save();
-      this.context.fillStyle = "rgba(0, 0, 0, 0.6)"; // Same as pause screen dim
-      this.context.fillRect(0, 0, this.world.width, this.world.height);
-      this.context.restore();
+    this.context.save();
+    this.context.fillStyle = "rgba(0, 0, 0, 0.6)"; // Same as pause screen dim
+    this.context.fillRect(0, 0, this.world.width, this.world.height);
+    this.context.restore();
   }
-
 
   private renderGameInfo(): void {
     this.context.save();
@@ -2183,7 +2324,8 @@ class OrbitGame {
     this.context.textAlign = "center";
     this.context.font = "14px Rajdhani, Arial"; // Keep slightly smaller font
     // Adjust Y position if in Welcome state to avoid overlap with Mode text
-    const highScoreY = (this.gameState === GameState.WELCOME)
+    const highScoreY =
+      this.gameState === GameState.WELCOME
         ? this.world.height - bottomMargin - 35 // Move higher in Welcome state
         : this.world.height - bottomMargin - 20; // Original position otherwise
 
@@ -2392,9 +2534,21 @@ class OrbitGame {
     print(
       `Enemy Spawn Interval: ${this.currentEnemySpawnInterval.toFixed(0)}ms`
     ); // Show current rate (Improvement 2)
-    print(`Thrust Particles: ${this.thrustParticles.length} (Pool: ${this.particlePool.getPoolSize()})`);
-    print(`Explosion Particles: ${this.explosionParticles.length} (Pool: ${this.explosionParticlePool.getPoolSize()})`);
-    print(`Projectiles: ${this.projectiles.length} (Pool: ${this.projectilePool.getPoolSize()})`);
+    print(
+      `Thrust Particles: ${
+        this.thrustParticles.length
+      } (Pool: ${this.particlePool.getPoolSize()})`
+    );
+    print(
+      `Explosion Particles: ${
+        this.explosionParticles.length
+      } (Pool: ${this.explosionParticlePool.getPoolSize()})`
+    );
+    print(
+      `Projectiles: ${
+        this.projectiles.length
+      } (Pool: ${this.projectilePool.getPoolSize()})`
+    );
     print(
       `Powerups: ${this.powerUps.length} (Active: ${this.activePowerUps.size})`
     );
@@ -2465,86 +2619,106 @@ class OrbitGame {
 
   // --- Projectile Management ---
   spawnProjectile(x: number, y: number, angle: number): void {
-      const projectile = this.projectilePool.get();
-      const spawnOffset = 10; // Distance ahead of shooter to spawn projectile
-      const startX = x + Math.cos(angle) * spawnOffset;
-      const startY = y + Math.sin(angle) * spawnOffset;
+    const projectile = this.projectilePool.get();
+    const spawnOffset = 10; // Distance ahead of shooter to spawn projectile
+    const startX = x + Math.cos(angle) * spawnOffset;
+    const startY = y + Math.sin(angle) * spawnOffset;
 
-      projectile.init(
-          startX, // Use offset start position
-          startY, // Use offset start position
-          angle,
-          this.PROJECTILE_SPEED,
-          this.PROJECTILE_SIZE,
-          this.PROJECTILE_COLLISION_RADIUS,
-          this.PROJECTILE_LIFETIME_MS
-      );
-      this.projectiles.push(projectile);
-      // Optional: Play shoot sound
-      // this.audioManager.playSound("shoot", 0.2);
+    projectile.init(
+      startX, // Use offset start position
+      startY, // Use offset start position
+      angle,
+      this.PROJECTILE_SPEED,
+      this.PROJECTILE_SIZE,
+      this.PROJECTILE_COLLISION_RADIUS,
+      this.PROJECTILE_LIFETIME_MS
+    );
+    this.projectiles.push(projectile);
+    // Optional: Play shoot sound
+    // this.audioManager.playSound("shoot", 0.2);
   }
 
   updateProjectiles(): void {
-      for (let i = this.projectiles.length - 1; i >= 0; i--) {
-          const projectile = this.projectiles[i];
-          projectile.update(this.timeFactor);
+    for (let i = this.projectiles.length - 1; i >= 0; i--) {
+      const projectile = this.projectiles[i];
+      projectile.update(this.timeFactor);
 
-          if (!projectile.alive) {
-              this.projectiles.splice(i, 1);
-              this.projectilePool.release(projectile);
-              continue;
-          }
-
-          // Check collision with player
-          if (this.player.alive && this.collides(this.player, projectile)) {
-              projectile.alive = false; // Mark projectile for removal
-              this.projectiles.splice(i, 1);
-              this.projectilePool.release(projectile);
-
-              if (this.player.shielded) {
-                  this.activePowerUps.delete(PowerUpType.SHIELD);
-                  this.player.shielded = false;
-                  this.notify("SHIELD HIT!", this.player.x, this.player.y - 20, 1.2, [255, 180, 100]);
-                  this.audioManager.playSound("shield_break");
-                  this.triggerShake(this.SHAKE_INTENSITY * 0.8); // Smaller shake for projectile hit
-              } else {
-                  console.error("Player hit by projectile!");
-                  this.audioManager.playSound("game_over"); // Or a specific hit sound
-                  this.triggerShake(this.SHAKE_INTENSITY * 1.5, this.SHAKE_DURATION_MS * 1.5);
-                  this.player.alive = false;
-                  this.endGame(false, "SHOT DOWN");
-              }
-              // No need to continue checking other projectiles once player is hit in a frame?
-              // Or let multiple hits happen if applicable. For now, just handle one hit.
-              // break; // Optional: Stop checking after first hit this frame
-          }
-          // Optional: Check collision with other enemies?
+      if (!projectile.alive) {
+        this.projectiles.splice(i, 1);
+        this.projectilePool.release(projectile);
+        continue;
       }
+
+      // Check collision with player
+      if (this.player.alive && this.collides(this.player, projectile)) {
+        projectile.alive = false; // Mark projectile for removal
+        this.projectiles.splice(i, 1);
+        this.projectilePool.release(projectile);
+
+        if (this.player.shielded) {
+          this.activePowerUps.delete(PowerUpType.SHIELD);
+          this.player.shielded = false;
+          this.notify(
+            "SHIELD HIT!",
+            this.player.x,
+            this.player.y - 20,
+            1.2,
+            [255, 180, 100]
+          );
+          this.audioManager.playSound("shield_break");
+          this.triggerShake(this.SHAKE_INTENSITY * 0.8); // Smaller shake for projectile hit
+        } else {
+          console.error("Player hit by projectile!");
+          this.audioManager.playSound("game_over"); // Or a specific hit sound
+          this.triggerShake(
+            this.SHAKE_INTENSITY * 1.5,
+            this.SHAKE_DURATION_MS * 1.5
+          );
+          this.player.alive = false;
+          this.endGame(false, "SHOT DOWN");
+        }
+        // No need to continue checking other projectiles once player is hit in a frame?
+        // Or let multiple hits happen if applicable. For now, just handle one hit.
+        // break; // Optional: Stop checking after first hit this frame
+      }
+      // Optional: Check collision with other enemies?
+    }
   }
 
   renderProjectiles(): void {
-      this.context.save();
-      this.context.fillStyle = "rgba(255, 80, 80, 0.9)"; // Red color for projectiles
-      this.context.shadowColor = "rgba(255, 0, 0, 0.8)";
-      this.context.shadowBlur = 8;
+    this.context.save();
+    this.context.fillStyle = "rgba(255, 80, 80, 0.9)"; // Red color for projectiles
+    this.context.shadowColor = "rgba(255, 0, 0, 0.8)";
+    this.context.shadowBlur = 8;
 
-      for (const projectile of this.projectiles) {
-          this.context.beginPath();
-          this.context.arc(projectile.x, projectile.y, projectile.size, 0, Math.PI * 2);
-          this.context.fill();
+    for (const projectile of this.projectiles) {
+      this.context.beginPath();
+      this.context.arc(
+        projectile.x,
+        projectile.y,
+        projectile.size,
+        0,
+        Math.PI * 2
+      );
+      this.context.fill();
 
-          // Debug projectile collision radius
-          if (this.debugging) {
-              this.context.beginPath();
-              this.context.arc(projectile.x, projectile.y, projectile.collisionRadius, 0, Math.PI * 2);
-              this.context.strokeStyle = "rgba(255, 255, 0, 0.5)";
-              this.context.lineWidth = 1;
-              this.context.stroke();
-          }
+      // Debug projectile collision radius
+      if (this.debugging) {
+        this.context.beginPath();
+        this.context.arc(
+          projectile.x,
+          projectile.y,
+          projectile.collisionRadius,
+          0,
+          Math.PI * 2
+        );
+        this.context.strokeStyle = "rgba(255, 255, 0, 0.5)";
+        this.context.lineWidth = 1;
+        this.context.stroke();
       }
-      this.context.restore();
+    }
+    this.context.restore();
   }
-
 } // End of OrbitGame Class
 
 // =============================================================================
@@ -2618,7 +2792,8 @@ class Enemy extends Entity {
   }
 
   // Improvement: Entity Update Method
-  update(timeFactor: number, game: OrbitGame): void { // Accept OrbitGame instance
+  update(timeFactor: number, game: OrbitGame): void {
+    // Accept OrbitGame instance
     if (!this.alive && !this.dying) return; // Already dead and finished animation
 
     // Calculate deltaMs based on timeFactor and a fixed reference rate (e.g., 60fps)
@@ -2648,57 +2823,58 @@ class Enemy extends Entity {
       // TODO: Add movement logic here if enemies move
       // --- Add FAST enemy movement logic ---
       if (this.type === EnemyType.FAST) {
-          const centerX = game.world.width / 2;
-          const centerY = game.world.height / 2;
-          const dx_sun = this.x - centerX;
-          const dy_sun = this.y - centerY;
-          const currentRadius = Math.sqrt(dx_sun * dx_sun + dy_sun * dy_sun);
-          if (currentRadius > 0) {
-              // Calculate tangential angle (perpendicular to radius vector)
-              const angleToCenter = Math.atan2(dy_sun, dx_sun);
-              const tangentialAngle = angleToCenter + Math.PI / 2; // 90 degrees offset
+        const centerX = game.world.width / 2;
+        const centerY = game.world.height / 2;
+        const dx_sun = this.x - centerX;
+        const dy_sun = this.y - centerY;
+        const currentRadius = Math.sqrt(dx_sun * dx_sun + dy_sun * dy_sun);
+        if (currentRadius > 0) {
+          // Calculate tangential angle (perpendicular to radius vector)
+          const angleToCenter = Math.atan2(dy_sun, dx_sun);
+          const tangentialAngle = angleToCenter + Math.PI / 2; // 90 degrees offset
 
-              // Base speed, scaled by multiplier and timeFactor
-              const baseSpeed = 0.8; // Adjust base speed as needed
-              const moveSpeed = baseSpeed * this.speedMultiplier * timeFactor;
+          // Base speed, scaled by multiplier and timeFactor
+          const baseSpeed = 0.8; // Adjust base speed as needed
+          const moveSpeed = baseSpeed * this.speedMultiplier * timeFactor;
 
-              this.x += Math.cos(tangentialAngle) * moveSpeed;
-              this.y += Math.sin(tangentialAngle) * moveSpeed;
+          this.x += Math.cos(tangentialAngle) * moveSpeed;
+          this.y += Math.sin(tangentialAngle) * moveSpeed;
 
-              // Optional: Add slight drift inwards/outwards?
-              // const driftFactor = 0.01;
-              // this.x -= Math.cos(angleToCenter) * driftFactor * timeFactor;
-              // this.y -= Math.sin(angleToCenter) * driftFactor * timeFactor;
-          }
+          // Optional: Add slight drift inwards/outwards?
+          // const driftFactor = 0.01;
+          // this.x -= Math.cos(angleToCenter) * driftFactor * timeFactor;
+          // this.y -= Math.sin(angleToCenter) * driftFactor * timeFactor;
+        }
       }
       // --- End of FAST enemy movement logic ---
 
       // --- Shooting Logic (for SHOOTER type) ---
       if (this.type === EnemyType.SHOOTER && game.player.alive) {
-          // Calculate distance to player first
-          const dx = game.player.x - this.x;
-          const dy = game.player.y - this.y;
-          const distSq = dx * dx + dy * dy;
-          const minFireDist = this.collisionRadius + game.player.collisionRadius + 20; // Enemy rad + player rad + buffer
-          const minFireDistSq = minFireDist * minFireDist;
+        // Calculate distance to player first
+        const dx = game.player.x - this.x;
+        const dy = game.player.y - this.y;
+        const distSq = dx * dx + dy * dy;
+        const minFireDist =
+          this.collisionRadius + game.player.collisionRadius + 20; // Enemy rad + player rad + buffer
+        const minFireDistSq = minFireDist * minFireDist;
 
-          // Only fire if player is not too close AND cooldown is ready
-          if (distSq > minFireDistSq) {
-              this.timeSinceLastShot += deltaMs;
-              if (this.timeSinceLastShot >= game.SHOOTER_COOLDOWN_MS) {
-                  // Angle calculation already done
-                  const angleToPlayer = Math.atan2(dy, dx);
+        // Only fire if player is not too close AND cooldown is ready
+        if (distSq > minFireDistSq) {
+          this.timeSinceLastShot += deltaMs;
+          if (this.timeSinceLastShot >= game.SHOOTER_COOLDOWN_MS) {
+            // Angle calculation already done
+            const angleToPlayer = Math.atan2(dy, dx);
 
-                  // Spawn projectile (pass angle, not dx/dy)
-                  game.spawnProjectile(this.x, this.y, angleToPlayer);
+            // Spawn projectile (pass angle, not dx/dy)
+            game.spawnProjectile(this.x, this.y, angleToPlayer);
 
-                  this.timeSinceLastShot = 0; // Reset timer
-              }
-          } else {
-              // Optional: Reset cooldown if player gets too close? Or just pause it?
-              // For now, just prevent firing. Cooldown continues.
-              // this.timeSinceLastShot = 0; // Alternative: Reset cooldown if player is close
+            this.timeSinceLastShot = 0; // Reset timer
           }
+        } else {
+          // Optional: Reset cooldown if player gets too close? Or just pause it?
+          // For now, just prevent firing. Cooldown continues.
+          // this.timeSinceLastShot = 0; // Alternative: Reset cooldown if player is close
+        }
       }
       // TODO: Add movement logic here if enemies move
       // Example: Apply speedMultiplier if enemy moves
@@ -2816,100 +2992,116 @@ class ThrustParticle extends Entity implements Poolable {
 }
 
 class ExplosionParticle extends Entity implements Poolable {
-    public angle: number = 0;
-    public size: number = 1;
-    public alpha: number = 1;
-    public speed: number = 1;
-    public decay: number = 0.02; // Controls fade speed
-    public color: number[] = [255, 255, 255]; // RGB color
+  public angle: number = 0;
+  public size: number = 1;
+  public alpha: number = 1;
+  public speed: number = 1;
+  public decay: number = 0.02; // Controls fade speed
+  public color: number[] = [255, 255, 255]; // RGB color
 
-    constructor() {
-        super();
-        this.alive = false; // Start inactive
-        this.collisionRadius = 0;
+  constructor() {
+    super();
+    this.alive = false; // Start inactive
+    this.collisionRadius = 0;
+  }
+
+  init(
+    x: number,
+    y: number,
+    angle: number,
+    size: number,
+    alpha: number,
+    speed: number,
+    decay: number,
+    color: number[]
+  ): void {
+    this.x = x;
+    this.y = y;
+    this.angle = angle;
+    this.size = size;
+    this.alpha = alpha;
+    this.speed = speed;
+    this.decay = decay;
+    this.color = color;
+    this.alive = true;
+  }
+
+  reset(): void {
+    this.alive = false;
+    this.x = -1000;
+    this.y = -1000;
+    this.alpha = 0;
+    this.size = 0;
+  }
+
+  update(timeFactor: number): void {
+    if (!this.alive) return;
+    this.x += Math.cos(this.angle) * this.speed * timeFactor;
+    this.y += Math.sin(this.angle) * this.speed * timeFactor;
+    this.alpha -= this.decay * timeFactor;
+    this.size = Math.max(0.1, this.size - 0.05 * timeFactor); // Shrink rate
+
+    if (this.alpha <= 0 || this.size <= 0.1) {
+      this.alive = false;
     }
-
-    init(x: number, y: number, angle: number, size: number, alpha: number, speed: number, decay: number, color: number[]): void {
-        this.x = x;
-        this.y = y;
-        this.angle = angle;
-        this.size = size;
-        this.alpha = alpha;
-        this.speed = speed;
-        this.decay = decay;
-        this.color = color;
-        this.alive = true;
-    }
-
-    reset(): void {
-        this.alive = false;
-        this.x = -1000;
-        this.y = -1000;
-        this.alpha = 0;
-        this.size = 0;
-    }
-
-    update(timeFactor: number): void {
-        if (!this.alive) return;
-        this.x += Math.cos(this.angle) * this.speed * timeFactor;
-        this.y += Math.sin(this.angle) * this.speed * timeFactor;
-        this.alpha -= this.decay * timeFactor;
-        this.size = Math.max(0.1, this.size - 0.05 * timeFactor); // Shrink rate
-
-        if (this.alpha <= 0 || this.size <= 0.1) {
-            this.alive = false;
-        }
-    }
+  }
 }
 
 // --- Projectile Class ---
 class Projectile extends Entity implements Poolable {
-    public angle: number = 0;
-    public speed: number = 0;
-    public size: number = 0;
-    public lifetimeMs: number = 0;
-    private timeAlive: number = 0;
+  public angle: number = 0;
+  public speed: number = 0;
+  public size: number = 0;
+  public lifetimeMs: number = 0;
+  private timeAlive: number = 0;
 
-    constructor() {
-        super();
-        this.alive = false; // Start inactive
+  constructor() {
+    super();
+    this.alive = false; // Start inactive
+  }
+
+  init(
+    x: number,
+    y: number,
+    angle: number,
+    speed: number,
+    size: number,
+    collisionRadius: number,
+    lifetimeMs: number
+  ): void {
+    this.x = x;
+    this.y = y;
+    this.angle = angle;
+    this.speed = speed;
+    this.size = size;
+    this.collisionRadius = collisionRadius;
+    this.lifetimeMs = lifetimeMs;
+    this.timeAlive = 0;
+    this.alive = true;
+  }
+
+  reset(): void {
+    this.alive = false;
+    this.x = -1000;
+    this.y = -1000;
+    this.timeAlive = 0;
+  }
+
+  update(timeFactor: number): void {
+    if (!this.alive) return;
+
+    this.x += Math.cos(this.angle) * this.speed * timeFactor;
+    this.y += Math.sin(this.angle) * this.speed * timeFactor;
+
+    // Use constant framerate assumption for lifetime calculation
+    const deltaMs = timeFactor * (1000 / 60); // Approx ms
+    this.timeAlive += deltaMs;
+
+    if (this.timeAlive >= this.lifetimeMs) {
+      this.alive = false; // Mark for removal
     }
-
-    init(x: number, y: number, angle: number, speed: number, size: number, collisionRadius: number, lifetimeMs: number): void {
-        this.x = x;
-        this.y = y;
-        this.angle = angle;
-        this.speed = speed;
-        this.size = size;
-        this.collisionRadius = collisionRadius;
-        this.lifetimeMs = lifetimeMs;
-        this.timeAlive = 0;
-        this.alive = true;
-    }
-
-    reset(): void {
-        this.alive = false;
-        this.x = -1000;
-        this.y = -1000;
-        this.timeAlive = 0;
-    }
-
-    update(timeFactor: number): void {
-        if (!this.alive) return;
-
-        this.x += Math.cos(this.angle) * this.speed * timeFactor;
-        this.y += Math.sin(this.angle) * this.speed * timeFactor;
-
-        // Use constant framerate assumption for lifetime calculation
-        const deltaMs = timeFactor * (1000 / 60); // Approx ms
-        this.timeAlive += deltaMs;
-
-        if (this.timeAlive >= this.lifetimeMs) {
-            this.alive = false; // Mark for removal
-        }
-    }
+  }
 }
-
 
 class PowerUp extends Entity {
   public type: PowerUpType;
@@ -2967,13 +3159,26 @@ class PowerUp extends Entity {
   static getLabelByType(type: PowerUpType): string {
     let label = "";
     switch (type) {
-      case PowerUpType.SHIELD:            label = "SHIELD"; break;
-      case PowerUpType.SCORE_MULTIPLIER:  label = "SCORE MULTIPLIER"; break; // Use full name for abbreviation logic
-      case PowerUpType.SLOW_TIME:         label = "SLOW TIME"; break;
-      case PowerUpType.MAGNET:            label = "MAGNET"; break;
-      case PowerUpType.GRAVITY_REVERSE:   label = "ANTI GRAVITY"; break;
-      case PowerUpType.RANDOM:            label = "RANDOM"; break; // Keep RANDOM as ??? before pickup
-      default:                            return "???";
+      case PowerUpType.SHIELD:
+        label = "SHIELD";
+        break;
+      case PowerUpType.SCORE_MULTIPLIER:
+        label = "SCORE MULTIPLIER";
+        break; // Use full name for abbreviation logic
+      case PowerUpType.SLOW_TIME:
+        label = "SLOW TIME";
+        break;
+      case PowerUpType.MAGNET:
+        label = "MAGNET";
+        break;
+      case PowerUpType.GRAVITY_REVERSE:
+        label = "ANTI GRAVITY";
+        break;
+      case PowerUpType.RANDOM:
+        label = "RANDOM";
+        break; // Keep RANDOM as ??? before pickup
+      default:
+        return "???";
     }
 
     // Abbreviation logic: Capitalize, remove vowels (except maybe first letter if vowel?)
@@ -2985,12 +3190,18 @@ class PowerUp extends Entity {
     // Example: SHIELD -> SHLD, SCORE MULTIPLIER -> SCRMLTPLR -> SCRM, SLOW TIME -> SLWTM -> SLWT, MAGNET -> MGNT, ANTI GRAVITY -> NTGRVTY -> NTGR
     // Let's try a simpler fixed length abbreviation
     switch (type) {
-        case PowerUpType.SHIELD:            return "SHLD";
-        case PowerUpType.SCORE_MULTIPLIER:  return "SCRx2"; // Special case for clarity
-        case PowerUpType.SLOW_TIME:         return "SLW";
-        case PowerUpType.MAGNET:            return "MGNT";
-        case PowerUpType.GRAVITY_REVERSE:   return "NGRV"; // Anti-Gravity
-        default:                            return label.substring(0, 4).toUpperCase(); // Fallback: First 4 chars, uppercase
+      case PowerUpType.SHIELD:
+        return "SHLD";
+      case PowerUpType.SCORE_MULTIPLIER:
+        return "SCRx2"; // Special case for clarity
+      case PowerUpType.SLOW_TIME:
+        return "SLW";
+      case PowerUpType.MAGNET:
+        return "MGNT";
+      case PowerUpType.GRAVITY_REVERSE:
+        return "NGRV"; // Anti-Gravity
+      default:
+        return label.substring(0, 4).toUpperCase(); // Fallback: First 4 chars, uppercase
     }
   }
   // Instance method calls static method
