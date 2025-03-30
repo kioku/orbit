@@ -1,5 +1,45 @@
+import posthog from "posthog-js";
 import "./main.css";
 import { Howl, Howler } from "howler";
+
+// =============================================================================
+// Analytics Wrapper
+// =============================================================================
+
+class Analytics {
+  private isInitialized: boolean = false;
+
+  constructor() {
+    // Conditionally initialize PostHog only in production
+    // Ensure VITE_POSTHOG_KEY and VITE_POSTHOG_API_HOST are set in your build environment
+    if (import.meta.env.PROD && import.meta.env.VITE_POSTHOG_KEY) {
+      try {
+        posthog.init(import.meta.env.VITE_POSTHOG_KEY, {
+          api_host:
+            import.meta.env.VITE_POSTHOG_API_HOST || "https://app.posthog.com",
+          person_profiles: "always",
+          // Enable debug mode in development if needed, but tracking is disabled anyway
+          // loaded: (ph) => { if (!import.meta.env.PROD) ph.debug(); }
+        });
+        this.isInitialized = true;
+        console.log("PostHog initialized.");
+      } catch (e) {
+        console.error("Failed to initialize PostHog:", e);
+      }
+    } else {
+      console.log(
+        "PostHog tracking disabled (not in PROD or VITE_POSTHOG_KEY missing)."
+      );
+    }
+  }
+
+  track(eventName: string, properties?: Record<string, any>): void {
+    if (this.isInitialized) {
+      posthog.capture(eventName, properties);
+      // console.log(`Tracked event: ${eventName}`, properties); // Optional: Log tracked events
+    }
+  }
+}
 
 // =============================================================================
 // Interfaces & Enums
@@ -356,6 +396,9 @@ class OrbitGame {
   private shakeEndTime: number = 0;
   private currentShakeIntensity: number = 0;
 
+  // Analytics instance
+  private analytics: Analytics;
+
   // Use getter for dynamic calculation based on world size
   private get sunBaseRadius(): number {
     return this.ENEMY_SIZE * this.SUN_SIZE_MULTIPLIER;
@@ -400,6 +443,9 @@ class OrbitGame {
     // Initialize Audio Manager
     this.audioManager = new AudioManager();
     this.audioManager.load(); // Trigger loading (async usually)
+
+    // Initialize Analytics
+    this.analytics = new Analytics();
 
     this.initialize();
   }
@@ -705,6 +751,10 @@ class OrbitGame {
     this.debugging = !this.debugging;
     this.updateDebugToggleVisual(); // Update button appearance
     console.log(`Debug mode: ${this.debugging ? "ON" : "OFF"}`);
+    this.analytics.track("settings_changed", {
+      setting_name: "debug",
+      new_value: this.debugging,
+    });
   }
 
   // Updates the visual state of the debug toggle button
@@ -728,6 +778,10 @@ class OrbitGame {
     this.showOrbitGraphic = !this.showOrbitGraphic;
     this.updateOrbitToggleVisual();
     console.log(`Show Orbit Graphic: ${this.showOrbitGraphic}`);
+    this.analytics.track("settings_changed", {
+      setting_name: "orbit",
+      new_value: this.showOrbitGraphic,
+    });
   }
 
   private updateOrbitToggleVisual(): void {
@@ -743,6 +797,10 @@ class OrbitGame {
     this.showBackground = !this.showBackground;
     this.updateBackgroundToggleVisual();
     console.log(`Show Background: ${this.showBackground}`);
+    this.analytics.track("settings_changed", {
+      setting_name: "background",
+      new_value: this.showBackground,
+    });
   }
 
   private updateBackgroundToggleVisual(): void {
@@ -764,6 +822,10 @@ class OrbitGame {
       this.audioManager.stopMusic();
     }
     console.log(`Sound Enabled: ${this.soundEnabled}`);
+    this.analytics.track("settings_changed", {
+      setting_name: "sound",
+      new_value: this.soundEnabled,
+    });
   }
 
   private updateSoundToggleVisual(): void {
@@ -788,6 +850,7 @@ class OrbitGame {
     this.updateModeToggleVisual(); // Update button text
     this.notifyGameMode(); // Show notification
     console.log(`Game mode changed to: ${this.gameMode}`);
+    this.analytics.track("mode_changed", { new_mode: this.gameMode });
   }
 
   // Add this method after toggleGameModeSetting
@@ -820,6 +883,7 @@ class OrbitGame {
     else if ((e.key === "m" || e.key === "M") && !this.playing) {
       this.gameMode = this.gameMode === "survival" ? "score" : "survival";
       this.notifyGameMode();
+      this.analytics.track("mode_changed", { new_mode: this.gameMode });
     }
     // Toggle debugging
     else if ((e.key === "d" || e.key === "D") && !this.isMenuOpen) {
@@ -994,6 +1058,7 @@ class OrbitGame {
     // Set state calls playMusic and adjusts timers
     this.setGameState(GameState.PLAYING);
     this.notifyGameMode();
+    this.analytics.track("game_start", { game_mode: this.gameMode });
   }
 
   // Resets everything for a completely new game session
@@ -1101,6 +1166,10 @@ class OrbitGame {
       try {
         localStorage.setItem(this.HIGH_SCORE_KEY, this.highScore.toString());
         console.log("Saved new high score:", this.highScore);
+        // Track high score achievement
+        this.analytics.track("high_score_achieved", {
+          high_score: this.highScore,
+        });
       } catch (e) {
         console.error("Failed to save high score to localStorage:", e);
       }
@@ -1947,6 +2016,7 @@ class OrbitGame {
     let notificationText = "";
     let notificationColor: number[] = [200, 200, 200];
     let resolvedType = powerUp.type; // Store the potentially resolved type
+    let originalTypeLabel = PowerUp.getLabelByType(powerUp.type); // Get label before potential change
 
     // --- Modify RANDOM type handling ---
     if (powerUp.type === PowerUpType.RANDOM) {
@@ -2032,6 +2102,13 @@ class OrbitGame {
         notificationColor // Use the parsed color
       );
     console.log(`PowerUp ${resolvedType} collected/refreshed`); // Use resolvedType in log
+
+    // Track powerup collection
+    let trackedType = PowerUp.getLabelByType(resolvedType);
+    if (originalTypeLabel === "RANDOM") {
+      trackedType = `RANDOM->${trackedType}`; // Indicate it came from random
+    }
+    this.analytics.track("powerup_collected", { powerup_type: trackedType });
   }
 
   // --- Helper Methods ---
@@ -2309,6 +2386,7 @@ class OrbitGame {
     this.setGameState(endState); // Set final state
 
     // Save score if it's a new high score (Improvement)
+    // saveHighScore now also tracks high_score_achieved if applicable
     this.saveHighScore();
 
     this.thrustParticles = []; // Clear particles (or let them fade via pooling)
@@ -2345,6 +2423,14 @@ class OrbitGame {
     );
 
     this.startButton.textContent = "PLAY AGAIN";
+
+    // Track game end event
+    this.analytics.track("game_end", {
+      reason: message, // Use the end message as the reason
+      final_score: this.player?.score ?? 0,
+      duration: parseFloat(this.duration.toFixed(1)),
+      game_mode: this.gameMode,
+    });
   }
 
   private render(): void {
