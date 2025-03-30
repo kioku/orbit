@@ -409,7 +409,7 @@ class OrbitGame {
     this.modeToggleButton = document.getElementById('mode-toggle') as HTMLButtonElement; // Add this
 
 
-    if (!this.settingsMenu || !this.closeMenuButton || !this.debugToggleButton || !this.orbitToggleButton || !this.backgroundToggleButton || !this.soundToggleButton) {
+    if (!this.settingsMenu || !this.closeMenuButton || !this.debugToggleButton || !this.orbitToggleButton || !this.backgroundToggleButton || !this.soundToggleButton || !this.modeToggleButton) { // Add modeToggleButton here
         console.error("Failed to find all settings menu elements!");
         // Handle error appropriately, maybe disable settings button?
     } else {
