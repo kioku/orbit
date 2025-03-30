@@ -506,6 +506,7 @@ class OrbitGame {
 
       this.isMenuOpen = true;
       this.settingsMenu.classList.remove('hidden');
+      this.startButton.style.display = 'none'; // Hide start button
 
       // Pause the game only if it's currently playing
       if (this.gameState === GameState.PLAYING) {
@@ -522,6 +523,7 @@ class OrbitGame {
 
       this.isMenuOpen = false;
       this.settingsMenu.classList.add('hidden');
+      this.startButton.style.display = ''; // Allow CSS to control visibility again
 
       // Unpause the game only if it was paused *because* of the menu
       // And not paused for other reasons (like 'P' key)
