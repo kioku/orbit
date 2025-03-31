@@ -536,7 +536,7 @@ class OrbitGame {
       // Close Button
       this.closeMenuButton.addEventListener("click", (e: Event) => {
         e.preventDefault();
-        this.closeCredits(true);
+        this.closeSettingsMenu(); // Correct function for closing settings
       });
       this.closeMenuButton.addEventListener(
         "touchstart",
