@@ -396,6 +396,12 @@ class OrbitGame {
 
   private highScore: number = 0; // High score state
 
+  // Logical game area (center square)
+  private logicalWidth: number = this.DEFAULT_WIDTH;
+  private logicalHeight: number = this.DEFAULT_HEIGHT;
+  private logicalCenterX: number = this.DEFAULT_WIDTH / 2;
+  private logicalCenterY: number = this.DEFAULT_HEIGHT / 2;
+
   // Screen Shake state
   private shakeEndTime: number = 0;
   private currentShakeIntensity: number = 0;
@@ -408,13 +414,15 @@ class OrbitGame {
     return this.ENEMY_SIZE * this.SUN_SIZE_MULTIPLIER;
   }
   private get sunDangerRadius(): number {
-    const worldMinDimension = Math.min(this.world.width, this.world.height);
+    // Base danger radius on the logical gameplay area size
+    const logicalMinDimension = Math.min(this.logicalWidth, this.logicalHeight);
     return (
-      this.sunBaseRadius + worldMinDimension * this.SUN_DANGER_RADIUS_FACTOR
+      this.sunBaseRadius + logicalMinDimension * this.SUN_DANGER_RADIUS_FACTOR
     );
   }
   private get maxPlayerRadius(): number {
-    return Math.min(this.world.width, this.world.height) / 2 - 20;
+    // Base max radius on the logical gameplay area size
+    return this.logicalWidth / 2 - 20; // Assuming logicalWidth = logicalHeight
   }
   private get isInputDown(): boolean {
     return this.mouse.down || this.keyboardThrust;
@@ -1063,10 +1071,11 @@ class OrbitGame {
         : `SCORE MODE: ${this.victoryScore} PTS`;
     const color =
       this.gameMode === "survival" ? [50, 200, 255] : [255, 200, 50];
+    // Notify near the logical center, slightly above
     this.notify(
       text,
-      this.world.width / 2,
-      this.world.height / 2.5,
+      this.logicalCenterX,
+      this.logicalCenterY - this.logicalHeight * 0.1, // Position relative to logical center/height
       1.5,
       color
     );
@@ -1188,17 +1197,19 @@ class OrbitGame {
     this.projectiles.forEach((p) => this.projectilePool.release(p));
     this.projectiles = [];
 
+    // Initial player position based on logical center
     this.player = new Player(
-      this.world.width / 2 + this.PLAYER_START_RADIUS,
-      this.world.height / 2,
+      this.logicalCenterX + this.PLAYER_START_RADIUS,
+      this.logicalCenterY,
       this.PLAYER_START_RADIUS,
       this.PLAYER_COLLISION_RADIUS
     );
     this.player.angle = 0;
 
     this.sunEnemy = new Enemy(EnemyType.SUN); // Pass type
-    this.sunEnemy.x = this.world.width / 2;
-    this.sunEnemy.y = this.world.height / 2;
+    // Position sun at the logical center
+    this.sunEnemy.x = this.logicalCenterX;
+    this.sunEnemy.y = this.logicalCenterY;
     this.sunEnemy.collisionRadius = this.sunBaseRadius;
     this.sunEnemy.scale = 1;
     this.sunEnemy.alpha = 1;
@@ -1295,9 +1306,10 @@ class OrbitGame {
 
     // // Simpler approach - place stars directly in random positions
     for (let i = 0; i < count; i++) {
+      // Generate stars across the full canvas width/height
       this.backgroundStars.push({
-        x: Math.random() * this.world.width,
-        y: Math.random() * this.world.height,
+        x: Math.random() * this.world.width, // Use full world width
+        y: Math.random() * this.world.height, // Use full world height
         speed: 0.1 + Math.random() * 0.4,
         size: Math.random() < 0.3 ? 2 : 1,
       });
@@ -1307,9 +1319,10 @@ class OrbitGame {
   private updateBackgroundStars(): void {
     // Basic horizontal scroll based on time/player angle?
     const scrollSpeed = 0.1 * this.timeFactor;
+    // Update stars across the full canvas width
     this.backgroundStars.forEach((star) => {
       star.x -= star.speed * scrollSpeed;
-      if (star.x < 0) star.x += this.world.width;
+      if (star.x < 0) star.x += this.world.width; // Wrap around full width
       // Optional: Add vertical movement or link to player orbit direction
     });
   }
@@ -1334,8 +1347,17 @@ class OrbitGame {
 
   // --- Input Handlers ---
   private onMouseDownHandler(event: MouseEvent): void {
-    // Prevent activating thrust if clicking inside the menu or on any button
+    // Prevent activating thrust if clicking inside the menu/credits or on any button
     const targetElement = event.target as HTMLElement;
+    if (
+      !targetElement.closest("button") &&
+      !targetElement.closest(".settings-menu") &&
+      !targetElement.closest(".credits-section") // Also check credits section
+    ) {
+      this.mouse.down = true;
+    }
+  }
+  private onMouseMoveHandler(event: MouseEvent): void {
     if (
       !targetElement.closest("button") &&
       !targetElement.closest(".settings-menu")
@@ -1441,8 +1463,9 @@ class OrbitGame {
   private renderOrbit(): void {
     if (!this.showOrbitGraphic) return; // Skip rendering if disabled
 
-    const centerX: number = this.world.width / 2;
-    const centerY: number = this.world.height / 2;
+    // Use logical center for orbit rendering
+    const centerX: number = this.logicalCenterX;
+    const centerY: number = this.logicalCenterY;
 
     this.context.save();
     this.context.lineWidth = 1; // Thinner lines for orbit paths
@@ -1475,8 +1498,9 @@ class OrbitGame {
 
   private updateEnemies(): void {
     const now = Date.now();
-    const centerX = this.world.width / 2;
-    const centerY = this.world.height / 2;
+    // Use logical center for enemy spawning calculations
+    const centerX = this.logicalCenterX;
+    const centerY = this.logicalCenterY;
 
     // --- Timer-based Spawning (Improvement 2) ---
     let activeEnemies = this.enemies.length - 1; // Count non-sun enemies
@@ -1524,8 +1548,9 @@ class OrbitGame {
           const spawnRadius =
             minSpawnRadius + Math.random() * (maxSpawnRadius - minSpawnRadius);
           const spawnAngle = Math.random() * Math.PI * 2;
-          enemy.x = centerX + Math.cos(spawnAngle) * spawnRadius;
-          enemy.y = centerY + Math.sin(spawnAngle) * spawnRadius;
+          // Spawn relative to logical center
+          enemy.x = this.logicalCenterX + Math.cos(spawnAngle) * spawnRadius;
+          enemy.y = this.logicalCenterY + Math.sin(spawnAngle) * spawnRadius;
           const dx_player = enemy.x - this.player.x;
           const dy_player = enemy.y - this.player.y;
           if (
@@ -1782,30 +1807,42 @@ class OrbitGame {
   }
 
   private onWindowResizeHandler(): void {
-    const margin = 8;
-    // Calculate size based on smallest dimension to maintain square
-    const minDimension = Math.min(window.innerWidth, window.innerHeight);
-    const effectiveSize = Math.max(100, minDimension - margin * 2); // Ensure a minimum size
+    const margin = 8; // Keep margin for logical area calculation
 
-    this.world.width = effectiveSize;
-    this.world.height = effectiveSize;
+    // 1. Set world/canvas size to full window
+    this.world.width = window.innerWidth;
+    this.world.height = window.innerHeight;
+    this.canvas.width = this.world.width;
+    this.canvas.height = this.world.height;
 
-    // Update container and canvas size
-    this.container.style.width = `${effectiveSize}px`;
-    this.container.style.height = `${effectiveSize}px`;
-    this.canvas.width = effectiveSize;
-    this.canvas.height = effectiveSize;
+    // 2. Calculate logical game area (centered square)
+    const minDimension = Math.min(this.world.width, this.world.height);
+    this.logicalWidth = Math.max(100, minDimension - margin * 2); // Ensure minimum size
+    this.logicalHeight = this.logicalWidth; // Keep it square
+    this.logicalCenterX = this.world.width / 2; // Center X of the full canvas
+    this.logicalCenterY = this.world.height / 2; // Center Y of the full canvas
 
-    // Re-center the sun if it exists
+    // 3. Update container style (optional, could be handled by CSS)
+    // If #game container is meant only for the canvas, it should fill viewport too.
+    // Let's assume CSS handles #game container sizing to fill body.
+    // this.container.style.width = `${this.world.width}px`;
+    // this.container.style.height = `${this.world.height}px`;
+
+    // 4. Re-center the sun within the logical area
     this.updateSunPosition();
 
-    // Buttons position themselves via CSS (absolute, top/left/transform)
+    // 5. Recreate background stars for new dimensions (optional, could just wrap)
+    // Let's recreate for simplicity, could optimize later.
+    this.createBackgroundStars(100); // Adjust count as needed
+
+    // Buttons/Menus position themselves via CSS relative to the #game container (now full screen)
   }
 
   private updateSunPosition(): void {
+    // Position sun at the logical center
     if (this.sunEnemy) {
-      this.sunEnemy.x = this.world.width / 2;
-      this.sunEnemy.y = this.world.height / 2;
+      this.sunEnemy.x = this.logicalCenterX;
+      this.sunEnemy.y = this.logicalCenterY;
     }
   }
 
@@ -1939,11 +1976,12 @@ class OrbitGame {
   // --- Thrust Particles (Using Pooling - Improvement) ---
   private createThrustParticle(): void {
     if (!this.player) return;
-    const centerX = this.world.width / 2;
-    const centerY = this.world.height / 2;
+    // Use logical center for particle direction calculation
+    const centerX = this.logicalCenterX;
+    const centerY = this.logicalCenterY;
     const directionAngle = Math.atan2(
-      centerY - this.player.y,
-      centerX - this.player.x
+      centerY - this.player.y, // Relative to logical center
+      centerX - this.player.x // Relative to logical center
     );
     const particleBaseAngle = this.player.gravityReversed
       ? directionAngle + Math.PI
@@ -2046,10 +2084,11 @@ class OrbitGame {
     const now = Date.now();
     if (now - this.lastPowerUpSpawn < this.POWERUP_SPAWN_INTERVAL_MS) return;
 
-    const centerX = this.world.width / 2;
-    const centerY = this.world.height / 2;
-    const minRadius = this.PLAYER_MIN_ORBIT_RADIUS + 30; // Spawn outside inner radius
-    const maxRadius = this.maxPlayerRadius - 30; // Spawn inside outer radius
+    // Use logical center for powerup spawning calculations
+    const centerX = this.logicalCenterX;
+    const centerY = this.logicalCenterY;
+    const minRadius = this.PLAYER_MIN_ORBIT_RADIUS + 30; // Spawn outside inner radius (relative to logical center)
+    const maxRadius = this.maxPlayerRadius - 30; // Spawn inside outer radius (relative to logical center)
     if (maxRadius <= minRadius) return; // Avoid issues if world too small
 
     const radius = minRadius + Math.random() * (maxRadius - minRadius);
@@ -2065,9 +2104,10 @@ class OrbitGame {
     // Explicitly cast to the enum type
     const randomType = this.powerUpTypes[randomTypeKey] as PowerUpType;
 
+    // Spawn relative to logical center
     const powerUp = new PowerUp(
-      centerX + Math.cos(angle) * radius,
-      centerY + Math.sin(angle) * radius,
+      this.logicalCenterX + Math.cos(angle) * radius,
+      this.logicalCenterY + Math.sin(angle) * radius,
       randomType
     );
 
@@ -2391,9 +2431,10 @@ class OrbitGame {
 
   private checkEndConditions(): void {
     if (!this.player || !this.player.alive) return;
-    const centerX = this.world.width / 2;
-    const centerY = this.world.height / 2;
-    const useDistSq = this.playerDistToSunSq; // Use pre-calculated (Improvement 1)
+    // Use logical center for collision checks
+    const centerX = this.logicalCenterX;
+    const centerY = this.logicalCenterY;
+    const useDistSq = this.playerDistToSunSq; // Use pre-calculated (Improvement 1) - already relative to logical center
 
     // 1. Sun Collision
     if (useDistSq < this.sunDangerRadius * this.sunDangerRadius) {
@@ -2409,16 +2450,19 @@ class OrbitGame {
         );
         this.audioManager.playSound("shield_break");
         this.triggerShake(); // Trigger screen shake
-        // Nudge player
+        // Nudge player relative to logical center
         this.player.interactionDelta = this.PLAYER_MAX_INTERACTION_DELTA * 0.5;
         const angle = Math.atan2(
-          this.player.y - centerY,
-          this.player.x - centerX
+          this.player.y - this.logicalCenterY, // Use logical center
+          this.player.x - this.logicalCenterX // Use logical center
         );
         this.player.radius = this.sunDangerRadius + 5;
-        this.player.x = centerX + Math.cos(angle) * this.player.radius;
-        this.player.y = centerY + Math.sin(angle) * this.player.radius;
-        this.playerDistToSunSq = this.player.radius * this.player.radius;
+        this.player.x = this.logicalCenterX + Math.cos(angle) * this.player.radius; // Use logical center
+        this.player.y = this.logicalCenterY + Math.sin(angle) * this.player.radius; // Use logical center
+        // Recalculate dist sq from logical center
+        const dx_sun = this.player.x - this.logicalCenterX;
+        const dy_sun = this.player.y - this.logicalCenterY;
+        this.playerDistToSunSq = dx_sun * dx_sun + dy_sun * dy_sun;
       } else {
         // Sun Collision Death (Fix 2)
         console.error("Player hit sun WITHOUT shield!");
@@ -2444,13 +2488,16 @@ class OrbitGame {
         );
         this.audioManager.playSound("shield_break");
         this.triggerShake();
-        // Nudge player
+        // Nudge player relative to logical center
         this.player.interactionDelta = this.PLAYER_MIN_INTERACTION_DELTA * 0.5;
         this.player.radius = this.maxPlayerRadius - 5;
         const angle = this.player.angle;
-        this.player.x = centerX + Math.cos(angle) * this.player.radius;
-        this.player.y = centerY + Math.sin(angle) * this.player.radius;
-        this.playerDistToSunSq = this.player.radius * this.player.radius;
+        this.player.x = this.logicalCenterX + Math.cos(angle) * this.player.radius; // Use logical center
+        this.player.y = this.logicalCenterY + Math.sin(angle) * this.player.radius; // Use logical center
+        // Recalculate dist sq from logical center
+        const dx_sun = this.player.x - this.logicalCenterX;
+        const dy_sun = this.player.y - this.logicalCenterY;
+        this.playerDistToSunSq = dx_sun * dx_sun + dy_sun * dy_sun;
       } else {
         // Out of Bounds Death
         console.error("Player went out of bounds!");
@@ -2475,11 +2522,12 @@ class OrbitGame {
         this.endGame(true, `SURVIVED! SCORE: ${this.player.score}`);
         return;
       }
+      // Show countdown timer near top-center of logical area
       if (timeLeft <= 10.5 && Math.floor(timeLeft * 2) % 2 === 0)
         this.notify(
           `${Math.ceil(timeLeft)}s`,
-          centerX,
-          centerY - 100,
+          this.logicalCenterX, // Logical center X
+          this.logicalCenterY - this.logicalHeight * 0.3, // Above logical center
           1.2,
           [255, 50, 50]
         );
@@ -2513,32 +2561,33 @@ class OrbitGame {
 
     this.thrustParticles = []; // Clear particles (or let them fade via pooling)
 
+    // Center end-game messages on the full screen
     this.notify(
       message,
-      this.world.width / 2,
-      this.world.height / 2 - 40,
+      this.world.width / 2, // Full screen center X
+      this.world.height / 2 - 40, // Full screen center Y offset
       1.8,
       isVictory ? [100, 255, 100] : [255, 100, 100]
     );
-    const instructionY = this.world.height / 2 + 20;
+    const instructionY = this.world.height / 2 + 20; // Full screen center Y offset
     this.notify(
       "TAP / PRESS 'R'",
-      this.world.width / 2,
+      this.world.width / 2, // Full screen center X
       instructionY,
       1.0,
       [200, 200, 200]
     );
     this.notify(
       "TO PLAY AGAIN",
-      this.world.width / 2,
+      this.world.width / 2, // Full screen center X
       instructionY + 25,
       1.0,
       [200, 200, 200]
     );
-    // Display High Score (Improvement)
+    // Display High Score below instructions (centered on full screen)
     this.notify(
       `HIGH SCORE: ${this.highScore}`,
-      this.world.width / 2,
+      this.world.width / 2, // Full screen center X
       instructionY + 60,
       1.0,
       [200, 200, 100]
@@ -2627,70 +2676,67 @@ class OrbitGame {
     this.context.shadowColor = "rgba(0, 0, 0, 0.5)";
     this.context.shadowBlur = 2;
     this.context.shadowOffsetY = 1;
-    const bottomMargin = 25;
+    const bottomMargin = 25; // Margin from bottom edge of full screen
+    const sideMargin = 15; // Margin from left/right edges of full screen
 
-    // Score
+    // Score - Bottom Left
     this.context.textAlign = "left";
     this.context.fillText(
       `SCORE: ${this.player?.score ?? 0}`,
-      15,
-      this.world.height - bottomMargin
+      sideMargin, // Use side margin
+      this.world.height - bottomMargin // Use bottom margin
     );
 
-    // High Score (Always visible except maybe during play?)
-    // Change: Use the primary info color and adjust position if needed
-    this.context.fillStyle = "rgba(140, 240, 255, 0.9)"; // Use same color as score/time
-    this.context.textAlign = "center";
-    this.context.font = "14px Rajdhani, Arial"; // Keep slightly smaller font
-    // Adjust Y position if in Welcome state to avoid overlap with Mode text
-    const highScoreY =
-      this.gameState === GameState.WELCOME
-        ? this.world.height - bottomMargin - 35 // Move higher in Welcome state
-        : this.world.height - bottomMargin - 20; // Original position otherwise
-
+    // High Score - Bottom Center (only when not playing/paused)
     if (
       this.gameState !== GameState.PLAYING &&
       this.gameState !== GameState.PAUSED
     ) {
+      this.context.fillStyle = "rgba(140, 240, 255, 0.9)";
+      this.context.textAlign = "center";
+      this.context.font = "14px Rajdhani, Arial";
+      const highScoreY = this.world.height - bottomMargin - 20; // Position above mode text
       this.context.fillText(
         `HI: ${this.highScore}`,
-        this.world.width / 2,
-        highScoreY // Use calculated Y position
+        this.world.width / 2, // Center of full screen
+        highScoreY
       );
     }
 
-    // Mode/Time Info
+    // Mode/Time Info - Bottom Right (or Mode info in Welcome)
     this.context.textAlign = "right";
-    this.context.font = "bold 16px Rajdhani, Arial"; // Reset font for time/target
-    this.context.fillStyle = "rgba(140, 240, 255, 0.9)"; // Ensure color is reset
-    const rightEdge = this.world.width - 15;
+    this.context.font = "bold 16px Rajdhani, Arial";
+    this.context.fillStyle = "rgba(140, 240, 255, 0.9)";
+    const rightEdge = this.world.width - sideMargin; // Use side margin
+
     if (
       this.gameState === GameState.PLAYING ||
       this.gameState === GameState.PAUSED
     ) {
-      // Show during pause too
+      // Show Time/Target during play/pause
       if (this.gameMode === "survival") {
         const timeLeft = Math.max(0, Math.ceil(this.gameTimer - this.duration));
         this.context.fillText(
           `TIME: ${timeLeft}s`,
-          rightEdge,
-          this.world.height - bottomMargin
+          rightEdge, // Right align
+          this.world.height - bottomMargin // Use bottom margin
         );
       } else {
         this.context.fillText(
           `TARGET: ${this.victoryScore}`,
-          rightEdge,
-          this.world.height - bottomMargin
+          rightEdge, // Right align
+          this.world.height - bottomMargin // Use bottom margin
         );
       }
     } else if (this.gameState === GameState.WELCOME) {
+      // Show Mode info in Welcome state (bottom center)
       this.context.textAlign = "center";
       this.context.font = "14px Rajdhani, Arial";
       this.context.fillStyle = "rgba(140, 240, 255, 0.7)";
       this.context.fillText(
         `MODE: ${this.gameMode.toUpperCase()} (M to change)`,
-        this.world.width / 2,
-        this.world.height - bottomMargin - 20
+        this.world.width / 2, // Center of full screen
+        this.world.height - bottomMargin // Use bottom margin
       );
     }
     this.context.restore();
@@ -2703,8 +2749,8 @@ class OrbitGame {
 
     this.context.save();
     this.context.font = "bold 12px Rajdhani, Arial";
-    const startX = 15;
-    let currentY = 20;
+    const startX = 15; // Position from top-left corner
+    let currentY = 20; // Start Y position from top
     const lineHeight = 18;
     const barWidth = 80;
     const barHeight = 8;
@@ -2754,18 +2800,17 @@ class OrbitGame {
     this.context.font = "bold 36px Rajdhani, Arial";
     this.context.textAlign = "center";
     this.context.shadowColor = "rgba(0, 0, 0, 0.7)";
-    this.context.shadowBlur = 5;
     this.context.fillText(
       "PAUSED",
-      this.world.width / 2,
-      this.world.height / 2 - 10
+      this.world.width / 2, // Center on full screen X
+      this.world.height / 2 - 10 // Center on full screen Y offset
     );
 
     this.context.font = "16px Rajdhani, Arial";
     this.context.fillText(
       "Press 'P' to Resume",
-      this.world.width / 2,
-      this.world.height / 2 + 30
+      this.world.width / 2, // Center on full screen X
+      this.world.height / 2 + 30 // Center on full screen Y offset
     );
 
     this.context.restore();
@@ -2784,8 +2829,9 @@ class OrbitGame {
     this.context.shadowColor = "rgba(0, 0, 0, 0.5)";
     this.context.shadowBlur = 3;
 
+    // Center instructions on the full screen
     const midX = this.world.width / 2;
-    let yPos = this.world.height * 0.7; // Position below center button
+    let yPos = this.world.height * 0.65; // Adjust starting Y position relative to full height
 
     this.context.fillText("HOLD [MOUSE] / [SPACE] / [TOUCH]", midX, yPos);
     yPos += 20;
@@ -2892,8 +2938,10 @@ class OrbitGame {
     }
 
     // --- Calculate starting position and render ---
+    // Position debug info top-left, but calculate height based on lines
     const totalHeight = debugStrings.length * lineHeight;
-    let currentY = this.world.height / 2 - totalHeight / 2; // Start Y centered
+    // let currentY = this.world.height / 2 - totalHeight / 2; // Old centering logic
+    let currentY = 20; // Start near top-left
 
     // Draw each line
     debugStrings.forEach((text) => {
@@ -2903,11 +2951,11 @@ class OrbitGame {
 
     // --- Visual Debug Elements ---
 
-    // Draw center point (Sun Center)
+    // Draw logical center point (Sun Center)
     this.context.beginPath();
     this.context.arc(
-      this.world.width / 2,
-      this.world.height / 2,
+      this.logicalCenterX, // Use logical center
+      this.logicalCenterY, // Use logical center
       4,
       0,
       Math.PI * 2
@@ -2934,11 +2982,11 @@ class OrbitGame {
     this.context.fillStyle = "rgba(255, 255, 0, 0.9)";
     this.context.fill();
 
-    // Draw sun danger radius
+    // Draw sun danger radius (relative to logical center)
     this.context.beginPath();
     this.context.arc(
-      this.world.width / 2,
-      this.world.height / 2,
+      this.logicalCenterX, // Use logical center
+      this.logicalCenterY, // Use logical center
       this.sunDangerRadius,
       0,
       Math.PI * 2
@@ -3157,11 +3205,13 @@ class Enemy extends Entity {
 
       // TODO: Add movement logic here if enemies move
       // --- Add FAST enemy movement logic ---
+      // --- Add FAST enemy movement logic ---
       if (this.type === EnemyType.FAST) {
-        const centerX = game.world.width / 2;
-        const centerY = game.world.height / 2;
-        const dx_sun = this.x - centerX;
-        const dy_sun = this.y - centerY;
+        // Use logical center for movement calculation
+        const centerX = game.logicalCenterX;
+        const centerY = game.logicalCenterY;
+        const dx_sun = this.x - centerX; // Relative to logical center
+        const dy_sun = this.y - centerY; // Relative to logical center
         const currentRadius = Math.sqrt(dx_sun * dx_sun + dy_sun * dy_sun);
         if (currentRadius > 0) {
           // Calculate tangential angle (perpendicular to radius vector)
