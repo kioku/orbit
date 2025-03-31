@@ -1459,7 +1459,9 @@ class OrbitGame {
     if (!this.showOrbitGraphic) return; // Skip rendering if disabled
 
     // Use logical center for orbit rendering
-    // Removed unused centerX, centerY declarations
+    // Re-added centerX, centerY declarations as they are used here
+    const centerX: number = this.logicalCenterX;
+    const centerY: number = this.logicalCenterY;
 
     this.context.save();
     this.context.lineWidth = 1; // Thinner lines for orbit paths
