@@ -1405,12 +1405,13 @@ class OrbitGame {
   // --- Update Logic ---
 
   private updatePlayer(): void {
-    const centerX: number = this.world.width / 2;
-    const centerY: number = this.world.height / 2;
+    // Use logical center for player orbit calculations
+    const centerX: number = this.logicalCenterX;
+    const centerY: number = this.logicalCenterY;
 
-    const dx_sun = this.player.x - centerX;
-    const dy_sun = this.player.y - centerY;
-    this.playerDistToSunSq = dx_sun * dx_sun + dy_sun * dy_sun; // Update pre-calc (Improvement 1)
+    const dx_sun = this.player.x - centerX; // Distance from logical center
+    const dy_sun = this.player.y - centerY; // Distance from logical center
+    this.playerDistToSunSq = dx_sun * dx_sun + dy_sun * dy_sun; // Update pre-calc (Improvement 1) - Now relative to logical center
 
     this.player.slowTimeActive = this.activePowerUps.has(PowerUpType.SLOW_TIME); // Update based on map
 
