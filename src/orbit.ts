@@ -1239,6 +1239,10 @@ class OrbitGame {
   private onTouchStartHandler(event: TouchEvent): void {
     // Prevent activating thrust if touching inside the menu or on any button
     const targetElement = event.target as HTMLElement;
+    // Check if the target or any parent is the link
+    if (targetElement.closest("a")) {
+      return; // Do nothing, allow default link behavior
+    }
     if (
       !targetElement.closest("button") &&
       !targetElement.closest(".settings-menu")
