@@ -293,8 +293,8 @@ class OrbitGame {
   private readonly THRUST_PARTICLE_SPREAD = 0.5;
   private readonly THRUST_PARTICLE_OFFSET_MIN = 15;
   private readonly THRUST_PARTICLE_OFFSET_MAX = 25;
-  // High Score Key (Improvement)
-  private readonly HIGH_SCORE_KEY = "orbitHighScore";
+  // High Score Key Base (Improvement) - Mode will be appended
+  private readonly HIGH_SCORE_KEY_BASE = "orbitHighScore";
   // Projectiles
   private projectiles: Projectile[] = [];
   private projectilePool!: ObjectPool<Projectile>; // Initialize in constructor
