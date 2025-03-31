@@ -1289,7 +1289,10 @@ class OrbitGame {
       this.highScore = storedScore ? parseInt(storedScore, 10) : 0;
       console.log(`Loaded high score for ${this.gameMode}:`, this.highScore);
     } catch (e) {
-      console.error(`Failed to load high score for ${this.gameMode} from localStorage:`, e);
+      console.error(
+        `Failed to load high score for ${this.gameMode} from localStorage:`,
+        e
+      );
       this.highScore = 0;
     }
   }
@@ -1300,14 +1303,20 @@ class OrbitGame {
       this.highScore = this.player.score;
       try {
         localStorage.setItem(key, this.highScore.toString());
-        console.log(`Saved new high score for ${this.gameMode}:`, this.highScore);
+        console.log(
+          `Saved new high score for ${this.gameMode}:`,
+          this.highScore
+        );
         // Track high score achievement, include mode
         this.analytics.track("high_score_achieved", {
           game_mode: this.gameMode,
           high_score: this.highScore,
         });
       } catch (e) {
-        console.error(`Failed to save high score for ${this.gameMode} to localStorage:`, e);
+        console.error(
+          `Failed to save high score for ${this.gameMode} to localStorage:`,
+          e
+        );
       }
     }
   }
@@ -1386,7 +1395,8 @@ class OrbitGame {
     }
     if (
       !targetElement.closest("button") &&
-      !targetElement.closest(".settings-menu")
+      !targetElement.closest(".settings-menu") &&
+      !targetElement.closest(".credits-section")
     ) {
       event.preventDefault();
       this.mouse.down = true;
@@ -1397,6 +1407,11 @@ class OrbitGame {
     if (event.touches.length > 0) this.mouse.down = true;
   }
   private onTouchEndHandler(event: TouchEvent): void {
+    const targetElement = event.target as HTMLElement;
+    // Allow link taps
+    if (targetElement.closest("a")) {
+      return;
+    }
     if (event.touches.length === 0) {
       if (
         event.target === this.canvas ||
