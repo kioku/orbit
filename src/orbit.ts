@@ -396,11 +396,11 @@ class OrbitGame {
 
   private highScore: number = 0; // High score state
 
-  // Logical game area (center square)
-  private logicalWidth: number = this.DEFAULT_WIDTH;
-  private logicalHeight: number = this.DEFAULT_HEIGHT;
-  private logicalCenterX: number = this.DEFAULT_WIDTH / 2;
-  private logicalCenterY: number = this.DEFAULT_HEIGHT / 2;
+  // Logical game area (center square) - Made public for Enemy access
+  public logicalWidth: number = this.DEFAULT_WIDTH;
+  public logicalHeight: number = this.DEFAULT_HEIGHT;
+  public logicalCenterX: number = this.DEFAULT_WIDTH / 2;
+  public logicalCenterY: number = this.DEFAULT_HEIGHT / 2;
 
   // Screen Shake state
   private shakeEndTime: number = 0;
@@ -1357,15 +1357,9 @@ class OrbitGame {
       this.mouse.down = true;
     }
   }
+  // Removed duplicate/incorrect onMouseMoveHandler
   private onMouseMoveHandler(event: MouseEvent): void {
-    if (
-      !targetElement.closest("button") &&
-      !targetElement.closest(".settings-menu")
-    ) {
-      this.mouse.down = true;
-    }
-  }
-  private onMouseMoveHandler(event: MouseEvent): void {
+    // Keep the simple preventDefault version
     event.preventDefault();
   }
   private onMouseUpHandler(event: MouseEvent): void {
@@ -1465,8 +1459,7 @@ class OrbitGame {
     if (!this.showOrbitGraphic) return; // Skip rendering if disabled
 
     // Use logical center for orbit rendering
-    const centerX: number = this.logicalCenterX;
-    const centerY: number = this.logicalCenterY;
+    // Removed unused centerX, centerY declarations
 
     this.context.save();
     this.context.lineWidth = 1; // Thinner lines for orbit paths
@@ -2433,8 +2426,7 @@ class OrbitGame {
   private checkEndConditions(): void {
     if (!this.player || !this.player.alive) return;
     // Use logical center for collision checks
-    const centerX = this.logicalCenterX;
-    const centerY = this.logicalCenterY;
+    // Removed unused centerX, centerY declarations
     const useDistSq = this.playerDistToSunSq; // Use pre-calculated (Improvement 1) - already relative to logical center
 
     // 1. Sun Collision
@@ -2939,8 +2931,8 @@ class OrbitGame {
     }
 
     // --- Calculate starting position and render ---
-    // Position debug info top-left, but calculate height based on lines
-    const totalHeight = debugStrings.length * lineHeight;
+    // Position debug info top-left
+    // Removed unused totalHeight calculation
     // let currentY = this.world.height / 2 - totalHeight / 2; // Old centering logic
     let currentY = 20; // Start near top-left
 
