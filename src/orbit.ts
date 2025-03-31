@@ -2505,6 +2505,7 @@ class OrbitGame {
     this.updateModeToggleVisual(); // Enable mode toggle
     const endState = isVictory ? GameState.WINNER : GameState.LOSER;
     this.setGameState(endState); // Set final state
+    this.startButton.style.display = ""; // Ensure button display is controlled by CSS state classes
 
     // Save score if it's a new high score (Improvement)
     // saveHighScore now also tracks high_score_achieved if applicable
