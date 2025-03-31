@@ -342,6 +342,7 @@ body.state-winner .settings-button { */
 
 /* Close Button Style (similar to start button but smaller) */
 .menu-button {
+  min-width: 152px;
   margin-top: 15px;
   padding: 10px 25px;
   font-size: 16px;
@@ -356,6 +357,11 @@ body.state-winner .settings-button { */
   text-shadow: 0 0 5px rgba(140, 240, 255, 0.7);
   cursor: pointer;
   transition: all 0.2s ease-out;
+}
+
+.menu-item .menu-button {
+  min-width: 162px;
+  margin: 0;
 }
 
 .menu-button:hover {
@@ -378,7 +384,7 @@ body.state-winner .settings-button { */
 
 /* Disabled state for the mode toggle button */
 .mode-toggle-button:disabled {
-  opacity: 0.5;
+  opacity: 0.5 !important;
   cursor: not-allowed;
   border-color: rgba(100, 100, 100, 0.5);
   box-shadow: none;

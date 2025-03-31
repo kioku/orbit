@@ -971,7 +971,7 @@ class OrbitGame {
 
     // Update text based on current mode
     const modeText = this.gameMode === "survival" ? "Survival" : "Score";
-    this.modeToggleButton.textContent = `Mode: ${modeText}`;
+    this.modeToggleButton.textContent = `${modeText}`;
 
     // Optional: Add/remove a class for styling disabled state if needed
     this.modeToggleButton.classList.toggle("disabled", isGameActive);
