@@ -462,7 +462,6 @@ body.state-winner .settings-button { */
 
 .credits-content a {
   color: #80e0ff; /* Lighter blue for links */
-  text-decoration: none;
   transition: color 0.2s ease-out;
 }
 
