@@ -394,7 +394,7 @@ class OrbitGame {
   private currentEnemySpawnInterval: number = this.ENEMY_SPAWN_INTERVAL_MS_BASE;
   private currentEnemySpeedFactor: number = 1.0; // For difficulty scaling
 
-  private highScore: number = 0; // High score state
+  private highScore: number = 0; // High score state (for the current mode)
 
   // Logical game area (center square) - Made public for Enemy access
   public logicalWidth: number = this.DEFAULT_WIDTH;
@@ -462,6 +462,11 @@ class OrbitGame {
     this.initialize();
   }
 
+  // Helper to get the mode-specific high score key
+  private getHighScoreKey(): string {
+    return `${this.HIGH_SCORE_KEY_BASE}_${this.gameMode}`;
+  }
+
   private initialize(): void {
     this.container = document.getElementById("game") as HTMLElement;
     this.canvas = document.querySelector("#world") as HTMLCanvasElement;
@@ -472,7 +477,7 @@ class OrbitGame {
     }
     this.context = this.canvas.getContext("2d") as CanvasRenderingContext2D;
 
-    // Load High Score (Improvement)
+    // Load High Score for the default mode (Improvement)
     this.loadHighScore();
 
     // --- Button Creation ---
@@ -968,6 +973,7 @@ class OrbitGame {
     this.notifyGameMode(); // Show notification
     console.log(`Game mode changed to: ${this.gameMode}`);
     this.analytics.track("mode_changed", { new_mode: this.gameMode });
+    this.loadHighScore(); // Load the high score for the newly selected mode
   }
 
   // Add this method after toggleGameModeSetting
@@ -1222,6 +1228,7 @@ class OrbitGame {
 
     this.setGameState(GameState.WELCOME);
     this.updateModeToggleVisual(); // Ensure mode toggle is enabled
+    this.loadHighScore(); // Load high score for the current mode after reset
     this.startButton.textContent = "INITIALIZE";
   }
 
@@ -1275,28 +1282,31 @@ class OrbitGame {
 
   // --- High Score Handling (Improvement) ---
   private loadHighScore(): void {
+    const key = this.getHighScoreKey(); // Get mode-specific key
     try {
-      const storedScore = localStorage.getItem(this.HIGH_SCORE_KEY);
+      const storedScore = localStorage.getItem(key);
       this.highScore = storedScore ? parseInt(storedScore, 10) : 0;
-      console.log("Loaded high score:", this.highScore);
+      console.log(`Loaded high score for ${this.gameMode}:`, this.highScore);
     } catch (e) {
-      console.error("Failed to load high score from localStorage:", e);
+      console.error(`Failed to load high score for ${this.gameMode} from localStorage:`, e);
       this.highScore = 0;
     }
   }
 
   private saveHighScore(): void {
+    const key = this.getHighScoreKey(); // Get mode-specific key
     if (this.player.score > this.highScore) {
       this.highScore = this.player.score;
       try {
-        localStorage.setItem(this.HIGH_SCORE_KEY, this.highScore.toString());
-        console.log("Saved new high score:", this.highScore);
-        // Track high score achievement
+        localStorage.setItem(key, this.highScore.toString());
+        console.log(`Saved new high score for ${this.gameMode}:`, this.highScore);
+        // Track high score achievement, include mode
         this.analytics.track("high_score_achieved", {
+          game_mode: this.gameMode,
           high_score: this.highScore,
         });
       } catch (e) {
-        console.error("Failed to save high score to localStorage:", e);
+        console.error(`Failed to save high score for ${this.gameMode} to localStorage:`, e);
       }
     }
   }
