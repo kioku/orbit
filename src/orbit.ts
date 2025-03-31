@@ -323,6 +323,9 @@ class OrbitGame {
   private backgroundToggleButton!: HTMLButtonElement; // Ref for background toggle
   private soundToggleButton!: HTMLButtonElement; // Ref for sound toggle
   private modeToggleButton!: HTMLButtonElement; // Ref for mode toggle
+  private creditsButton!: HTMLButtonElement; // Ref for credits button in settings
+  private creditsSection!: HTMLElement; // Ref for credits section container
+  private closeCreditsButton!: HTMLButtonElement; // Ref for close button in credits
   private audioManager: AudioManager; // Audio Manager instance
 
   // --- Settings State ---
@@ -331,7 +334,8 @@ class OrbitGame {
   private soundEnabled: boolean = false;
   // Debugging state is already present: private debugging: boolean = false;
 
-  private isMenuOpen: boolean = false; // Track menu state
+  private isMenuOpen: boolean = false; // Track settings menu state
+  private isCreditsOpen: boolean = false; // Track credits section state
   private playing: boolean = false;
   private paused: boolean = false; // Pause state flag
   private duration: number = 0;
@@ -614,8 +618,49 @@ class OrbitGame {
       this.updateOrbitToggleVisual();
       this.updateBackgroundToggleVisual();
       this.updateSoundToggleVisual();
+      this.updateModeToggleVisual(); // Initialize mode button state
+
+      // --- Credits Button Listener ---
+      this.creditsButton = document.getElementById(
+        "credits-button"
+      ) as HTMLButtonElement;
+      this.creditsSection = document.getElementById(
+        "credits-section"
+      ) as HTMLElement;
+      this.closeCreditsButton = document.getElementById(
+        "close-credits-button"
+      ) as HTMLButtonElement;
+
+      if (this.creditsButton && this.creditsSection && this.closeCreditsButton) {
+        this.creditsButton.addEventListener(
+          "click",
+          this.openCredits.bind(this)
+        );
+        this.creditsButton.addEventListener(
+          "touchstart",
+          (e) => {
+            e.preventDefault();
+            this.openCredits();
+          },
+          { passive: false }
+        );
+
+        this.closeCreditsButton.addEventListener(
+          "click",
+          this.closeCredits.bind(this)
+        );
+        this.closeCreditsButton.addEventListener(
+          "touchstart",
+          (e) => {
+            e.preventDefault();
+            this.closeCredits();
+          },
+          { passive: false }
+        );
+      } else {
+        console.error("Failed to find credits elements!");
+      }
     }
-    this.updateModeToggleVisual(); // Initialize mode button state
 
     // --- Other Event Listeners ---
     document.addEventListener(
@@ -680,17 +725,23 @@ class OrbitGame {
       this.timeLastFrame = Date.now(); // Prevent large delta jump after pause/welcome
     }
 
+    // Close menus if transitioning to playing state
+    if (newState === GameState.PLAYING) {
+      if (this.isMenuOpen) this.closeSettingsMenu(false); // Don't unpause yet
+      if (this.isCreditsOpen) this.closeCredits(false); // Don't unpause yet
+    }
+
     this.gameState = newState;
     document.body.className = newState.toString(); // Use enum value for class name
   }
 
   // Opens the settings menu and pauses the game
   private openSettingsMenu(): void {
-    if (this.isMenuOpen) return; // Already open
+    if (this.isMenuOpen || this.isCreditsOpen) return; // Don't open if already open or credits are open
 
     this.isMenuOpen = true;
     this.settingsMenu.classList.remove("hidden");
-    this.startButton.style.display = "none"; // Hide start button
+    this.startButton.style.display = "none"; // Hide start button if visible
 
     // Pause the game only if it's currently playing
     if (this.gameState === GameState.PLAYING) {
@@ -698,34 +749,80 @@ class OrbitGame {
       this.setGameState(GameState.PAUSED); // Update game state
     }
     // No need to explicitly call togglePause here, handled by state change
+    // No need to explicitly call togglePause here, handled by state change
   }
 
   // Closes the settings menu and potentially unpauses the game
-  private closeSettingsMenu(): void {
+  private closeSettingsMenu(unpauseGame: boolean = true): void {
     if (!this.isMenuOpen) return; // Already closed
 
     this.isMenuOpen = false;
     this.settingsMenu.classList.add("hidden");
-    this.startButton.style.display = ""; // Allow CSS to control visibility again
+    // Only show start button if game isn't playing/paused
+    if (this.gameState === GameState.WELCOME || this.gameState === GameState.LOSER || this.gameState === GameState.WINNER) {
+        this.startButton.style.display = ""; // Allow CSS to control visibility again
+    }
 
-    // Unpause the game only if it was paused *because* of the menu
-    // And not paused for other reasons (like 'P' key)
-    if (this.paused && this.gameState === GameState.PAUSED) {
-      // Check if the game *should* be playing (i.e., wasn't paused by 'P' before menu)
-      // This logic might need refinement depending on exact pause interactions desired.
-      // For now, assume closing menu always attempts to resume if game was playing before.
-      this.paused = false; // Clear paused flag
-      this.setGameState(GameState.PLAYING); // Set back to playing
-      this.timeLastFrame = Date.now(); // Adjust time
+    // Unpause the game only if it was paused *because* of the menu AND unpauseGame is true
+    if (unpauseGame && this.paused && this.gameState === GameState.PAUSED) {
+        // Check if the game *should* be playing (i.e., wasn't paused by 'P' before menu)
+        // This logic might need refinement depending on exact pause interactions desired.
+        // For now, assume closing menu always attempts to resume if game was playing before.
+        this.paused = false; // Clear paused flag
+        this.setGameState(GameState.PLAYING); // Set back to playing
+        this.timeLastFrame = Date.now(); // Adjust time
     }
   }
 
-  // Add this new method after closeSettingsMenu
-  private toggleSettingsMenu(): void {
+  // --- New Credits Section Handling ---
+
+  private openCredits(): void {
+    if (this.isCreditsOpen) return; // Already open
+
+    // Close settings menu first without unpausing
     if (this.isMenuOpen) {
-      this.closeSettingsMenu();
+      this.closeSettingsMenu(false);
+    }
+
+    this.isCreditsOpen = true;
+    this.creditsSection.classList.remove("hidden");
+
+    // Ensure game remains paused if it was paused
+    if (this.gameState === GameState.PLAYING || this.gameState === GameState.PAUSED) {
+        if (!this.paused) { // Pause if it wasn't already paused
+            this.paused = true;
+            this.setGameState(GameState.PAUSED);
+        }
+    }
+  }
+
+  private closeCredits(showSettings: boolean = true): void {
+    if (!this.isCreditsOpen) return; // Already closed
+
+    this.isCreditsOpen = false;
+    this.creditsSection.classList.add("hidden");
+
+    // Optionally reopen the settings menu
+    if (showSettings) {
+        this.openSettingsMenu();
     } else {
-      this.openSettingsMenu();
+        // If not showing settings, potentially unpause (similar logic to closeSettingsMenu)
+        if (this.paused && this.gameState === GameState.PAUSED) {
+            this.paused = false;
+            this.setGameState(GameState.PLAYING);
+            this.timeLastFrame = Date.now();
+        }
+    }
+  }
+
+  // Add this new method after closeCredits
+  private toggleSettingsMenu(): void {
+    if (this.isCreditsOpen) {
+        this.closeCredits(true); // Close credits and show settings
+    } else if (this.isMenuOpen) {
+        this.closeSettingsMenu(); // Close settings (potentially unpauses)
+    } else {
+        this.openSettingsMenu(); // Open settings (pauses if playing)
     }
   }
 
@@ -900,13 +997,17 @@ class OrbitGame {
         this.toggleSettingsMenu();
       }
     }
-    // Close Menu with Escape key
-    else if (e.key === "Escape" && this.isMenuOpen) {
-      this.closeSettingsMenu();
+    // Close Menu/Credits with Escape key
+    else if (e.key === "Escape") {
+        if (this.isCreditsOpen) {
+            this.closeCredits(true); // Close credits, show settings
+        } else if (this.isMenuOpen) {
+            this.closeSettingsMenu(); // Close settings, potentially unpause
+        }
     }
-    // Keyboard Thrust (Improvement) - Only works if menu is not open
-    else if (e.key === " " && !this.isMenuOpen) {
-      // Check !isMenuOpen
+    // Keyboard Thrust (Improvement) - Only works if neither menu is open
+    else if (e.key === " " && !this.isMenuOpen && !this.isCreditsOpen) {
+      // Check !isMenuOpen and !isCreditsOpen
       // Spacebar
       if (!this.keyboardThrust) {
         // Prevent repeated triggers while holding
@@ -917,12 +1018,13 @@ class OrbitGame {
           this.audioManager.playSound("thrust", 0.5);
       }
     }
-    // Start Game with 'I' - Only if not already playing/paused
+    // Start Game with 'I' - Only if not already playing/paused and menus closed
     else if (
       (e.key === "i" || e.key === "I") &&
       !this.playing &&
       !this.paused &&
-      !this.isMenuOpen
+      !this.isMenuOpen &&
+      !this.isCreditsOpen
     ) {
       // Simulate start button click if in a state where starting is possible
       if (
@@ -2197,9 +2299,9 @@ class OrbitGame {
     this.frameCount++;
 
     // --- State Machine Logic (Improvement) ---
-    // Check if paused OR menu is open before deciding to update game logic
+    // Check if paused OR any menu is open before deciding to update game logic
     const shouldUpdateGame =
-      this.gameState === GameState.PLAYING && !this.paused && !this.isMenuOpen;
+      this.gameState === GameState.PLAYING && !this.paused && !this.isMenuOpen && !this.isCreditsOpen;
 
     if (shouldUpdateGame) {
       this.duration = (now - this.timeGameStart) / 1000; // Update duration only when playing actively
@@ -2463,16 +2565,16 @@ class OrbitGame {
     this.renderGameInfo(); // Score, Time, etc.
     this.renderPowerUpTimers(); // UI for powerup durations
 
-    // Render Pause Overlay (Improvement) - Render only if paused AND menu is NOT open
-    if (this.gameState === GameState.PAUSED && !this.isMenuOpen) {
+    // Render Pause Overlay (Improvement) - Render only if paused AND *neither* menu is open
+    if (this.gameState === GameState.PAUSED && !this.isMenuOpen && !this.isCreditsOpen) {
       this.renderPauseScreen();
     }
-    // Render Menu Dimming Overlay (if menu is open)
-    else if (this.isMenuOpen) {
+    // Render Menu Dimming Overlay (if settings menu or credits are open)
+    else if (this.isMenuOpen || this.isCreditsOpen) {
       this.renderMenuBackgroundDim();
     }
-    // Render Welcome Instructions (Improvement)
-    else if (this.gameState === GameState.WELCOME) {
+    // Render Welcome Instructions (Improvement) - Only if not paused/in menu
+    else if (this.gameState === GameState.WELCOME && !this.paused && !this.isMenuOpen && !this.isCreditsOpen) {
       this.renderWelcomeScreen();
     }
 

@@ -482,6 +482,80 @@ body.state-winner .settings-button { */
     letter-spacing: 4px;
     min-width: 180px;
   }
+
+  /* --- Credits Section --- */
+  .credits-section {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 80%;
+    max-width: 450px; /* Slightly wider than settings */
+    max-height: 80vh; /* Limit height and allow scrolling */
+    overflow-y: auto; /* Enable vertical scroll if content overflows */
+    padding: 25px 30px;
+    background-color: rgba(0, 10, 20, 0.92); /* Slightly more opaque */
+    border: 1px solid rgba(80, 220, 255, 0.8);
+    box-shadow: 0 0 25px rgba(80, 220, 255, 0.5), inset 0 0 10px rgba(80, 220, 255, 0.2);
+    color: rgba(140, 240, 255, 1);
+    z-index: 160; /* Above settings menu */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transition: opacity 0.3s ease-out, visibility 0.3s ease-out;
+  }
+
+  .credits-section.hidden {
+    opacity: 0;
+    visibility: hidden;
+    display: none;
+    pointer-events: none;
+  }
+
+  .credits-section h2 {
+    font-family: 'Rajdhani', 'Arial', sans-serif;
+    font-weight: 300;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    margin-top: 0;
+    margin-bottom: 25px;
+    font-size: 20px;
+    text-shadow: 0 0 8px rgba(140, 240, 255, 0.8);
+  }
+
+  .credits-content {
+    width: 100%;
+    margin-bottom: 20px;
+    font-size: 14px; /* Slightly larger font for readability */
+    line-height: 1.6;
+  }
+
+  .credits-content p {
+    margin-bottom: 15px;
+  }
+
+  .credits-content strong {
+    color: #fff; /* Make titles stand out */
+    font-weight: 600;
+  }
+
+  .credits-content a {
+    color: #80e0ff; /* Lighter blue for links */
+    text-decoration: none;
+    transition: color 0.2s ease-out;
+  }
+
+  .credits-content a:hover {
+    color: #ffffff;
+    text-decoration: underline;
+  }
+
+  /* Ensure menu buttons inside credits section behave correctly */
+  .credits-section .menu-button {
+     margin-top: 15px; /* Add some space above the close button */
+  }
+
+
   .settings-button {
     width: 40px; /* Slightly smaller on mobile */
     height: 40px;
