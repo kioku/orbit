@@ -1006,6 +1006,7 @@ class OrbitGame {
     else if ((e.key === "m" || e.key === "M") && !this.playing) {
       this.gameMode = this.gameMode === "survival" ? "score" : "survival";
       this.notifyGameMode();
+      this.loadHighScore(); // Load the high score for the new mode
       this.analytics.track("mode_changed", { new_mode: this.gameMode });
     }
     // Toggle debugging
