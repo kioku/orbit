@@ -1494,9 +1494,6 @@ class OrbitGame {
 
   private updateEnemies(): void {
     const now = Date.now();
-    // Use logical center for enemy spawning calculations
-    const centerX = this.logicalCenterX;
-    const centerY = this.logicalCenterY;
 
     // --- Timer-based Spawning (Improvement 2) ---
     let activeEnemies = this.enemies.length - 1; // Count non-sun enemies
@@ -2080,9 +2077,6 @@ class OrbitGame {
     const now = Date.now();
     if (now - this.lastPowerUpSpawn < this.POWERUP_SPAWN_INTERVAL_MS) return;
 
-    // Use logical center for powerup spawning calculations
-    const centerX = this.logicalCenterX;
-    const centerY = this.logicalCenterY;
     const minRadius = this.PLAYER_MIN_ORBIT_RADIUS + 30; // Spawn outside inner radius (relative to logical center)
     const maxRadius = this.maxPlayerRadius - 30; // Spawn inside outer radius (relative to logical center)
     if (maxRadius <= minRadius) return; // Avoid issues if world too small
@@ -2452,8 +2446,10 @@ class OrbitGame {
           this.player.x - this.logicalCenterX // Use logical center
         );
         this.player.radius = this.sunDangerRadius + 5;
-        this.player.x = this.logicalCenterX + Math.cos(angle) * this.player.radius; // Use logical center
-        this.player.y = this.logicalCenterY + Math.sin(angle) * this.player.radius; // Use logical center
+        this.player.x =
+          this.logicalCenterX + Math.cos(angle) * this.player.radius; // Use logical center
+        this.player.y =
+          this.logicalCenterY + Math.sin(angle) * this.player.radius; // Use logical center
         // Recalculate dist sq from logical center
         const dx_sun = this.player.x - this.logicalCenterX;
         const dy_sun = this.player.y - this.logicalCenterY;
@@ -2487,8 +2483,10 @@ class OrbitGame {
         this.player.interactionDelta = this.PLAYER_MIN_INTERACTION_DELTA * 0.5;
         this.player.radius = this.maxPlayerRadius - 5;
         const angle = this.player.angle;
-        this.player.x = this.logicalCenterX + Math.cos(angle) * this.player.radius; // Use logical center
-        this.player.y = this.logicalCenterY + Math.sin(angle) * this.player.radius; // Use logical center
+        this.player.x =
+          this.logicalCenterX + Math.cos(angle) * this.player.radius; // Use logical center
+        this.player.y =
+          this.logicalCenterY + Math.sin(angle) * this.player.radius; // Use logical center
         // Recalculate dist sq from logical center
         const dx_sun = this.player.x - this.logicalCenterX;
         const dy_sun = this.player.y - this.logicalCenterY;
