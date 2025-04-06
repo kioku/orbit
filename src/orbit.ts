@@ -2793,7 +2793,7 @@ class OrbitGame {
     }
 
     const shareData = {
-      title: "Orbit Game Result",
+      title: "Orbit",
       text: shareText,
       url: gameUrl,
     };
@@ -2801,19 +2801,38 @@ class OrbitGame {
     let shareMethod = "none"; // For analytics
 
     try {
-      if (navigator.share) {
+      const isLikelyMobile = navigator.maxTouchPoints > 0;
+      if (navigator.share && isLikelyMobile) {
         await navigator.share(shareData);
         console.log("Result shared successfully via Web Share API.");
         shareMethod = "native";
-        this.notify("Shared!", this.world.width / 2, this.world.height / 2 + 60, 1.0, [100, 255, 100]);
+        this.notify(
+          "Shared!",
+          this.world.width / 2,
+          (3 * this.world.height) / 4,
+          2.0,
+          [100, 255, 100]
+        );
       } else if (navigator.clipboard) {
         await navigator.clipboard.writeText(shareText);
         console.log("Result copied to clipboard.");
         shareMethod = "clipboard";
-        this.notify("Copied to Clipboard!", this.world.width / 2, this.world.height / 2 + 60, 1.0, [100, 200, 255]);
+        this.notify(
+          "Copied to Clipboard!",
+          this.world.width / 2,
+          (3 * this.world.height) / 4,
+          2.0,
+          [100, 200, 255]
+        );
       } else {
         console.warn("Web Share and Clipboard API not supported.");
-        this.notify("Sharing not supported", this.world.width / 2, this.world.height / 2 + 60, 1.0, [255, 100, 100]);
+        this.notify(
+          "Sharing not supported",
+          this.world.width / 2,
+          (3 * this.world.height) / 4,
+          2.0,
+          [255, 100, 100]
+        );
       }
     } catch (err) {
       console.error("Error sharing:", err);
@@ -2822,7 +2841,13 @@ class OrbitGame {
         !(err instanceof DOMException && err.name === "AbortError") &&
         shareMethod !== "native"
       ) {
-        this.notify("Share Failed", this.world.width / 2, this.world.height / 2 + 60, 1.0, [255, 100, 100]);
+        this.notify(
+          "Share Failed",
+          this.world.width / 2,
+          this.world.height / 2 + 60,
+          1.0,
+          [255, 100, 100]
+        );
       }
       shareMethod = "error";
     }
@@ -2836,7 +2861,6 @@ class OrbitGame {
       victory: isVictory,
     });
   }
-
 
   private render(): void {
     this.context.save(); // Save context state before potential shake
