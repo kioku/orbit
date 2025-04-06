@@ -331,6 +331,7 @@ class OrbitGame {
   private gameOverMessage!: HTMLElement; // Ref for game over message
   private gameOverResultInfoElement!: HTMLElement; // Ref for the result info display
   private playAgainButton!: HTMLButtonElement; // Ref for play again button in dialog
+  private shareResultButton!: HTMLButtonElement; // Ref for the new share button
   private audioManager: AudioManager; // Audio Manager instance
 
   // --- Settings State ---
@@ -707,16 +708,21 @@ class OrbitGame {
     this.playAgainButton = document.getElementById(
       "play-again-button"
     ) as HTMLButtonElement;
+    this.shareResultButton = document.getElementById(
+      "share-result-button"
+    ) as HTMLButtonElement; // Get the share button
 
     if (
       !this.gameOverDialog ||
       !this.gameOverTitle ||
       !this.gameOverMessage ||
       !this.gameOverResultInfoElement || // Check the new element
-      !this.playAgainButton
+      !this.playAgainButton ||
+      !this.shareResultButton // Check the share button
     ) {
       console.error("Failed to find all game over dialog elements!");
     } else {
+      // Play Again Button Listeners
       this.playAgainButton.addEventListener(
         "click",
         this.onPlayAgainButtonClick.bind(this)
@@ -726,6 +732,20 @@ class OrbitGame {
         (e) => {
           e.preventDefault();
           this.onPlayAgainButtonClick(e);
+        },
+        { passive: false }
+      );
+
+      // Share Button Listeners
+      this.shareResultButton.addEventListener(
+        "click",
+        this.onShareResultButtonClick.bind(this)
+      );
+      this.shareResultButton.addEventListener(
+        "touchstart",
+        (e) => {
+          e.preventDefault();
+          this.onShareResultButtonClick(e);
         },
         { passive: false }
       );
@@ -2747,6 +2767,76 @@ class OrbitGame {
     // Immediately start the game after reset
     this.onStartButtonClick(new MouseEvent("click"));
   }
+
+  // Handles clicking the "Share Result" button
+  private async onShareResultButtonClick(e: Event): Promise<void> {
+    e.preventDefault();
+    e.stopPropagation(); // Prevent other handlers
+
+    const gameUrl = "https://orbit.claudiu-ivan.com/"; // Or window.location.href
+    const hashtag = "#OrbitGame";
+    let shareText = "";
+    const score = this.player?.score ?? 0;
+    const duration = this.duration.toFixed(1); // Use 1 decimal place for time
+
+    const isVictory = this.gameState === GameState.WINNER; // Check current state
+
+    if (this.gameMode === "survival") {
+      shareText = isVictory
+        ? `I survived ${duration}s in Orbit! Can you beat my time? ${hashtag} ${gameUrl}`
+        : `I lasted ${duration}s in Orbit! Try to survive longer! ${hashtag} ${gameUrl}`;
+    } else {
+      // Score mode
+      shareText = isVictory
+        ? `I reached ${score} PTS in Orbit! Can you beat my score? ${hashtag} ${gameUrl}`
+        : `I scored ${score}/${this.victoryScore} PTS in Orbit! Try to reach the target! ${hashtag} ${gameUrl}`;
+    }
+
+    const shareData = {
+      title: "Orbit Game Result",
+      text: shareText,
+      url: gameUrl,
+    };
+
+    let shareMethod = "none"; // For analytics
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+        console.log("Result shared successfully via Web Share API.");
+        shareMethod = "native";
+        this.notify("Shared!", this.world.width / 2, this.world.height / 2 + 60, 1.0, [100, 255, 100]);
+      } else if (navigator.clipboard) {
+        await navigator.clipboard.writeText(shareText);
+        console.log("Result copied to clipboard.");
+        shareMethod = "clipboard";
+        this.notify("Copied to Clipboard!", this.world.width / 2, this.world.height / 2 + 60, 1.0, [100, 200, 255]);
+      } else {
+        console.warn("Web Share and Clipboard API not supported.");
+        this.notify("Sharing not supported", this.world.width / 2, this.world.height / 2 + 60, 1.0, [255, 100, 100]);
+      }
+    } catch (err) {
+      console.error("Error sharing:", err);
+      // Avoid notifying if user cancels native share dialog
+      if (
+        !(err instanceof DOMException && err.name === "AbortError") &&
+        shareMethod !== "native"
+      ) {
+        this.notify("Share Failed", this.world.width / 2, this.world.height / 2 + 60, 1.0, [255, 100, 100]);
+      }
+      shareMethod = "error";
+    }
+
+    // Track share attempt
+    this.analytics.track("share_attempt", {
+      share_method: shareMethod,
+      game_mode: this.gameMode,
+      score: score,
+      duration: parseFloat(duration),
+      victory: isVictory,
+    });
+  }
+
 
   private render(): void {
     this.context.save(); // Save context state before potential shake

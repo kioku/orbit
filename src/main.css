@@ -549,8 +549,19 @@ body.state-winner .settings-button { */
 }
 
 
+/* Container for game over buttons */
+.game-over-buttons {
+  display: flex;
+  justify-content: center; /* Center buttons horizontally */
+  gap: 15px; /* Space between buttons */
+  margin-top: 25px; /* Space above the button container */
+  width: 100%; /* Ensure container takes width */
+}
+
 .game-over-dialog .menu-button {
-  margin-top: 25px; /* Space above the button */
+  margin-top: 0; /* Remove individual top margin */
+  /* Adjust width or flex properties if needed */
+  /* Example: flex: 1; to make buttons equal width */
 }
 
 

@@ -171,7 +171,10 @@
         <p id="game-over-message">You were consumed by the star!</p>
         <!-- Removed score/high score displays -->
         <p id="game-over-result-info" class="score-display"></p> <!-- New element for result info -->
-        <button id="play-again-button" class="menu-button">PLAY AGAIN</button>
+        <div class="game-over-buttons"> <!-- Container for buttons -->
+          <button id="play-again-button" class="menu-button">PLAY AGAIN</button>
+          <button id="share-result-button" class="menu-button">SHARE</button> <!-- New Share Button -->
+        </div>
       </div>
     </div>
     <script type="module" src="/src/orbit.ts"></script>
