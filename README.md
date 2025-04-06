@@ -6,6 +6,8 @@ A mesmerizing web-based orbital navigation game. Control your spacecraft's orbit
 
 Play it live: [orbit.claudiu-ivan.com](https://orbit.claudiu-ivan.com/)
 
+This project was developed primarily using AI code generation tools as an exploration of ["vibe coding"](https://www.claudiu-ivan.com/writing/vibe-coding). It served as an entry for the [2025 Vibe Jam](https://jam.pieter.com).
+
 ## How to Play
 
 - **Objective:**
@@ -53,6 +55,8 @@ The game uses Vite for building and development. Environment variables are used 
 
 Analytics are only enabled in production builds (`npm run build`) if `VITE_POSTHOG_KEY` is set. Create a `.env` file in the root directory for local development overrides if needed.
 
+**Note on Hardcoded Values:** Some metadata, like the game URL used for sharing (`https://orbit.claudiu-ivan.com/` in `src/orbit.ts` -> `onShareResultButtonClick`) or the background music URL (`src/orbit.ts` -> `AudioManager`), are currently hardcoded. If you fork or modify this project, search for these values within the `src/orbit.ts` file and update them accordingly.
+
 ## Development
 
 ```bash
@@ -81,9 +85,10 @@ When pushing to your repository, Vercel will automatically build and deploy the 
 
 ## Credits
 
-- **Development & Design:** Claudiu Ivan and AI collaborators (Gemini, Claude, O1).
+- **Development & Design:** Claudiu Ivan and AI collaborators (Gemini, Claude, O1). Read more about the process [here](https://www.claudiu-ivan.com/writing/vibe-coding).
 - **Music:** "Sport Racing Car | DRIVE" by Alex-Productions (CC BY 3.0) via Chosic.com.
 - **Inspiration:** Classic arcade and orbital mechanics games.
+- **Event:** [2025 Vibe Jam](https://jam.pieter.com) entry.
 
 See the in-game Credits section for more details and links.
 
