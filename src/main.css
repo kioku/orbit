@@ -487,6 +487,82 @@ body.state-winner .settings-button { */
 }
 
 
+/* --- Game Over Dialog --- */
+.game-over-dialog {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 80%;
+  max-width: 400px; /* Similar to settings */
+  padding: 25px 30px;
+  background-color: rgba(0, 10, 20, 0.9); /* Dark background */
+  border: 1px solid rgba(255, 100, 100, 0.8); /* Red border for game over */
+  box-shadow: 0 0 25px rgba(255, 100, 100, 0.5), inset 0 0 10px rgba(255, 100, 100, 0.2);
+  color: rgba(220, 220, 220, 1); /* Lighter text */
+  z-index: 170; /* Above other menus */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  transition: opacity 0.3s ease-out, visibility 0.3s ease-out;
+}
+
+.game-over-dialog.hidden {
+  opacity: 0;
+  visibility: hidden;
+  display: none;
+  pointer-events: none;
+}
+
+.game-over-dialog h2 {
+  font-family: 'Rajdhani', 'Arial', sans-serif;
+  font-weight: 300;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-size: 20px;
+  color: rgba(255, 100, 100, 1); /* Red title */
+  text-shadow: 0 0 8px rgba(255, 100, 100, 0.8);
+}
+
+/* Style for victory state */
+.game-over-dialog.victory {
+  border-color: rgba(100, 255, 100, 0.8); /* Green border for victory */
+  box-shadow: 0 0 25px rgba(100, 255, 100, 0.5), inset 0 0 10px rgba(100, 255, 100, 0.2);
+}
+
+.game-over-dialog.victory h2 {
+  color: rgba(100, 255, 100, 1); /* Green title for victory */
+  text-shadow: 0 0 8px rgba(100, 255, 100, 0.8);
+}
+
+
+.game-over-dialog p {
+  margin-bottom: 10px;
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+.game-over-dialog .score-display {
+  font-size: 18px;
+  font-weight: bold;
+  margin-top: 5px;
+  margin-bottom: 5px;
+  color: rgba(140, 240, 255, 1); /* Score color */
+}
+
+.game-over-dialog .score-display span {
+  color: #fff; /* White for the actual number */
+}
+
+
+.game-over-dialog .menu-button {
+  margin-top: 25px; /* Space above the button */
+}
+
+
 /* --- Settings Button --- */
 .settings-button {
   position: absolute;

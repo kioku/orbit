@@ -326,6 +326,12 @@ class OrbitGame {
   private creditsButton!: HTMLButtonElement; // Ref for credits button in settings
   private creditsSection!: HTMLElement; // Ref for credits section container
   private closeCreditsButton!: HTMLButtonElement; // Ref for close button in credits
+  private gameOverDialog!: HTMLElement; // Ref for game over dialog
+  private gameOverTitle!: HTMLElement; // Ref for game over title
+  private gameOverMessage!: HTMLElement; // Ref for game over message
+  private finalScoreElement!: HTMLElement; // Ref for final score display
+  private highScoreDisplayElement!: HTMLElement; // Ref for high score display
+  private playAgainButton!: HTMLButtonElement; // Ref for play again button in dialog
   private audioManager: AudioManager; // Audio Manager instance
 
   // --- Settings State ---
@@ -749,10 +755,15 @@ class OrbitGame {
       this.timeLastFrame = Date.now(); // Prevent large delta jump after pause/welcome
     }
 
-    // Close menus if transitioning to playing state
+    // Close menus/dialogs if transitioning to playing state
     if (newState === GameState.PLAYING) {
-      if (this.isMenuOpen) this.closeSettingsMenu(false); // Don't unpause yet
-      if (this.isCreditsOpen) this.closeCredits(false); // Don't unpause yet
+      if (this.isMenuOpen) this.closeSettingsMenu(false);
+      if (this.isCreditsOpen) this.closeCredits(false);
+      this.gameOverDialog?.classList.add("hidden"); // Hide game over dialog
+    }
+    // Hide game over dialog if moving away from end states
+    else if (newState !== GameState.LOSER && newState !== GameState.WINNER) {
+      this.gameOverDialog?.classList.add("hidden");
     }
 
     this.gameState = newState;
@@ -1004,10 +1015,12 @@ class OrbitGame {
     // Restart game
     if (
       (e.key === "r" || e.key === "R") &&
-      (this.gameState === GameState.WINNER ||
-        this.gameState === GameState.LOSER)
+      (this.gameState === GameState.WINNER || this.gameState === GameState.LOSER) &&
+      !this.isMenuOpen && // Only restart if menus aren't open
+      !this.isCreditsOpen
     ) {
-      this.onStartButtonClick(new MouseEvent("click"));
+      // Simulate clicking the *new* play again button
+      this.onPlayAgainButtonClick(new MouseEvent("click"));
     }
     // Toggle game mode (only when not playing)
     else if ((e.key === "m" || e.key === "M") && !this.playing) {
@@ -1238,6 +1251,7 @@ class OrbitGame {
     this.updateModeToggleVisual(); // Ensure mode toggle is enabled
     this.loadHighScore(); // Load high score for the current mode after reset
     this.startButton.textContent = "INITIALIZE";
+    this.gameOverDialog?.classList.add("hidden"); // Ensure dialog is hidden on full reset
   }
 
   // Resets only the elements needed for restarting a round
@@ -1276,6 +1290,7 @@ class OrbitGame {
       if (p.alive) this.projectilePool.release(p);
     });
     this.projectiles = [];
+    this.gameOverDialog?.classList.add("hidden"); // Ensure dialog is hidden on stat reset
   }
 
   private notify(
@@ -2579,48 +2594,56 @@ class OrbitGame {
     this.updateModeToggleVisual(); // Enable mode toggle
     const endState = isVictory ? GameState.WINNER : GameState.LOSER;
     this.setGameState(endState); // Set final state
-    this.startButton.style.display = ""; // Ensure button display is controlled by CSS state classes
+    this.startButton.style.display = "none"; // Hide the main start button
 
     // Save score if it's a new high score (Improvement)
     // saveHighScore now also tracks high_score_achieved if applicable
     this.saveHighScore();
 
-    this.thrustParticles = []; // Clear particles (or let them fade via pooling)
+    this.thrustParticles = []; // Clear particles
 
-    // Center end-game messages on the full screen
-    this.notify(
-      message,
-      this.world.width / 2, // Full screen center X
-      this.world.height / 2 - 40, // Full screen center Y offset
-      1.8,
-      isVictory ? [100, 255, 100] : [255, 100, 100]
-    );
-    const instructionY = this.world.height / 2 + 20; // Full screen center Y offset
-    const restartInstruction = this.isLikelyMobile ? "TAP" : "TAP / PRESS 'R'";
-    this.notify(
-      restartInstruction,
-      this.world.width / 2, // Full screen center X
-      instructionY,
-      1.0,
-      [200, 200, 200]
-    );
-    this.notify(
-      "TO PLAY AGAIN",
-      this.world.width / 2, // Full screen center X
-      instructionY + 25,
-      1.0,
-      [200, 200, 200]
-    );
-    // Display High Score below instructions (centered on full screen)
-    this.notify(
-      `HIGH SCORE: ${this.highScore}`,
-      this.world.width / 2, // Full screen center X
-      instructionY + 60,
-      1.0,
-      [200, 200, 100]
-    );
+    // --- Populate and Show Game Over Dialog ---
+    if (
+      this.gameOverDialog &&
+      this.gameOverTitle &&
+      this.gameOverMessage &&
+      this.finalScoreElement &&
+      this.highScoreDisplayElement
+    ) {
+      this.gameOverTitle.textContent = isVictory ? "VICTORY!" : "GAME OVER";
+      this.gameOverMessage.textContent = message; // Use the detailed message
+      this.finalScoreElement.textContent = this.player?.score.toString() ?? "0";
+      this.highScoreDisplayElement.textContent = this.highScore.toString();
 
-    this.startButton.textContent = "PLAY AGAIN";
+      // Add/Remove victory class for styling
+      this.gameOverDialog.classList.toggle("victory", isVictory);
+
+      this.gameOverDialog.classList.remove("hidden");
+    } else {
+      console.error("Game over dialog elements not found!");
+      // Fallback notification if dialog fails
+      this.notify(
+        message,
+        this.world.width / 2,
+        this.world.height / 2 - 40,
+        1.8,
+        isVictory ? [100, 255, 100] : [255, 100, 100]
+      );
+      this.notify(
+        `Score: ${this.player?.score ?? 0} | High: ${this.highScore}`,
+        this.world.width / 2,
+        this.world.height / 2 + 20,
+        1.2,
+        [200, 200, 100]
+      );
+      this.notify(
+        "TAP/PRESS 'R' TO PLAY AGAIN",
+        this.world.width / 2,
+        this.world.height / 2 + 50,
+        1.0,
+        [200, 200, 200]
+      );
+    }
 
     // Track game end event
     this.analytics.track("game_end", {
@@ -2629,6 +2652,15 @@ class OrbitGame {
       duration: parseFloat(this.duration.toFixed(1)),
       game_mode: this.gameMode,
     });
+  }
+
+  // Handles clicking the "Play Again" button in the game over dialog
+  private onPlayAgainButtonClick(e: Event): void {
+    e.preventDefault();
+    this.gameOverDialog?.classList.add("hidden"); // Hide the dialog first
+    this.reset(); // Full reset
+    // Immediately start the game after reset
+    this.onStartButtonClick(new MouseEvent("click"));
   }
 
   private render(): void {
