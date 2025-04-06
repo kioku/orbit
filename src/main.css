@@ -593,12 +593,12 @@ body.state-winner .settings-button { */
 @keyframes pulse-glow-settings-off {
    /* Similar to start button, but use OFF colors */
     0%, 100% {
-        box-shadow: 0 0 15px rgba(255, 100, 100, 0.5);
+        box-shadow: 0 0 15px rgba(255, 100, 100, 0.5), inset 0 0 0 transparent; /* Added transparent inset */
         text-shadow: 0 0 8px rgba(255, 100, 100, 0.8);
         border-color: rgba(255, 100, 100, 0.8);
     }
     50% {
-        box-shadow: 0 0 25px rgba(255, 100, 100, 0.7);
+        box-shadow: 0 0 25px rgba(255, 100, 100, 0.7), inset 0 0 0 transparent; /* Added transparent inset */
         border-color: rgba(255, 120, 120, 1);
         text-shadow: 0 0 12px rgba(255, 100, 100, 1);
     }
@@ -606,12 +606,12 @@ body.state-winner .settings-button { */
 @keyframes pulse-glow-settings-on {
    /* Similar to start button, but use ON colors */
     0%, 100% {
-        box-shadow: 0 0 15px rgba(80, 220, 255, 0.5);
+        box-shadow: 0 0 15px rgba(80, 220, 255, 0.5), inset 0 0 0 transparent; /* Added transparent inset */
         text-shadow: 0 0 8px rgba(140, 240, 255, 0.8);
         border-color: rgba(80, 220, 255, 0.8);
     }
     50% {
-        box-shadow: 0 0 25px rgba(80, 220, 255, 0.7);
+        box-shadow: 0 0 25px rgba(80, 220, 255, 0.7), inset 0 0 0 transparent; /* Added transparent inset */
         border-color: rgba(100, 230, 255, 1);
         text-shadow: 0 0 12px rgba(140, 240, 255, 1);
     }
