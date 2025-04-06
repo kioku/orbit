@@ -1741,14 +1741,6 @@ class OrbitGame {
     }
   }
 
-        // Apply the score multiplier
-        const points = basePoints * this.player.scoreMultiplier;
-        this.player.score += points;
-        this.notify(`+${points}`, enemy.x, enemy.y, 1, [250, 250, 100]);
-      }
-    }
-  }
-
   private renderPlayer(): void {
     const sprite = this.sprites.playerSprite;
     if (!sprite || !this.player || !this.player.alive) {
