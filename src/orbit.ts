@@ -692,6 +692,50 @@ class OrbitGame {
       }
     }
 
+    // --- Game Over Dialog Elements & Listener ---
+    this.gameOverDialog = document.getElementById(
+      "game-over-dialog"
+    ) as HTMLElement;
+    this.gameOverTitle = document.getElementById(
+      "game-over-title"
+    ) as HTMLElement;
+    this.gameOverMessage = document.getElementById(
+      "game-over-message"
+    ) as HTMLElement;
+    this.finalScoreElement = document.getElementById(
+      "final-score"
+    ) as HTMLElement;
+    this.highScoreDisplayElement = document.getElementById(
+      "high-score-display"
+    ) as HTMLElement;
+    this.playAgainButton = document.getElementById(
+      "play-again-button"
+    ) as HTMLButtonElement;
+
+    if (
+      !this.gameOverDialog ||
+      !this.gameOverTitle ||
+      !this.gameOverMessage ||
+      !this.finalScoreElement ||
+      !this.highScoreDisplayElement ||
+      !this.playAgainButton
+    ) {
+      console.error("Failed to find all game over dialog elements!");
+    } else {
+      this.playAgainButton.addEventListener(
+        "click",
+        this.onPlayAgainButtonClick.bind(this)
+      );
+      this.playAgainButton.addEventListener(
+        "touchstart",
+        (e) => {
+          e.preventDefault();
+          this.onPlayAgainButtonClick(e);
+        },
+        { passive: false }
+      );
+    }
+
     // --- Other Event Listeners ---
     document.addEventListener(
       "keydown",
