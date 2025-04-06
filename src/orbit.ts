@@ -2647,22 +2647,20 @@ class OrbitGame {
       this.gameOverTitle.textContent = isVictory ? "VICTORY!" : "GAME OVER";
       this.gameOverMessage.textContent = message; // Use the detailed message
 
-      // Calculate and display result info
+      // Calculate and display result info in the format (Current / Target)
       let resultInfoText = "";
       if (this.gameMode === "survival") {
-        const timeSurvived = this.duration.toFixed(1);
-        resultInfoText = isVictory
-          ? `Survived for ${timeSurvived}s`
-          : `Lasted ${timeSurvived}s`;
+        // Calculate time remaining (can be negative if they lost early)
+        const timeRemaining = Math.max(0, this.gameTimer - this.duration); // Ensure non-negative display
+        const totalTime = this.gameTimer;
+        resultInfoText = `${timeRemaining.toFixed(1)}s / ${totalTime.toFixed(
+          0
+        )}s`;
       } else {
         // Score mode
         const score = this.player?.score ?? 0;
-        if (isVictory) {
-          resultInfoText = `Target ${this.victoryScore} reached!`;
-        } else {
-          const scoreNeeded = this.victoryScore - score;
-          resultInfoText = `${scoreNeeded} more points needed`;
-        }
+        const targetScore = this.victoryScore;
+        resultInfoText = `${score} / ${targetScore} PTS`;
       }
       this.gameOverResultInfoElement.textContent = resultInfoText;
 
