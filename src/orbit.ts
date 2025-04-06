@@ -2645,15 +2645,13 @@ class OrbitGame {
     // --- Populate and Show Game Over Dialog ---
     if (this.gameOverDialog && this.gameOverTitle && this.gameOverMessage) {
       this.gameOverTitle.textContent = isVictory ? "VICTORY!" : "GAME OVER";
-      this.gameOverMessage.textContent = message; // Use the detailed message
+      this.gameOverMessage.textContent = isVictory ? "" : message; // Use the detailed message
 
       // Calculate and display result info in the format (Current / Target)
       let resultInfoText = "";
       if (this.gameMode === "survival") {
-        // Calculate time remaining (can be negative if they lost early)
-        const timeRemaining = Math.max(0, this.gameTimer - this.duration); // Ensure non-negative display
         const totalTime = this.gameTimer;
-        resultInfoText = `${timeRemaining.toFixed(1)}s / ${totalTime.toFixed(
+        resultInfoText = `${this.duration.toFixed(2)}s / ${totalTime.toFixed(
           0
         )}s`;
       } else {
@@ -2662,10 +2660,9 @@ class OrbitGame {
         const targetScore = this.victoryScore;
         resultInfoText = `${score} / ${targetScore} PTS`;
       }
-      this.gameOverResultInfoElement.textContent = resultInfoText;
-
-      // No longer need victory class toggle as base style is blue
-      // this.gameOverDialog.classList.toggle("victory", isVictory);
+      this.gameOverResultInfoElement.textContent = isVictory
+        ? `${this.gameMode.toUpperCase()} MODE`
+        : `${this.gameMode.toUpperCase()} MODE: ${resultInfoText}`;
 
       this.gameOverDialog.classList.remove("hidden");
     } else {
