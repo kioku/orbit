@@ -329,8 +329,7 @@ class OrbitGame {
   private gameOverDialog!: HTMLElement; // Ref for game over dialog
   private gameOverTitle!: HTMLElement; // Ref for game over title
   private gameOverMessage!: HTMLElement; // Ref for game over message
-  private finalScoreElement!: HTMLElement; // Ref for final score display
-  private highScoreDisplayElement!: HTMLElement; // Ref for high score display
+  private gameOverResultInfoElement!: HTMLElement; // Ref for the result info display
   private playAgainButton!: HTMLButtonElement; // Ref for play again button in dialog
   private audioManager: AudioManager; // Audio Manager instance
 
@@ -702,12 +701,9 @@ class OrbitGame {
     this.gameOverMessage = document.getElementById(
       "game-over-message"
     ) as HTMLElement;
-    this.finalScoreElement = document.getElementById(
-      "final-score"
-    ) as HTMLElement;
-    this.highScoreDisplayElement = document.getElementById(
-      "high-score-display"
-    ) as HTMLElement;
+    this.gameOverResultInfoElement = document.getElementById(
+      "game-over-result-info"
+    ) as HTMLElement; // Get the new element
     this.playAgainButton = document.getElementById(
       "play-again-button"
     ) as HTMLButtonElement;
@@ -716,8 +712,7 @@ class OrbitGame {
       !this.gameOverDialog ||
       !this.gameOverTitle ||
       !this.gameOverMessage ||
-      !this.finalScoreElement ||
-      !this.highScoreDisplayElement ||
+      !this.gameOverResultInfoElement || // Check the new element
       !this.playAgainButton
     ) {
       console.error("Failed to find all game over dialog elements!");
@@ -1059,7 +1054,8 @@ class OrbitGame {
     // Restart game
     if (
       (e.key === "r" || e.key === "R") &&
-      (this.gameState === GameState.WINNER || this.gameState === GameState.LOSER) &&
+      (this.gameState === GameState.WINNER ||
+        this.gameState === GameState.LOSER) &&
       !this.isMenuOpen && // Only restart if menus aren't open
       !this.isCreditsOpen
     ) {
@@ -2647,20 +2643,31 @@ class OrbitGame {
     this.thrustParticles = []; // Clear particles
 
     // --- Populate and Show Game Over Dialog ---
-    if (
-      this.gameOverDialog &&
-      this.gameOverTitle &&
-      this.gameOverMessage &&
-      this.finalScoreElement &&
-      this.highScoreDisplayElement
-    ) {
+    if (this.gameOverDialog && this.gameOverTitle && this.gameOverMessage) {
       this.gameOverTitle.textContent = isVictory ? "VICTORY!" : "GAME OVER";
       this.gameOverMessage.textContent = message; // Use the detailed message
-      this.finalScoreElement.textContent = this.player?.score.toString() ?? "0";
-      this.highScoreDisplayElement.textContent = this.highScore.toString();
 
-      // Add/Remove victory class for styling
-      this.gameOverDialog.classList.toggle("victory", isVictory);
+      // Calculate and display result info
+      let resultInfoText = "";
+      if (this.gameMode === "survival") {
+        const timeSurvived = this.duration.toFixed(1);
+        resultInfoText = isVictory
+          ? `Survived for ${timeSurvived}s`
+          : `Lasted ${timeSurvived}s`;
+      } else {
+        // Score mode
+        const score = this.player?.score ?? 0;
+        if (isVictory) {
+          resultInfoText = `Target ${this.victoryScore} reached!`;
+        } else {
+          const scoreNeeded = this.victoryScore - score;
+          resultInfoText = `${scoreNeeded} more points needed`;
+        }
+      }
+      this.gameOverResultInfoElement.textContent = resultInfoText;
+
+      // No longer need victory class toggle as base style is blue
+      // this.gameOverDialog.classList.toggle("victory", isVictory);
 
       this.gameOverDialog.classList.remove("hidden");
     } else {
@@ -2678,12 +2685,16 @@ class OrbitGame {
         this.world.width / 2,
         this.world.height / 2 + 20,
         1.2,
-        [200, 200, 100]
+        [200, 200, 100] // Keep score/high score fallback notification
       );
+      // Update fallback restart instruction
+      const restartInstruction = this.isLikelyMobile
+        ? "TAP TO PLAY AGAIN"
+        : "TAP/PRESS 'R' TO PLAY AGAIN";
       this.notify(
-        "TAP/PRESS 'R' TO PLAY AGAIN",
+        restartInstruction,
         this.world.width / 2,
-        this.world.height / 2 + 50,
+        this.world.height / 2 + 50, // Adjust position if needed
         1.0,
         [200, 200, 200]
       );
