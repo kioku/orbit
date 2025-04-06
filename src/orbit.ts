@@ -2773,7 +2773,7 @@ class OrbitGame {
     e.preventDefault();
     e.stopPropagation(); // Prevent other handlers
 
-    const gameUrl = "https://orbit.claudiu-ivan.com/"; // Or window.location.href
+    const gameUrl = window.location.href; // Use dynamic URL
     const hashtag = "#OrbitGame";
     let shareText = "";
     const score = this.player?.score ?? 0;

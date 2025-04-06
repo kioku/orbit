@@ -55,7 +55,7 @@ The game uses Vite for building and development. Environment variables are used 
 
 Analytics are only enabled in production builds (`npm run build`) if `VITE_POSTHOG_KEY` is set. Create a `.env` file in the root directory for local development overrides if needed.
 
-**Note on Hardcoded Values:** Some metadata, like the game URL used for sharing (`https://orbit.claudiu-ivan.com/` in `src/orbit.ts` -> `onShareResultButtonClick`) or the background music URL (`src/orbit.ts` -> `AudioManager`), are currently hardcoded. If you fork or modify this project, search for these values within the `src/orbit.ts` file and update them accordingly.
+**Note on Hardcoded Values:** Some metadata is currently hardcoded. The background music URL (`src/orbit.ts` -> `AudioManager`), is also hardcoded. If you fork or modify this project, search for these values and update them accordingly.
 
 ## Development
 
