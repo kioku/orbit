@@ -409,6 +409,9 @@ class OrbitGame {
   // Analytics instance
   private analytics: Analytics;
 
+  // Device type check
+  private isLikelyMobile: boolean = false;
+
   // Use getter for dynamic calculation based on world size
   private get sunBaseRadius(): number {
     return this.ENEMY_SIZE * this.SUN_SIZE_MULTIPLIER;
@@ -458,6 +461,10 @@ class OrbitGame {
 
     // Initialize Analytics
     this.analytics = new Analytics();
+
+    // Check for mobile device (basic touch detection)
+    this.isLikelyMobile = navigator.maxTouchPoints > 0;
+    console.log(`Is likely mobile device: ${this.isLikelyMobile}`);
 
     this.initialize();
   }
@@ -2752,8 +2759,11 @@ class OrbitGame {
       this.context.textAlign = "center";
       this.context.font = "14px Rajdhani, Arial";
       this.context.fillStyle = "rgba(140, 240, 255, 0.7)";
+      const modeText = this.isLikelyMobile
+        ? `MODE: ${this.gameMode.toUpperCase()}`
+        : `MODE: ${this.gameMode.toUpperCase()} (M to change)`;
       this.context.fillText(
-        `MODE: ${this.gameMode.toUpperCase()} (M to change)`,
+        modeText,
         this.world.width / 2, // Center of full screen
         this.world.height - bottomMargin // Use bottom margin
       );
@@ -2837,8 +2847,8 @@ class OrbitGame {
 
   // Render Welcome Screen Instructions (Improvement)
   private renderWelcomeScreen(): void {
-    // Don't show detailed instructions on small screens
-    const mobileWidthThreshold = 500;
+    // Don't show detailed instructions on very small screens, adjust threshold if needed
+    const mobileWidthThreshold = 400; // Slightly smaller threshold
     if (this.world.width < mobileWidthThreshold) return;
 
     this.context.save();
@@ -2852,11 +2862,23 @@ class OrbitGame {
     const midX = this.world.width / 2;
     let yPos = this.world.height * 0.65; // Adjust starting Y position relative to full height
 
-    this.context.fillText("HOLD [MOUSE] / [SPACE] / [TOUCH]", midX, yPos);
-    yPos += 20;
-    this.context.fillText("TO EXPAND ORBIT", midX, yPos);
-    yPos += 25;
-    this.context.fillText("RELEASE TO CONTRACT", midX, yPos);
+    if (this.isLikelyMobile) {
+      // Mobile/Touch Instructions
+      this.context.fillText("TOUCH AND HOLD", midX, yPos);
+      yPos += 20;
+      this.context.fillText("TO EXPAND ORBIT", midX, yPos);
+      yPos += 25;
+      this.context.fillText("RELEASE TO CONTRACT", midX, yPos);
+    } else {
+      // Desktop/Keyboard/Mouse Instructions
+      this.context.fillText("HOLD [MOUSE] / [SPACE]", midX, yPos);
+      yPos += 20;
+      this.context.fillText("TO EXPAND ORBIT", midX, yPos);
+      yPos += 25;
+      this.context.fillText("RELEASE TO CONTRACT", midX, yPos);
+    }
+
+    // Common instructions
     yPos += 25;
     this.context.fillText("COLLECT BLUE ENEMIES", midX, yPos);
     yPos += 20;
