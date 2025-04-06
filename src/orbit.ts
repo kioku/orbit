@@ -1712,13 +1712,34 @@ class OrbitGame {
 
       // Check collision with player
       if (this.collides(this.player, enemy)) {
-        // Trigger enemy death sequence instead of immediate removal (Improvement: Polish)
-        enemy.startDying();
-        this.audioManager.playSound("explode", 0.6);
-        this.createExplosion(enemy.x, enemy.y); // Spawn explosion particles
+        // Only process score/effects if the enemy isn't already dying
+        if (!enemy.isDying) {
+          this.audioManager.playSound("explode", 0.6);
+          this.createExplosion(enemy.x, enemy.y); // Spawn explosion particles
 
-        // Determine base points for the enemy type
-        const basePoints = enemy.type === EnemyType.SHOOTER ? 3 : 1;
+          // Determine base points based on enemy type
+          let basePoints = 1; // Default for NORMAL
+          switch (enemy.type) {
+            case EnemyType.FAST:
+              basePoints = 2;
+              break;
+            case EnemyType.SHOOTER:
+              basePoints = 3;
+              break;
+            // No case needed for NORMAL as it's the default
+          }
+
+          // Apply the score multiplier
+          const points = basePoints * this.player.scoreMultiplier;
+          this.player.score += points;
+          this.notify(`+${points}`, enemy.x, enemy.y, 1, [250, 250, 100]);
+
+          // Trigger enemy death sequence *after* processing score/effects for the first hit
+          enemy.startDying();
+        }
+      }
+    }
+  }
 
         // Apply the score multiplier
         const points = basePoints * this.player.scoreMultiplier;
@@ -3300,6 +3321,11 @@ class Enemy extends Entity {
   private dying: boolean = false;
   private deathDuration: number = 0.15; // seconds (Shortened)
   private deathTimer: number = 0;
+
+  // Public getter for dying state
+  public get isDying(): boolean {
+    return this.dying;
+  }
 
   constructor(type: EnemyType) {
     super();
