@@ -1634,11 +1634,33 @@ class OrbitGame {
           enemy.y = this.logicalCenterY + Math.sin(spawnAngle) * spawnRadius;
           const dx_player = enemy.x - this.player.x;
           const dy_player = enemy.y - this.player.y;
-          if (
-            dx_player * dx_player + dy_player * dy_player >
+          const distSqPlayer = dx_player * dx_player + dy_player * dy_player;
+          const minDistPlayerSq =
             this.ENEMY_MIN_DISTANCE_FROM_PLAYER *
-              this.ENEMY_MIN_DISTANCE_FROM_PLAYER
-          ) {
+            this.ENEMY_MIN_DISTANCE_FROM_PLAYER;
+
+          let overlapsExistingEnemy = false;
+          // Check distance from other enemies
+          for (const existingEnemy of this.enemies) {
+            if (existingEnemy.type === EnemyType.SUN) continue; // Skip sun
+
+            const dx_enemy = enemy.x - existingEnemy.x;
+            const dy_enemy = enemy.y - existingEnemy.y;
+            const distSqEnemy = dx_enemy * dx_enemy + dy_enemy * dy_enemy;
+            // Use a slightly larger buffer than just collision radius to prevent visual overlap
+            // Assuming new enemy collision radius is ENEMY_SIZE for this check
+            const requiredDist =
+              (this.ENEMY_SIZE + existingEnemy.collisionRadius) * 1.2; // Add 20% buffer
+            const requiredDistSq = requiredDist * requiredDist;
+
+            if (distSqEnemy < requiredDistSq) {
+              overlapsExistingEnemy = true;
+              break; // Found an overlap, no need to check further
+            }
+          }
+
+          // Position is valid if far enough from player AND doesn't overlap existing enemies
+          if (distSqPlayer > minDistPlayerSq && !overlapsExistingEnemy) {
             validPosition = true;
           }
           attempts++;
