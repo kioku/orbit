@@ -2596,8 +2596,9 @@ class OrbitGame {
       isVictory ? [100, 255, 100] : [255, 100, 100]
     );
     const instructionY = this.world.height / 2 + 20; // Full screen center Y offset
+    const restartInstruction = this.isLikelyMobile ? "TAP" : "TAP / PRESS 'R'";
     this.notify(
-      "TAP / PRESS 'R'",
+      restartInstruction,
       this.world.width / 2, // Full screen center X
       instructionY,
       1.0,
